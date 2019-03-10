@@ -1,0 +1,2 @@
+#define BIFROST_NOEXCEPT
+#define BIFROST_API

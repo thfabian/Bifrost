@@ -1,0 +1,24 @@
+version: 1.0.{build}
+
+image: Visual Studio 2017
+
+platform:
+  - x64
+
+configuration:
+  - Debug
+  - Release
+
+environment:
+  BUILD_PATH: $(platform)\$(configuration)
+  matrix:
+    - arch: x64
+      compiler: msvc2017
+      PREMAKE_GENERATOR: vs2017
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+
+before_build:
+  - ps: cmd.exe /c "configure-$($env:PREMAKE_GENERATOR).bat"
+
+build_script:
+  - ps: msbuild "build-$($env:PREMAKE_GENERATOR)/bifrost.sln" /p:Configuration=$($env:CONFIGURATION) /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
