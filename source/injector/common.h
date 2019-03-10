@@ -11,9 +11,8 @@
 
 #pragma once
 
-/** Bifrost **/
+/** Bifrost Core **/
 #include "bifrost_core/common.h"
-#include "bifrost/bifrost.h"
 
 /** args **/
 #include <args.hxx>

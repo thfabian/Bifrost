@@ -21,12 +21,6 @@
 
 using namespace injector;
 
-namespace {
-
-void PrintVersion() { std::cout << INJECTOR_VERSION_STRING << " (Bifrost " << bifrost_GetVersion() << ")" << std::endl; }
-
-}  // namespace
-
 int main(int argc, const char* argv[]) {
   // Extract the program name
   auto program = argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "injector";
@@ -62,7 +56,7 @@ int main(int argc, const char* argv[]) {
 
   // Print version and exit
   if (version) {
-    PrintVersion();
+    std::cout << INJECTOR_VERSION_STRING << std::endl;
     return 0;
   }
 
