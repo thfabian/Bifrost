@@ -20,6 +20,9 @@ class Injector {
  public:
   Injector(std::unique_ptr<Process>&& process);
 
+  /// Inject bifrost dll into the process
+  void LoadBifrostDll(std::wstring path = L"bifrost.dll");
+
  private:
   std::unique_ptr<Process> m_process;
 };

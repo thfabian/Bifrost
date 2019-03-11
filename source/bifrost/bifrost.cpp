@@ -29,3 +29,17 @@ extern BIFROST_API const char* bifrost_GetVersion() BIFROST_NOEXCEPT {
 
 #pragma endregion
 
+#pragma region DllMain
+
+extern "C" BOOL APIENTRY DllMain(HMODULE hModule, DWORD ulReasonForCall, LPVOID lpReserved) {
+  switch (ulReasonForCall) {
+    case DLL_PROCESS_ATTACH:
+    case DLL_PROCESS_DETACH:
+    case DLL_THREAD_ATTACH:
+    case DLL_THREAD_DETACH:
+      break;
+  }
+  return TRUE;
+}
+
+#pragma endregion

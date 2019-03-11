@@ -13,3 +13,7 @@
 #include "injector/injector.h"
 
 injector::Injector::Injector(std::unique_ptr<Process>&& process) : m_process(std::move(process)) {}
+
+void injector::Injector::LoadBifrostDll(std::wstring path) {
+
+}
