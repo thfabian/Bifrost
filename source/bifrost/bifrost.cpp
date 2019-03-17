@@ -17,13 +17,13 @@ using namespace bifrost;
 
 #pragma region Error
 
-extern BIFROST_API const char* bifrost_GetLastError() BIFROST_NOEXCEPT { return Error::Get().GetLastError(); }
+extern BIFROST_API const char* bf_GetLastError() { return Error::Get().GetLastError(); }
 
 #pragma endregion
 
 #pragma region Version
 
-extern BIFROST_API const char* bifrost_GetVersion() BIFROST_NOEXCEPT {
+extern BIFROST_API const char* bf_GetVersion() {
   return BIFROST_STRINGIFY(BIFROST_VERSION_MAJOR) "." BIFROST_STRINGIFY(BIFROST_VERSION_MINOR) "." BIFROST_STRINGIFY(BIFROST_VERSION_PATCH);
 }
 

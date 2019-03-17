@@ -11,7 +11,7 @@
 
 #pragma once
 
-/// @file API declaration of Bifrost---------------------
+/// @file API declaration of Bifrost
 
 #include <stddef.h>  // size_t
 
@@ -35,27 +35,9 @@
 #define BIFROST_API __declspec(dllimport)
 #endif
 
-#if defined(_MSC_VER)
-#define BIFROST_COMPILER_MSVC 1
-#else
-#define BIFROST_COMPILER_MSVC 0
-#endif
-
-#ifdef __cplusplus
-#define BIFROST_CXX 1
-#else
-#define BIFROST_CXX 0
-#endif
-
-#if BIFROST_CXX
-#define BIFROST_NOEXCEPT noexcept
-#else
-#define BIFROST_NOEXCEPT
-#endif
-
 #pragma endregion
 
-#if BIFROST_CXX
+#if __cplusplus
 extern "C" {
 #endif
 
@@ -72,17 +54,17 @@ typedef size_t bifrost_size_t;
 enum bifrost_Status { BIFROST_OK = 0, BIFROST_FAIL };
 
 /// @brief Get the explanation string of the last error (or NULL if no error occurred)
-extern BIFROST_API const char* bifrost_GetLastError() BIFROST_NOEXCEPT;
+extern BIFROST_API const char* bf_GetLastError();
 
 #pragma endregion
 
 #pragma region Version
 
 /// @brief Get the version string
-extern BIFROST_API const char* bifrost_GetVersion() BIFROST_NOEXCEPT;
+extern BIFROST_API const char* bf_GetVersion();
 
 #pragma endregion
 
-#if BIFROST_CXX
+#if __cplusplus
 }  // extern "C"
 #endif

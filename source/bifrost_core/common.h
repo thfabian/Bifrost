@@ -37,5 +37,8 @@
 #include <filesystem>
 #include <locale>
 #include <codecvt>
+#include <string_view>
+#include <list>
+#include <map>
 
 namespace bifrost {}
