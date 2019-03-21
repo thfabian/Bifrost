@@ -44,10 +44,13 @@ class Logging {
   void Enable(bool enable);
 
   /// Register a logging callback
-  void SetCallback(LogCallBackT loggingCallback);
+  void SetCallback(const char* name, LogCallBackT loggingCallback);
+
+  /// Deregister a logging callback
+  void RemoveCallback(const char* name);
 
   /// Get the currently registered logging callback
-  const LogCallBackT GetCallback() const;
+  const LogCallBackT GetCallback(const char* name) const;
 
   /// Get the minimum log level the logging operates on
   ///
@@ -65,7 +68,7 @@ class Logging {
  private:
   static std::unique_ptr<Logging> m_instance;
 
-  LogCallBackT m_loggingCallback;
+  std::map<std::string, LogCallBackT> m_loggingCallback;
   bool m_enabled;
   std::string m_buffer;
   std::wstring m_wbuffer;
@@ -77,7 +80,8 @@ void Logging::_Log(const char* fmt, Args&&... args) noexcept {
 
   std::memset(m_buffer.data(), 0, m_buffer.size());
   StringFormat(m_buffer, fmt, std::forward<Args>(args)...);
-  m_loggingCallback((int)Level, m_buffer.c_str());
+
+  for (const auto& cb : m_loggingCallback) cb((int)Level, m_buffer.c_str());
 }
 
 template <Logging::LogLevel Level, class... Args>
@@ -86,7 +90,8 @@ void Logging::_Log(const wchar_t* fmt, Args&&... args) noexcept {
 
   std::memset(m_wbuffer.data(), 0, m_wbuffer.size());
   WStringFormat(m_wbuffer, fmt, std::forward<Args>(args)...);
-  m_loggingCallback((int)Level, WStringToString(m_wbuffer).c_str());
+
+  for (const auto& cb : m_loggingCallback) cb((int)Level, WStringToString(m_wbuffer).c_str());
 }
 
 #if BIFROST_LOGLEVEL <= BIFROST_LOGLEVEL_DEBUG

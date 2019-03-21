@@ -137,8 +137,8 @@ workspace "bifrost"
     
     files "source/bifrost_shared/*_test.cpp"
 	
-    bifrost_add_bifrost_shared()
 	bifrost_add_external_gtest()
+	bifrost_add_bifrost_shared()
 	
   -- *** Injector ***
   project "injector"

@@ -13,7 +13,7 @@
 #include "bifrost_core/util.h"
 #include "bifrost_core/mutex.h"
 
-#define BIFROST_SHARED_UNORDERED_MAP 0
+#define BIFROST_SHARED_UNORDERED_MAP 1
 #define BIFROST_SHARED_THREAD_SAFE 1
 
 static_assert(sizeof(bfs_Value_t) == 64, "bfs_Value_t is not cache aligned");
@@ -132,13 +132,18 @@ class Configuration {
     to->SizeInBytes = from->SizeInBytes;
     if (deepCopy && HasExternalStorage(from)) {
       if (CanbBeStoredInPlace(from)) {
-        to->Value = (uint64_t)&to->Padding;
+        to->Value = (uint64_t)to->Padding;
       } else {
         to->Value = (uint64_t)Alloc(from->SizeInBytes + 1);
       }
       std::memcpy((void*)to->Value, (void*)from->Value, from->SizeInBytes + 1);
     } else {
-      to->Value = from->Value;
+      if (HasExternalStorage(from) && CanbBeStoredInPlace(from)) {
+        to->Value = (uint64_t)to->Padding;
+        std::memcpy((void*)to->Value, (void*)from->Value, from->SizeInBytes + 1);
+      } else {
+        to->Value = from->Value;
+      }
     }
   }
 
@@ -177,3 +182,15 @@ void bfs_FreeValue(bfs_Value* value) { Configuration::Get().FreeValue(value); }
 void* bfs_Malloc(size_t value) { return std::malloc(value); }
 
 void bfs_Free(void* ptr) { std::free(ptr); }
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
+  switch (fdwReason) {
+    case DLL_PROCESS_ATTACH:
+      Configuration::OnLoad();
+      break;
+    case DLL_PROCESS_DETACH:
+      Configuration::OnUnload();
+      break;
+  }
+  return TRUE;
+}

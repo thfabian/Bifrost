@@ -41,17 +41,10 @@
 extern "C" {
 #endif
 
-#pragma region Type
-
-/// Typedef for std::size_t
-typedef size_t bifrost_size_t;
-
-#pragma endregion
-
 #pragma region Error
 
 /// @brief Error status
-enum bifrost_Status { BIFROST_OK = 0, BIFROST_FAIL };
+enum bf_Status { BF_OK = 0, BF_FAIL };
 
 /// @brief Get the explanation string of the last error (or NULL if no error occurred)
 extern BIFROST_API const char* bf_GetLastError();
@@ -62,6 +55,36 @@ extern BIFROST_API const char* bf_GetLastError();
 
 /// @brief Get the version string
 extern BIFROST_API const char* bf_GetVersion();
+
+#pragma endregion
+
+#pragma Logging
+
+/// @brief Logging level
+enum bf_LogLevel { BF_LOGLEVEL_DEBUG = 0, BF_LOGLEVEL_INFO, BF_LOGLEVEL_WARN, BF_LOGLEVEL_ERROR, BF_LOGLEVEL_DISABLE };
+
+/// @brief Function used to sink the logs
+typedef void (*bf_LogCallback_t)(int, const char*);
+
+/// @brief Register the logging ``sink`` associated with ``name``
+extern BIFROST_API bf_Status bf_RegisterLogCallback(const char* name, bf_LogCallback_t cb);
+
+/// @brief Unregister the logging sink ``name`` if it exists
+extern BIFROST_API bf_Status bf_UnregisterLogCallback(const char* name);
+
+/// @brief Log ``message`` at ``Level``
+extern BIFROST_API bf_Status bf_Log(int level, const char* message);
+
+#pragma endregion
+
+#pragma region Plugin
+
+/// @brief Register the plugin ``name`` to be loaded once Bifrost gets injected
+///
+/// @param name         Name of the plugin
+/// @param moduleName   Name of the module (DLL)
+/// @param modulePath   Path to load the module from (if set to NULL the current working directory is used)
+extern BIFROST_API bf_Status bf_RegisterPlugin(const char* name, const char* moduleName, const char* modulePath);
 
 #pragma endregion
 
