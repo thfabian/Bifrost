@@ -9,17 +9,17 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "injector/common.h"
-#include "injector/version.h"
-#include "injector/logger.h"
-#include "injector/error.h"
-#include "injector/process.h"
-#include "injector/injector.h"
-#include "injector/util.h"
+#include "bifrost_injector/common.h"
+#include "bifrost_injector/version.h"
+#include "bifrost_injector/logger.h"
+#include "bifrost_injector/error.h"
+#include "bifrost_injector/process.h"
+#include "bifrost_injector/injector.h"
+#include "bifrost_injector/util.h"
 #include "bifrost_core/logging.h"
 #include <iostream>
 
-using namespace injector;
+using namespace bifrost::injector;
 
 int main(int argc, const char* argv[]) {
   // Extract the program name

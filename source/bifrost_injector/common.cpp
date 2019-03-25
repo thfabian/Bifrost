@@ -9,11 +9,4 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "injector/common.h"
-#include "injector/injector.h"
-
-injector::Injector::Injector(std::unique_ptr<Process>&& process) : m_process(std::move(process)) {}
-
-void injector::Injector::LoadBifrostDll(std::wstring path) {
-
-}
+#include "bifrost_injector/common.h"

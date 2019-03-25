@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include "injector/common.h"
+#include "bifrost_injector/common.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 class Logger {
  public:
@@ -77,4 +77,4 @@ class Logger {
 /// Logging callback
 extern void LogCallback(int level, const char* msg);
 
-}  // namespace injector
+}  // namespace bifrost::injector

@@ -122,7 +122,7 @@ workspace "bifrost"
     includedirs { "source" }
     
     files "source/bifrost_shared/**" 
-	removefiles "**_test.cpp"
+    removefiles "**_test.cpp"
     
     bifrost_add_bifrost_core()
     
@@ -134,26 +134,28 @@ workspace "bifrost"
   project "bifrost_shared_test"
     kind "ConsoleApp"
     includedirs { "source" }
+    targetname "test-bifrost-shared"
     
     files "source/bifrost_shared/*_test.cpp"
 	
 	bifrost_add_external_gtest()
 	bifrost_add_bifrost_shared()
 	
-  -- *** Injector ***
-  project "injector"
+  -- *** Bifrost Injector ***
+  project "bifrost_injector"
     kind "ConsoleApp"
-    files "source/injector/**"
+    files "source/bifrost_injector/**"
+    targetname "bifrost-injector"
 	
-    pchheader "injector/common.h"
-    pchsource "source/injector/common.cpp"
+    pchheader "bifrost_injector/common.h"
+    pchsource "source/bifrost_injector/common.cpp"
     
     bifrost_add_bifrost()
     bifrost_add_bifrost_core()
     bifrost_add_external_args()
     bifrost_add_external_spdlog()
     
-  project "injector_hook_example"
+  project "bifrost_injector_hook_example"
     kind "ConsoleApp"
-    files "source/injector_hook_example/**" 
+    files "source/bifrost_injector_hook_example/**" 
     

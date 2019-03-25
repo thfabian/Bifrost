@@ -11,7 +11,7 @@
 
 #pragma once
 
-namespace injector {
+namespace bifrost::injector {
 
 struct TerminalInfo {
   int Columns;
@@ -21,4 +21,4 @@ struct TerminalInfo {
 /// Get the size of the terminal
 extern TerminalInfo GetTerminalInfo();
 
-}  // namespace injector
+}  // namespace bifrost::injector

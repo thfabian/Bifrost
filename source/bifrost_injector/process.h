@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include "injector/common.h"
+#include "bifrost_injector/common.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 class Process {
  public:
@@ -34,4 +34,4 @@ class Process {
   ::PROCESS_INFORMATION m_procInfo;
 };
 
-}  // namespace injector
+}  // namespace bifrost::injector

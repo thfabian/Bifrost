@@ -9,13 +9,13 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "injector/common.h"
-#include "injector/process.h"
+#include "bifrost_injector/common.h"
+#include "bifrost_injector/process.h"
 #include "bifrost_core/error.h"
 #include "bifrost_core/util.h"
 #include "bifrost_core/logging.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 Process::~Process() {
   BIFROST_CHECK_WIN_CALL(::CloseHandle(m_procInfo.hProcess) != FALSE);
@@ -61,4 +61,4 @@ std::unique_ptr<Process> Process::Launch(const std::filesystem::path& executable
 
 Process::Process(::STARTUPINFO&& startupInfo, ::PROCESS_INFORMATION&& procInfo) : m_startupInfo(std::move(startupInfo)), m_procInfo(std::move(procInfo)) {}
 
-}  // namespace injector
+}  // namespace bifrost::injector

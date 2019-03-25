@@ -9,10 +9,10 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "injector/common.h"
-#include "injector/error.h"
+#include "bifrost_injector/common.h"
+#include "bifrost_injector/error.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 std::unique_ptr<Error> Error::m_instance = nullptr;
 
@@ -25,4 +25,4 @@ Error& Error::Get() {
 
 void Error::SetProgram(const std::string& program) { m_program = program; }
 
-}  // namespace injector
+}  // namespace bifrost::injector

@@ -9,11 +9,11 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "injector/common.h"
-#include "injector/util.h"
+#include "bifrost_injector/common.h"
+#include "bifrost_injector/util.h"
 #include "bifrost_core/error.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 TerminalInfo GetTerminalInfo() {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -23,4 +23,4 @@ TerminalInfo GetTerminalInfo() {
   return {columns, rows};
 }
 
-}  // namespace injector
+}  // namespace bifrost::injector

@@ -11,9 +11,9 @@
 
 #pragma once
 
-#include "injector/common.h"
+#include "bifrost_injector/common.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 /// Storage of last error message
 class Error {
@@ -51,4 +51,4 @@ void Error::Warning(const char* fmt, Args&&... args) {
   std::fprintf(stderr, bifrost::StringFormat("%s: warning: %s", m_program.c_str(), bifrost::StringFormat(fmt, args...).c_str()).c_str());
 }
 
-}  // namespace injector
+}  // namespace bifrost::injector

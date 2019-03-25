@@ -1,2 +1,3 @@
 #define BIFROST_NOEXCEPT
 #define BIFROST_API
+#define BIFROST_SHARED_API

@@ -11,10 +11,10 @@
 
 #pragma once
 
-#include "injector/common.h"
-#include "injector/process.h"
+#include "bifrost_injector/common.h"
+#include "bifrost_injector/process.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 class Injector {
  public:
@@ -27,4 +27,4 @@ class Injector {
   std::unique_ptr<Process> m_process;
 };
 
-}  // namespace injector
+}  // namespace bifrost::injector

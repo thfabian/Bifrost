@@ -9,12 +9,12 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "injector/common.h"
-#include "injector/logger.h"
+#include "bifrost_injector/common.h"
+#include "bifrost_injector/logger.h"
 #include "bifrost_core/macros.h"
 #include "bifrost_core/logging.h"
 
-namespace injector {
+namespace bifrost::injector {
 
 std::unique_ptr<Logger> Logger::m_instance = nullptr;
 
@@ -106,4 +106,4 @@ void Logger::MakeLogger() {
 
 void LogCallback(int level, const char* msg) { Logger::Get().Log(level, msg); }
 
-}  // namespace injector
+}  // namespace bifrost::injector
