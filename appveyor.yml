@@ -21,4 +21,14 @@ before_build:
   - cmd: "configure-%PREMAKE_GENERATOR%.bat"
 
 build_script:
-  - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration=%CONFIGURATION% /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration="%CONFIGURATION%" /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+
+test_script:
+  - cmd: "build-%PREMAKE_GENERATOR%/%CONFIGURATION%/bifrost_shared_test.exe" --gtest_output=xml:bifrost-shared-gtest-result.xml
+
+on_finish:
+  # Publish/Upload the results to AppVeyor (Tests tab in UI)  
+  - ps: |
+      If (Test-Path .\bifrost-shared-gtest-result.xml) {
+        (New-Object System.Net.WebClient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\bifrost-shared-gtest-result.xml))
+      }
