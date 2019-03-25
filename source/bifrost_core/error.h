@@ -42,7 +42,7 @@ extern std::string GetLastWin32Error();
 namespace internal {
 
 template <bool ThrowOnError, bool HasCustomMsg, bool IsWinApi>
-inline void CheckCall(bool cond, const char* msg, const char* condStr, const char* fileStr, int line) {
+inline void CheckCall(bool cond, std::string_view msg, const char* condStr, const char* fileStr, int line) {
   if (cond == false) {
     std::string errMsg;
 

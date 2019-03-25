@@ -28,7 +28,7 @@ int main(int argc, const char* argv[]) {
 
   // Setup logging
   Logger::Get().AddSinks({{"stdout", Logger::MakeStdoutSink()}, {"file", Logger::MakeFileSink("injector.log.txt")}, {"mscv", Logger::MakeMsvcSink()}});
-  bifrost::Logging::Get().SetCallback(LogCallback);
+  bifrost::Logging::Get().SetCallback("injector", LogCallback);
 
   auto terminal = GetTerminalInfo();
 

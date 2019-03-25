@@ -12,6 +12,7 @@
 #include "bifrost/bifrost.h"
 #include "bifrost_core/error.h"
 #include "bifrost_core/macros.h"
+#include "bifrost_core/module_loader.h"
 #include "bifrost_core/logging.h"
 
 using namespace bifrost;
@@ -37,12 +38,12 @@ extern BIFROST_API bf_Status bf_RegisterLogCallback(const char* name, bf_LogCall
   return BF_OK;
 }
 
-extern BIFROST_API bf_Status bf_UnregisterLogCallback(const char* name) { 
+extern BIFROST_API bf_Status bf_UnregisterLogCallback(const char* name) {
   Logging::Get().RemoveCallback(name);
   return BF_OK;
 }
 
-  extern BIFROST_API bf_Status bf_Log(int level, const char* message) {
+extern BIFROST_API bf_Status bf_Log(int level, const char* message) {
   switch (level) {
     case BF_LOGLEVEL_DEBUG:
       BIFROST_LOG_DEBUG(message);
@@ -60,6 +61,30 @@ extern BIFROST_API bf_Status bf_UnregisterLogCallback(const char* name) {
     default:
       break;
   }
+  return BF_OK;
+}
+
+#pragma endregion
+
+#pragma region Plugin
+
+extern BIFROST_API bf_Status bf_RegisterPlugin(const char* name, const char* moduleName, const char* modulePath) {
+  // ModuleLoader::Get().GetCurrentModule().ModulePath
+
+  /*
+  try {
+    SharedConfiguration config(ModuleLoader::Get().GetModule("bifrost_shared"));
+    config.Set("__bifrost.plugin." + std::string(name), moduleName);
+  } except(std::runtime_error& e) {
+    Error::Get().SetLastError("Failed to register plugin '" + std::string(moduleName) + "': " + std::string(e.what()));
+  }
+  */
+
+  if (modulePath) {
+    BIFROST_ASSERT_WIN_CALL_MSG(::SetDllDirectoryA(modulePath) != TRUE, "Failed to set DLL module search path");
+  }
+  BIFROST_CHECK_WIN_CALL_MSG(::SetDllDirectoryA(NULL) != TRUE, "Failed to restore DLL module search path");
+
   return BF_OK;
 }
 

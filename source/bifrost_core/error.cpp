@@ -10,7 +10,6 @@
 // See LICENSE.txt for details.
 
 #include "bifrost_core/common.h"
-
 #include "bifrost_core/error.h"
 
 namespace bifrost {

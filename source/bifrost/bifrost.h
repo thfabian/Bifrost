@@ -58,7 +58,7 @@ extern BIFROST_API const char* bf_GetVersion();
 
 #pragma endregion
 
-#pragma Logging
+#pragma region Logging
 
 /// @brief Logging level
 enum bf_LogLevel { BF_LOGLEVEL_DEBUG = 0, BF_LOGLEVEL_INFO, BF_LOGLEVEL_WARN, BF_LOGLEVEL_ERROR, BF_LOGLEVEL_DISABLE };

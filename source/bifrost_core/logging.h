@@ -62,6 +62,7 @@ class Logging {
   /// (!) This function is for internal use only
   template <LogLevel Level, class... Args>
   void _Log(const char* fmt, Args&&... args) noexcept;
+
   template <LogLevel Level, class... Args>
   void _Log(const wchar_t* fmt, Args&&... args) noexcept;
 
@@ -81,7 +82,7 @@ void Logging::_Log(const char* fmt, Args&&... args) noexcept {
   std::memset(m_buffer.data(), 0, m_buffer.size());
   StringFormat(m_buffer, fmt, std::forward<Args>(args)...);
 
-  for (const auto& cb : m_loggingCallback) cb((int)Level, m_buffer.c_str());
+  for (const auto& cb : m_loggingCallback) cb.second((int)Level, m_buffer.c_str());
 }
 
 template <Logging::LogLevel Level, class... Args>
@@ -91,7 +92,7 @@ void Logging::_Log(const wchar_t* fmt, Args&&... args) noexcept {
   std::memset(m_wbuffer.data(), 0, m_wbuffer.size());
   WStringFormat(m_wbuffer, fmt, std::forward<Args>(args)...);
 
-  for (const auto& cb : m_loggingCallback) cb((int)Level, WStringToString(m_wbuffer).c_str());
+  for (const auto& cb : m_loggingCallback) cb.second((int)Level, WStringToString(m_wbuffer).c_str());
 }
 
 #if BIFROST_LOGLEVEL <= BIFROST_LOGLEVEL_DEBUG
