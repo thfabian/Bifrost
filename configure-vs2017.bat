@@ -12,7 +12,6 @@ call "%~dp0\thirdparty\init.bat"
 
 :: Call preamke
 set BIFROST_BUILD_DIR=build-vs2017
-@RD /S /Q "%~dp0\%BIFROST_BUILD_DIR%"
 "%BIFROST_PREMAKE_DIR%\premake5.exe" vs2017
 set EXIT_CODE=%errorlevel%
 

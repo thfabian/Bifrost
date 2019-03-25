@@ -12,19 +12,55 @@
 #include "bifrost/bifrost.h"
 #include "bifrost_core/error.h"
 #include "bifrost_core/macros.h"
+#include "bifrost_core/logging.h"
 
 using namespace bifrost;
 
 #pragma region Error
 
-extern BIFROST_API const char* bifrost_GetLastError() BIFROST_NOEXCEPT { return Error::Get().GetLastError(); }
+extern BIFROST_API const char* bf_GetLastError() { return Error::Get().GetLastError(); }
 
 #pragma endregion
 
 #pragma region Version
 
-extern BIFROST_API const char* bifrost_GetVersion() BIFROST_NOEXCEPT {
+extern BIFROST_API const char* bf_GetVersion() {
   return BIFROST_STRINGIFY(BIFROST_VERSION_MAJOR) "." BIFROST_STRINGIFY(BIFROST_VERSION_MINOR) "." BIFROST_STRINGIFY(BIFROST_VERSION_PATCH);
+}
+
+#pragma endregion
+
+#pragma region Logging
+
+extern BIFROST_API bf_Status bf_RegisterLogCallback(const char* name, bf_LogCallback_t cb) {
+  Logging::Get().SetCallback(name, cb);
+  return BF_OK;
+}
+
+extern BIFROST_API bf_Status bf_UnregisterLogCallback(const char* name) { 
+  Logging::Get().RemoveCallback(name);
+  return BF_OK;
+}
+
+  extern BIFROST_API bf_Status bf_Log(int level, const char* message) {
+  switch (level) {
+    case BF_LOGLEVEL_DEBUG:
+      BIFROST_LOG_DEBUG(message);
+      break;
+    case BF_LOGLEVEL_INFO:
+      BIFROST_LOG_INFO(message);
+      break;
+    case BF_LOGLEVEL_WARN:
+      BIFROST_LOG_WARN(message);
+      break;
+    case BF_LOGLEVEL_ERROR:
+      BIFROST_LOG_ERROR(message);
+      break;
+    case BF_LOGLEVEL_DISABLE:
+    default:
+      break;
+  }
+  return BF_OK;
 }
 
 #pragma endregion
@@ -32,6 +68,9 @@ extern BIFROST_API const char* bifrost_GetVersion() BIFROST_NOEXCEPT {
 #pragma region DllMain
 
 extern "C" BOOL APIENTRY DllMain(HMODULE hModule, DWORD ulReasonForCall, LPVOID lpReserved) {
+  // 1) load bifrost_shared.sll
+  // 2) Get the plugins to load
+
   switch (ulReasonForCall) {
     case DLL_PROCESS_ATTACH:
     case DLL_PROCESS_DETACH:

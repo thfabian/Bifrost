@@ -27,9 +27,14 @@ Logging& Logging::Get() {
 
 void Logging::Enable(bool enable) { m_enabled = enable; }
 
-void Logging::SetCallback(LogCallBackT loggingCallback) { m_loggingCallback = loggingCallback; }
+void Logging::SetCallback(const char* name, LogCallBackT loggingCallback) { m_loggingCallback[name] = loggingCallback; }
 
-const Logging::LogCallBackT Logging::GetCallback() const { return m_loggingCallback; }
+void Logging::RemoveCallback(const char* name) { m_loggingCallback.erase(name); }
+
+const Logging::LogCallBackT Logging::GetCallback(const char* name) const {
+  auto it = m_loggingCallback.find(name);
+  return it != m_loggingCallback.end() ? it->second : nullptr;
+}
 
 Logging::LogLevel Logging::GetMinLogLevel() const noexcept { return static_cast<LogLevel>(BIFROST_LOGLEVEL); }
 

@@ -72,6 +72,19 @@ workspace "bifrost"
     function bifrost_add_external_args()
       includedirs(args_dir)
     end
+	
+  project "external_gtest"
+    gtest_dir = bifrost_getenv("BIFROST_GTEST_DIR")
+
+    kind "StaticLib"
+    files { gtest_dir .. "/**" }
+    includedirs { gtest_dir .. "/include", gtest_dir }
+	removefiles { "**gtest-all.cc", "**gtest_main.cc" }
+
+    function bifrost_add_external_gtest()
+      includedirs(gtest_dir .. "/include")
+      links "external_gtest"
+    end
     
   -- *** Bifrost ***
   project "bifrost_core"
@@ -88,7 +101,7 @@ workspace "bifrost"
       includedirs "source" 
       links "bifrost_core"
     end
-    
+
   project "bifrost"
     kind "SharedLib"
     defines { "BIFROST_EXPORTS" }
@@ -103,11 +116,35 @@ workspace "bifrost"
       links "bifrost"
     end
 
+  project "bifrost_shared"
+    kind "SharedLib"
+    defines { "BIFROST_SHARED_EXPORTS" }
+    includedirs { "source" }
+    
+    files "source/bifrost_shared/**" 
+	removefiles "**_test.cpp"
+    
+    bifrost_add_bifrost_core()
+    
+    function bifrost_add_bifrost_shared()
+      includedirs "source"
+      links "bifrost_shared"
+    end
+	
+  project "bifrost_shared_test"
+    kind "ConsoleApp"
+    includedirs { "source" }
+    
+    files "source/bifrost_shared/*_test.cpp"
+	
+	bifrost_add_external_gtest()
+	bifrost_add_bifrost_shared()
+	
   -- *** Injector ***
   project "injector"
     kind "ConsoleApp"
     files "source/injector/**"
-    
+	
     pchheader "injector/common.h"
     pchsource "source/injector/common.cpp"
     
@@ -116,7 +153,7 @@ workspace "bifrost"
     bifrost_add_external_args()
     bifrost_add_external_spdlog()
     
-  project "injector_test"
+  project "injector_hook_example"
     kind "ConsoleApp"
-    files "test/injector/**"
+    files "source/injector_hook_example/**" 
     

@@ -75,4 +75,10 @@ extern std::wstring StringToWString(const std::string& s);
 /// Convert wstring to string
 extern std::string WStringToString(const std::wstring& s);
 
+/// Get the size of the given array
+template <typename T, std::size_t Size>
+inline constexpr std::size_t ArraySize(T (&)[Size]) {
+  return Size;
+}
+
 }  // namespace bifrost
