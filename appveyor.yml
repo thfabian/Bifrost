@@ -18,7 +18,7 @@ environment:
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
 
 before_build:
-  - cmd: cmd.exe /c "configure-$($env:PREMAKE_GENERATOR).bat"
+  - cmd: cmd.exe /c "configure-%PREMAKE_GENERATOR%.bat"
 
 build_script:
-  - cmd: msbuild "build-$($env:PREMAKE_GENERATOR)/bifrost.sln" /p:Configuration=$($env:CONFIGURATION) /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
+  - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration=%CONFIGURATION% /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
