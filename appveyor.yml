@@ -24,7 +24,7 @@ build_script:
   - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration="%CONFIGURATION%" /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
-  - cmd: "build-%PREMAKE_GENERATOR%/%CONFIGURATION%/bifrost_shared_test.exe --gtest_output=xml:bifrost-shared-gtest-result.xml"
+  - cmd: "build-%PREMAKE_GENERATOR%/bin/%CONFIGURATION%/bifrost_shared_test.exe --gtest_output=xml:bifrost-shared-gtest-result.xml"
 
 on_finish:
   # Publish/Upload the results to AppVeyor (Tests tab in UI)  
