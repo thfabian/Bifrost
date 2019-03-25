@@ -13,52 +13,53 @@
 #include "bifrost_core/shared.h"
 #include "bifrost_core/module_loader.h"
 #include "bifrost_core/error.h"
-#include "bifrost_shared/bifrost_shared.h"
+
+#include "bifrost_shared/bifrost_shared.h"  // Only for declarations
 
 namespace bifrost {
 
 namespace {
 
-template <bfs_Type Type>
-inline void Convert(bool value, bfs_Value* v) {
-  switch (Type) {
-    case BFS_BOOL:
-      v->Value = (bool)value;
-      break;
-    case BFS_INT:
-      v->Value = (int)value;
-      break;
-    case BFS_DOUBLE:
-      v->Value = (double)value;
-      break;
-    case BFS_STRING:
-      // return std::to_string(value);
-    case BFS_BYTE:
-      // return Convert<bool, value);
-    default:
-      __assume(0);
-  }
-}
-
-template <class T, bfs_Type Type>
-inline T Convert(const bfs_Value& value) {
-  switch (value.Type) {
-    case BFS_BOOL: {
-      bfs_Value v;
-      Convert<Type>((bool)value->Value, &v);
-      return (T)v->Value;
-    }
-    case BFS_INT:
-    case BFS_DOUBLE:
-      // return value;
-    case BFS_STRING:
-      // return std::to_string(value);
-    case BFS_BYTE:
-      // return Convert<bool, value);
-    default:
-      __assume(0);
-  }
-}
+// template <bfs_Type Type>
+// inline void Convert(bool value, bfs_Value* v) {
+//  switch (Type) {
+//    case BFS_BOOL:
+//      v->Value = (bool)value;
+//      break;
+//    case BFS_INT:
+//      v->Value = (int)value;
+//      break;
+//    case BFS_DOUBLE:
+//      v->Value = (double)value;
+//      break;
+//    case BFS_STRING:
+//      // return std::to_string(value);
+//    case BFS_BYTE:
+//      // return Convert<bool, value);
+//    default:
+//      __assume(0);
+//  }
+//}
+//
+// template <class T, bfs_Type Type>
+// inline T Convert(const bfs_Value& value) {
+//  switch (value.Type) {
+//    case BFS_BOOL: {
+//      bfs_Value v;
+//      Convert<Type>((bool)value->Value, &v);
+//      return (T)v->Value;
+//    }
+//    case BFS_INT:
+//    case BFS_DOUBLE:
+//      // return value;
+//    case BFS_STRING:
+//      // return std::to_string(value);
+//    case BFS_BYTE:
+//      // return Convert<bool, value);
+//    default:
+//      __assume(0);
+//  }
+//}
 
 }  // namespace
 
@@ -117,9 +118,10 @@ Shared& Shared::Get() {
 bool Shared::GetBool(const char* path) {
   bfs_Value value;
   m_api->bfs_Read(path, &value);
-  return Convert<bool, BFS_BOOL>(value);
+  // return Convert<bool, BFS_BOOL>(value);
+  return true;
 }
 
-bool Shared::GetBool(const char* path, bool default) noexcept {}
+bool Shared::GetBool(const char* path, bool default) noexcept { return true; }
 
 }  // namespace bifrost
