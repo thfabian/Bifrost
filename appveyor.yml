@@ -28,7 +28,9 @@ test_script:
       Foreach($i in "bifrost-shared") {
         Start-Process -FilePath "build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)/test-$i.exe" -ArgumentList "--gtest_output=xml:$i-gtest-result.xml" -Wait -NoNewWindow;
         dir;
+        echo ".\$1-gtest-result.xml";
         If (Test-Path .\$1-gtest-result.xml) {
+          echo ".\$1-gtest-result.xml";
           (New-Object System.Net.WebClient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\$1-gtest-result.xml))
         }
       }
