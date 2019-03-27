@@ -12,6 +12,8 @@
 #include "bifrost_shared/bifrost_shared.h"
 #include <gtest/gtest.h>
 
+namespace {
+
 TEST(BifrostShared, Boolean) {
   bool testValue = true;
 
@@ -84,3 +86,5 @@ TEST(BifrostShared, StringInHeap) {
   EXPECT_EQ(valueToWrite.SizeInBytes, valueToRead.SizeInBytes);
   EXPECT_EQ(valueToWrite.SizeInBytes, str.size());
 }
+
+}  // namespace

@@ -9,13 +9,12 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost_injector/common.h"
-#include "bifrost_injector/injector.h"
+#include "bifrost_shared/common.h"
+#include "bifrost_shared/ptr.h"
+#include <iostream>
 
-namespace bifrost::injector {
+namespace bifrost::shared::internal {
 
-Injector::Injector(std::unique_ptr<Process>&& process) : m_process(std::move(process)) {}
+std::ostream& StreamOffset(std::ostream& os, u64 offset) noexcept { return (os << offset); }
 
-void Injector::LoadBifrostDll(std::wstring path) {}
-
-}  // namespace bifrost::injector
+}  // namespace bifrost::shared::internal

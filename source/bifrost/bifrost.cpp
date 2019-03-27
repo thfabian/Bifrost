@@ -93,7 +93,7 @@ extern BIFROST_API bf_Status bf_RegisterPlugin(const char* name, const char* mod
 #pragma region DllMain
 
 extern "C" BOOL APIENTRY DllMain(HMODULE hModule, DWORD ulReasonForCall, LPVOID lpReserved) {
-  // 1) load bifrost_shared.sll
+  // 1) load bifrost_shared.dll
   // 2) Get the plugins to load
 
   switch (ulReasonForCall) {

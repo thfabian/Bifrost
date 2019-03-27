@@ -22,7 +22,7 @@ Process::~Process() {
   BIFROST_CHECK_WIN_CALL(::CloseHandle(m_procInfo.hThread) != FALSE);
 }
 
-int Process::Wait() {
+i32 Process::Wait() {
   BIFROST_CHECK_WIN_CALL(::WaitForSingleObject(m_procInfo.hProcess, INFINITE) != WAIT_FAILED);
 
   DWORD exitCode = 0;
@@ -44,16 +44,16 @@ std::unique_ptr<Process> Process::Launch(const std::filesystem::path& executable
   BIFROST_LOG_INFO(L"Launching process: \"%s\"", cmdStr.c_str());
 
   auto cmd = bifrost::StringCopy(cmdStr);
-  BIFROST_ASSERT_WIN_CALL_MSG(::CreateProcess(NULL,       // No module name (use command line)
-                                              cmd.get(),  // Command line
-                                              NULL,       // Process handle not inheritable
-                                              NULL,       // Thread handle not inheritable
-                                              FALSE,      // Set handle inheritance to FALSE
-                                              0,          // No creation flags
-                                              NULL,       // Use parent's environment block
-                                              NULL,       // Use parent's starting directory
-                                              &si,        // Pointer to STARTUPINFO structure
-                                              &pi) != FALSE,
+  BIFROST_ASSERT_WIN_CALL_MSG(::CreateProcessW(NULL,       // No module name (use command line)
+                                               cmd.get(),  // Command line
+                                               NULL,       // Process handle not inheritable
+                                               NULL,       // Thread handle not inheritable
+                                               FALSE,      // Set handle inheritance to FALSE
+                                               0,          // No creation flags
+                                               NULL,       // Use parent's environment block
+                                               NULL,       // Use parent's starting directory
+                                               &si,        // Pointer to STARTUPINFO structure
+                                               &pi) != FALSE,
                               bifrost::StringFormat("Failed to launch process: \"%s\"", bifrost::WStringToString(cmdStr)).c_str());
 
   return std::make_unique<Process>(std::move(si), std::move(pi));

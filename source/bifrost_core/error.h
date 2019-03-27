@@ -62,16 +62,18 @@ inline void CheckCall(bool cond, std::string_view msg, const char* condStr, cons
     }
 
 #ifdef NDEBUG
-    BIFROST_LOG_ERROR("%s  Cond: %s", errMsg.c_str(), condStr);
+    auto fmtMsg = StringFormat("%s  Cond: %s", errMsg.c_str(), condStr);
 #else
-    BIFROST_LOG_ERROR("%s  Cond: %s\n  File: %s:%i", errMsg.c_str(), condStr, fileStr, line);
+    auto fmtMsg = StringFormat("%s  Cond: %s\n  File: %s:%i", errMsg.c_str(), condStr, fileStr, line);
 #endif
+    BIFROST_LOG_ERROR(fmtMsg.c_str());
 
     if (ThrowOnError) {
 #ifndef NDEBUG
-      __debugbreak();
+      OutputDebugStringA(fmtMsg.c_str());
+      if (::IsDebuggerPresent()) __debugbreak();
 #endif
-      throw std::runtime_error(errMsg);
+      throw std::runtime_error(fmtMsg.c_str());
     }
   }
 }
@@ -88,12 +90,12 @@ inline void CheckCall(bool cond, std::string_view msg, const char* condStr, cons
   ::bifrost::internal::CheckCall<throwOnError, hasCustomMsg, isWinApi>(cond, msg, BIFROST_STRINGIFY(cond), __FILE__, __LINE__)
 #endif
 
-#define BIFROST_ASSERT_CALL(cond) BIFROST_CALL_IMPL(cond, true, false, false, nullptr)
+#define BIFROST_ASSERT_CALL(cond) BIFROST_CALL_IMPL(cond, true, false, false, std::string_view{})
 #define BIFROST_ASSERT_CALL_MSG(cond, msg) BIFROST_CALL_IMPL(cond, true, true, false, msg)
-#define BIFROST_ASSERT_WIN_CALL(cond) BIFROST_CALL_IMPL(cond, true, false, true, nullptr)
+#define BIFROST_ASSERT_WIN_CALL(cond) BIFROST_CALL_IMPL(cond, true, false, true, std::string_view{})
 #define BIFROST_ASSERT_WIN_CALL_MSG(cond, msg) BIFROST_CALL_IMPL(cond, true, true, true, msg)
 
-#define BIFROST_CHECK_CALL(cond) BIFROST_CALL_IMPL(cond, false, false, false, nullptr)
+#define BIFROST_CHECK_CALL(cond) BIFROST_CALL_IMPL(cond, false, false, false, std::string_view{})
 #define BIFROST_CHECK_CALL_MSG(cond, msg) BIFROST_CALL_IMPL(cond, false, true, false, msg)
-#define BIFROST_CHECK_WIN_CALL(cond) BIFROST_CALL_IMPL(cond, false, false, true, nullptr)
+#define BIFROST_CHECK_WIN_CALL(cond) BIFROST_CALL_IMPL(cond, false, false, true, std::string_view{})
 #define BIFROST_CHECK_WIN_CALL_MSG(cond, msg) BIFROST_CALL_IMPL(cond, false, true, true, msg)

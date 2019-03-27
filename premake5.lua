@@ -79,7 +79,7 @@ workspace "bifrost"
     kind "StaticLib"
     files { gtest_dir .. "/**" }
     includedirs { gtest_dir .. "/include", gtest_dir }
-	removefiles { "**gtest-all.cc", "**gtest_main.cc" }
+    removefiles { "**gtest-all.cc", "**gtest_main.cc" }
 
     function bifrost_add_external_gtest()
       includedirs(gtest_dir .. "/include")
@@ -94,6 +94,7 @@ workspace "bifrost"
     pchsource "source/bifrost_core/common.cpp"
     
     files "source/bifrost_core/**"
+    removefiles "**_test.cpp"
     
     bifrost_add_external_minhook()
 
@@ -101,6 +102,16 @@ workspace "bifrost"
       includedirs "source" 
       links "bifrost_core"
     end
+    
+  project "bifrost_core_test"
+    kind "ConsoleApp"
+    includedirs { "source" }
+    targetname "test-bifrost-core"
+    
+    files "source/bifrost_core/*_test.cpp"
+	
+    bifrost_add_external_gtest()
+    bifrost_add_bifrost_core()
 
   project "bifrost"
     kind "SharedLib"
@@ -120,9 +131,13 @@ workspace "bifrost"
     kind "SharedLib"
     defines { "BIFROST_SHARED_EXPORTS" }
     includedirs { "source" }
+    disablewarnings { "4251", "4146", "4244" }
     
     files "source/bifrost_shared/**" 
     removefiles "**_test.cpp"
+    
+    pchheader "bifrost_shared/common.h"
+    pchsource "source/bifrost_shared/common.cpp"
     
     bifrost_add_bifrost_core()
     
@@ -135,11 +150,12 @@ workspace "bifrost"
     kind "ConsoleApp"
     includedirs { "source" }
     targetname "test-bifrost-shared"
+    disablewarnings { "4251", "4146" }
     
     files "source/bifrost_shared/*_test.cpp"
 	
-	bifrost_add_external_gtest()
-	bifrost_add_bifrost_shared()
+    bifrost_add_external_gtest()
+    bifrost_add_bifrost_shared()
 	
   -- *** Bifrost Injector ***
   project "bifrost_injector"

@@ -24,11 +24,36 @@ class Shared {
   /// Get singleton instance
   static Shared& Get();
 
-  /// Get the value of ``path`` (throws an exception in case the path does not exists or type does not match)
-  bool GetBool(const char* path);
+  /// Read the value of ``path``
+  ///
+  /// The value is only a *reference* to the actual value and may be modified by other users (the basic types bool, int, double are alawys atomic though). To
+  /// get a copy of the data use the *Atomic* version of the function.
+  /// Throws an exception in case the path does not exists or type does not match.
+  /// @{
+  bool ReadBool(const char* path);
+  bool ReadBool(const char* path, bool default);
+  bool ReadBoolAtomic(const char* path);
 
-  /// Get the value of ``path`` or ``default`` if path does not exists
-  bool GetBool(const char* path, bool default) noexcept;
+  int ReadInt(const char* path);
+  int ReadInt(const char* path, int default);
+  int ReadIntAtomic(const char* path);
+
+  double ReadDouble(const char* path);
+  double ReadDouble(const char* path, double default);
+  double ReadDoubleAtomic(const char* path);
+
+  std::string_view ReadString(const char* path);
+  std::string_view ReadString(const char* path, std::string_view default);
+  std::string ReadStringAtomic(const char* path);
+  /// @}
+
+  /// Write ``value`` to ``path``
+  /// @{
+  void WriteBool(const char* path, bool value);
+  void WriteInt(const char* path, int value);
+  void WriteDouble(const char* path, double value);
+  void WriteString(const char* path, std::string_view value);
+  /// @}
 
  private:
   static std::unique_ptr<Shared> m_instance;

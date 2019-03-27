@@ -12,6 +12,7 @@
 #include "bifrost_injector/common.h"
 #include "bifrost_injector/logger.h"
 #include "bifrost_core/macros.h"
+#include "bifrost_core/mutex.h"
 #include "bifrost_core/logging.h"
 
 namespace bifrost::injector {
@@ -97,7 +98,7 @@ void Logger::MakeLogger() {
   try {
     m_logger = std::make_shared<spdlog::logger>("injector", sinkVec.begin(), sinkVec.end());
     m_logger->set_level(spdlog::level::trace);
-    m_logger->set_pattern("[%H:%M:%S.%e] [%t] [%-5l] %v");
+    m_logger->set_pattern("[%H:%M:%S.%e] [%t] [%L] %v");
     spdlog::register_logger(m_logger);
   } catch (const spdlog::spdlog_ex& ex) {
     throw std::runtime_error(fmt::format("Cannot create logger: {}", ex.what()));

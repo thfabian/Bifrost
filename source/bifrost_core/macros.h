@@ -172,6 +172,3 @@
 
 /// Convert ``x`` to a string constant
 #define BIFROST_STRINGIFY(x) BIFROST_STRINGIFY_IMPL(x)
-
-/// RAII construct to lock/unlock the `mutex`
-#define BIFROST_LOCK_GUARD(mutex) std::lock_guard<std::decay<decltype(mutex)>::type> bifrost_lock_guard_##__LINE__(mutex)

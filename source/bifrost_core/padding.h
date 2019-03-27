@@ -11,14 +11,21 @@
 
 #pragma once
 
-/** Bifrost Core **/
 #include "bifrost_core/common.h"
-#include "bifrost_core/type.h"
 
-/** args **/
-#include <args.hxx>
+namespace bifrost {
 
-/** spdlog **/
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/msvc_sink.h>
+#pragma pack(push)
+#pragma pack(1)
+
+template <std::size_t SizeInBytes>
+struct Padding {
+  u8 Data[SizeInBytes];
+};
+
+template <>
+struct Padding<0> {};
+
+#pragma pack(pop)
+
+}  // namespace bifrost

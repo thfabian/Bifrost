@@ -9,16 +9,4 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#pragma once
-
-/** Bifrost Core **/
-#include "bifrost_core/common.h"
-#include "bifrost_core/type.h"
-
-/** args **/
-#include <args.hxx>
-
-/** spdlog **/
-#include <spdlog/spdlog.h>
-#include <spdlog/sinks/basic_file_sink.h>
-#include <spdlog/sinks/msvc_sink.h>
+#include "bifrost_shared/common.h"

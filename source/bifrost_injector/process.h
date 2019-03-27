@@ -24,7 +24,7 @@ class Process {
   ~Process();
 
   /// Wait for the process to return the exit code
-  int Wait();
+  i32 Wait();
 
   /// Launch a new process
   static std::unique_ptr<Process> Launch(const std::filesystem::path& executable, const std::vector<std::string>& args);

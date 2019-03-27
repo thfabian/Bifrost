@@ -17,7 +17,7 @@ namespace bifrost::injector {
 
 TerminalInfo GetTerminalInfo() {
   CONSOLE_SCREEN_BUFFER_INFO csbi;
-  BIFROST_CHECK_WIN_CALL(GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi) != FALSE);
+  BIFROST_CHECK_WIN_CALL(::GetConsoleScreenBufferInfo(::GetStdHandle(STD_OUTPUT_HANDLE), &csbi) != FALSE);
   int columns = csbi.srWindow.Right - csbi.srWindow.Left + 1;
   int rows = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
   return {columns, rows};

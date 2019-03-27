@@ -28,6 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <exception>
 #include <filesystem>
 #include <iosfwd>
 #include <list>

@@ -11,7 +11,7 @@
 
 #pragma once
 
-/// @file Bifrost shared allows fast key/value storage which can be shared between Dlls.
+/// @file Bifrost shared allows fast key/value storage which can be shared system wide.
 
 #include <stddef.h>  // size_t
 #include <stdint.h>  // uint8_t, uint32_t, uint64_t
@@ -51,6 +51,14 @@ enum bfs_Type {
   BFS_BYTE,      ///< Raw bytes
 };
 
+/// @brief Error status
+enum bfs_Status {
+  BFS_OK = 0,          ///< Everything is fine - no error
+  BFS_PATH_NOT_EXIST,  ///< Path does not exists
+  BFS_OUT_OF_MEMORY,   ///< Out of shared memory
+  BFS_UNKNOWN,         ///< Unknown error
+};
+
 /// @brief Value description
 #pragma pack(push, 1)
 struct bfs_Value_t {
@@ -76,13 +84,12 @@ typedef bfs_PathList_t bfs_PathList;
 ///
 /// @param path   Path used as a key
 /// @param value  Value of data of ``path``
-/// @returns 0 if ``value`` has been assigned to the value of ``path``, 1 if ``path`` doesn't exist
-BIFROST_SHARED_API int bfs_Read(const char* path, bfs_Value* value);
+BIFROST_SHARED_API bfs_Status bfs_Read(const char* path, bfs_Value* value);
 
 /// @brief Like ``bfs_Read`` but the data of ``value`` is copied
 ///
 /// ``bfs_FreeValue`` has to be called to free potentially allocated data.
-BIFROST_SHARED_API int bfs_ReadAtomic(const char* path, bfs_Value* value);
+BIFROST_SHARED_API bfs_Status bfs_ReadAtomic(const char* path, bfs_Value* value);
 
 /// @brief Read the value at ``path`` and store the data in ``value``
 ///
@@ -90,11 +97,10 @@ BIFROST_SHARED_API int bfs_ReadAtomic(const char* path, bfs_Value* value);
 ///
 /// @param path   Path used as a key
 /// @param value  Value to use as a data
-/// @return 0 if ``value`` has been written to value of ``path``, 1 otherwise
-BIFROST_SHARED_API int bfs_Write(const char* path, const bfs_Value* value);
+BIFROST_SHARED_API bfs_Status bfs_Write(const char* path, const bfs_Value* value);
 
 /// Get a list of all paths (should only be used for debugging)
-BIFROST_SHARED_API void bfs_Paths(bfs_PathList* paths);
+BIFROST_SHARED_API bfs_Status bfs_Paths(bfs_PathList* paths);
 
 /// @brief Free the queried paths
 BIFROST_SHARED_API void bfs_FreePaths(bfs_PathList* paths);
@@ -107,6 +113,9 @@ BIFROST_SHARED_API void* bfs_Malloc(size_t value);
 
 /// @brief Free allocated storage with ``bfs_Malloc``
 BIFROST_SHARED_API void bfs_Free(void* ptr);
+
+/// @brief Convert the status to string
+BIFROST_SHARED_API const char* bfs_StatusString(bfs_Status status);
 
 #if __cplusplus
 }  // extern "C"

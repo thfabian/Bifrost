@@ -9,38 +9,40 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+#include "bifrost_shared/common.h"
 #include "bifrost_shared/bifrost_shared.h"
+#include "bifrost_shared/shared_memory.h"
 #include "bifrost_core/util.h"
 #include "bifrost_core/mutex.h"
 
-#define BIFROST_SHARED_UNORDERED_MAP 1
-#define BIFROST_SHARED_THREAD_SAFE 1
-
-static_assert(sizeof(bfs_Value_t) == 64, "bfs_Value_t is not cache aligned");
-
-#if BIFROST_SHARED_THREAD_SAFE
-#define BIFROST_SHARED_LOCK_GUARD(mutex) BIFROST_LOCK_GUARD(mutex)
-#else
-#define BIFROST_SHARED_LOCK_GUARD(mutex)
-#endif
+#define BIFROST_SHARED_MEMORY_NAME "__bifrost_shared__"
+#define BIFROST_SHARED_MEMORY_SIZE 1 << 20  // 1 MB
 
 namespace {
 
 using namespace bifrost;
+using namespace bifrost::shared;
 
 class Configuration {
  public:
+  template <class T>
+  using allocator_t = SharedMemoryAllocator<T>;
+
+  using string_allocator_t = allocator_t<char>;
+  using string_t = std::basic_string<char, std::char_traits<char>, string_allocator_t>;
+
+  using list_allocator_t = allocator_t<string_t>;
+  using list_t = std::list<string_t, list_allocator_t>;
+
   struct Value {
     bfs_Value* Data;
-    std::list<std::string>::iterator PathIterator;
+    list_t::iterator PathIterator;
   };
 
-  using list_t = std::list<std::string>;
-#if BIFROST_SHARED_UNORDERED_MAP
-  using map_t = std::unordered_map<std::string_view, Value>;
-#else
-  using map_t = std::map<std::string_view, Value>;
-#endif
+  using map_allocator_t = allocator_t<std::pair<const std::string_view, Value>>;
+  using map_t = std::unordered_map<std::string_view, Value, std::hash<std::string_view>, std::equal_to<std::string_view>, map_allocator_t>;
+
+  Configuration() : m_mapping(map_allocator_t(*s_mem)), m_paths(list_allocator_t(*s_mem)) {}
 
   ~Configuration() {
     for (const auto& pair : m_mapping) {
@@ -51,43 +53,61 @@ class Configuration {
 
   static void OnLoad() noexcept {
     if (s_refCount++ == 0) {
-      assert(s_instance == nullptr && "Configuration already allocated");
-      s_instance = new Configuration;
+      Init(BIFROST_SHARED_MEMORY_SIZE);
+    }
+  }
+
+  static void Init(u64 smemSize) noexcept {
+    assert(s_mem == nullptr && "Shared memory already allocated");
+    s_mem = new SharedMemory(SharedMemory::Config{BIFROST_SHARED_MEMORY_NAME, smemSize});
+
+    assert(s_instance == nullptr && "Configuration already allocated");
+    s_instance = (Configuration*)Configuration::Alloc(sizeof(Configuration));
+    ::new (s_instance) Configuration();
+  }
+
+  static void Finalize() noexcept {
+    if (s_instance) {
+      s_instance->~Configuration();
+      s_mem->Deallocate(s_instance);
+      s_instance = nullptr;
+    }
+    if (s_mem) {
+      delete s_mem;
+      s_mem = nullptr;
     }
   }
 
   static void OnUnload() noexcept {
     if (--s_refCount == 0) {
-      assert(s_instance && "Configuration not initialized");
-      delete s_instance;
-      s_instance = nullptr;
+      Finalize();
     }
   }
 
   static Configuration& Get() noexcept { return *s_instance; }
 
-  inline int Read(std::string_view path, bfs_Value* value, bool deepCopy) noexcept {
-    BIFROST_SHARED_LOCK_GUARD(m_mutex);
+  inline bfs_Status Read(std::string_view path, bfs_Value* value, bool deepCopy) noexcept {
+    BIFROST_LOCK_GUARD(m_mutex);
     auto it = m_mapping.find(path);
-    if (it == m_mapping.end()) return 1;
+    if (it == m_mapping.end()) return BFS_PATH_NOT_EXIST;
 
     Copy(it->second.Data, value, deepCopy);
-    return 0;
+    return BFS_OK;
   }
 
-  inline int Write(std::string_view path, const bfs_Value* value) noexcept {
-    BIFROST_SHARED_LOCK_GUARD(m_mutex);
+  inline bfs_Status Write(std::string_view path, const bfs_Value* value) noexcept {
+    BIFROST_LOCK_GUARD(m_mutex);
 
     auto it = m_mapping.find(path);
     if (it == m_mapping.end()) {
-      auto pathIt = m_paths.insert(m_paths.end(), std::string(path.data(), path.size()));
+      auto pathIt = m_paths.insert(m_paths.end(), string_t(path.data(), path.size(), string_allocator_t(*s_mem)));
 
       bfs_Value* newValue = (bfs_Value*)Alloc(sizeof(bfs_Value));
       it = m_mapping.emplace_hint(it, *pathIt, Value{newValue, pathIt});
     }
 
     Copy(value, it->second.Data, true);
-    return 0;
+    return BFS_OK;
   }
 
   inline void FreeValue(bfs_Value* value) noexcept {
@@ -99,8 +119,8 @@ class Configuration {
     }
   }
 
-  inline void GetPaths(bfs_PathList* paths) noexcept {
-    BIFROST_SHARED_LOCK_GUARD(m_mutex);
+  inline bfs_Status GetPaths(bfs_PathList* paths) noexcept {
+    BIFROST_LOCK_GUARD(m_mutex);
     paths->Num = (uint32_t)m_mapping.size();
     paths->Paths = (char**)Alloc(sizeof(char*) * paths->Num);
     paths->Lens = (uint32_t*)Alloc(sizeof(uint32_t) * paths->Num);
@@ -114,6 +134,8 @@ class Configuration {
       paths->Paths[path.size()] = '\0';
       ++i;
     }
+
+    return BFS_OK;
   }
 
   inline void FreePaths(bfs_PathList* paths) noexcept {
@@ -125,6 +147,16 @@ class Configuration {
       Free((void*)paths->Paths);
     }
   }
+
+  static void* Alloc(std::size_t size) {
+    auto ptr = AllocNoThrow(size);
+    if (!ptr) {
+      throw std::bad_alloc();
+    }
+    return ptr;
+  }
+  static void* AllocNoThrow(std::size_t size) { return s_mem->Allocate(size); }
+  static void Free(void* ptr) { return s_mem->Deallocate(ptr); }
 
  private:
   static void Copy(const bfs_Value* from, bfs_Value* to, bool deepCopy) {
@@ -147,14 +179,12 @@ class Configuration {
     }
   }
 
-  static void* Alloc(std::size_t size) { return ::_aligned_malloc(size, 64); }
-  static void Free(void* ptr) { return ::_aligned_free(ptr); }
-
   static bool CanbBeStoredInPlace(const bfs_Value* value) { return value->SizeInBytes < (ArraySize(value->Padding) - 1); }
   static bool HasExternalStorage(const bfs_Value* value) { return value->Type == BFS_STRING || value->Type == BFS_BYTE; }
 
  private:
   static uint32_t s_refCount;
+  static SharedMemory* s_mem;
   static Configuration* s_instance;
 
   std::mutex m_mutex;
@@ -163,25 +193,48 @@ class Configuration {
 };
 
 Configuration* Configuration::s_instance = nullptr;
+SharedMemory* Configuration::s_mem = nullptr;
 uint32_t Configuration::s_refCount = 0;
 
 }  // namespace
 
-int bfs_Read(const char* path, bfs_Value* value) { return Configuration::Get().Read(path, value, false); }
+#define BIFROST_SHARED_CATCH_ALL(stmt) \
+  try {                                \
+    return stmt;                       \
+  } catch (std::bad_alloc&) {          \
+    return BFS_OUT_OF_MEMORY;          \
+  } catch (std::exception&) {          \
+    return BFS_UNKNOWN;                \
+  }
 
-int bfs_ReadAtomic(const char* path, bfs_Value* value) { return Configuration::Get().Read(path, value, true); }
+bfs_Status bfs_Read(const char* path, bfs_Value* value) { BIFROST_SHARED_CATCH_ALL(Configuration::Get().Read(path, value, false)); }
 
-int bfs_Write(const char* path, const bfs_Value* value) { return Configuration::Get().Write(path, value); }
+bfs_Status bfs_ReadAtomic(const char* path, bfs_Value* value) { BIFROST_SHARED_CATCH_ALL(Configuration::Get().Read(path, value, true)); }
 
-void bfs_Paths(bfs_PathList* paths) { Configuration::Get().GetPaths(paths); }
+bfs_Status bfs_Write(const char* path, const bfs_Value* value) { BIFROST_SHARED_CATCH_ALL(Configuration::Get().Write(path, value)); }
+
+bfs_Status bfs_Paths(bfs_PathList* paths) { BIFROST_SHARED_CATCH_ALL(Configuration::Get().GetPaths(paths)); }
 
 void bfs_FreePaths(bfs_PathList* paths) { Configuration::Get().FreePaths(paths); }
 
 void bfs_FreeValue(bfs_Value* value) { Configuration::Get().FreeValue(value); }
 
-void* bfs_Malloc(size_t value) { return std::malloc(value); }
+void* bfs_Malloc(size_t value) { return Configuration::AllocNoThrow(value); }
 
-void bfs_Free(void* ptr) { std::free(ptr); }
+void bfs_Free(void* ptr) { return Configuration::Free(ptr); }
+
+BIFROST_SHARED_API const char* bfs_StatusString(bfs_Status status) {
+  switch (status) {
+    case BFS_OK:
+      return "BFS_OK - OK";
+    case BFS_PATH_NOT_EXIST:
+      return "BFS_PATH_NOT_EXIST - Path does not exist";
+    case BFS_OUT_OF_MEMORY:
+      return "BFS_OUT_OF_MEMORY - Out of shared memory";
+    default:
+      return "BFS_UNKNOWN - Unknown error";
+  }
+}
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved) {
   switch (fdwReason) {
