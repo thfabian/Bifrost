@@ -24,8 +24,8 @@ TEST(Shared, Bool) {
 }
 
 TEST(Shared, Int) {
-  Shared::Get().WriteInt("test.int", 42);
-  EXPECT_EQ(42, Shared::Get().ReadInt("test.int"));
+  //Shared::Get().WriteInt("test.int", 42);
+  //EXPECT_EQ(42, Shared::Get().ReadInt("test.int"));
   //EXPECT_THROW(Shared::Get().ReadInt("test.intX"), std::runtime_error);
   //EXPECT_EQ(42, Shared::Get().ReadInt("test.int", 1));
   //EXPECT_EQ(1, Shared::Get().ReadInt("test.intX", 1));
