@@ -42,8 +42,8 @@ class Shared {
   double ReadDouble(const char* path, double default);
   double ReadDoubleAtomic(const char* path);
 
-  std::string_view ReadString(const char* path);
-  std::string_view ReadString(const char* path, std::string_view default);
+  std::string ReadString(const char* path);
+  std::string ReadString(const char* path, std::string default);
   std::string ReadStringAtomic(const char* path);
   /// @}
 
@@ -52,7 +52,7 @@ class Shared {
   void WriteBool(const char* path, bool value);
   void WriteInt(const char* path, int value);
   void WriteDouble(const char* path, double value);
-  void WriteString(const char* path, std::string_view value);
+  void WriteString(const char* path, std::string value);
   /// @}
 
  private:

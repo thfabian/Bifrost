@@ -46,11 +46,11 @@ static void FailedToConvert(const char* path, const char* value, uint8_t from, b
 static std::string ConvertToString(const char* path, const bfs_Value& value) {
   switch (value.Type) {
     case BFS_BOOL:
-      return std::to_string((bool)value.Value);
+      return std::to_string(*((bool*)&value.Value));
     case BFS_INT:
-      return std::to_string((int)value.Value);
+      return std::to_string(*((int*)&value.Value));
     case BFS_DOUBLE:
-      return std::to_string((double)value.Value);
+      return std::to_string(*((double*)&value.Value));
     case BFS_STRING:
       return std::string((const char*)value.Value, value.SizeInBytes);
     case BFS_BYTE:
@@ -67,7 +67,7 @@ static bool ConvertToBool(const char* path, const bfs_Value& value) {
     case BFS_INT:
       return (int)value.Value;
     case BFS_DOUBLE:
-      return (double)value.Value;
+      return *((double*)&value.Value);
     case BFS_STRING:
       return (void*)value.Value != nullptr;
     case BFS_BYTE:
@@ -77,19 +77,19 @@ static bool ConvertToBool(const char* path, const bfs_Value& value) {
   }
 }
 
-static bool ConvertToInt(const char* path, const bfs_Value& value) {
+static int ConvertToInt(const char* path, const bfs_Value& value) {
   switch (value.Type) {
     case BFS_BOOL:
       return (bool)value.Value;
     case BFS_INT:
       return (int)value.Value;
     case BFS_DOUBLE:
-      return (double)value.Value;
+      return static_cast<int>(*((double*)&value.Value));
     case BFS_STRING: {
       std::istringstream sout((const char*)value.Value);
       int v = 0;
       sout >> v;
-      if (!sout.good()) {
+      if (sout.fail()) {
         FailedToConvert(path, ConvertToString(path, value).c_str(), value.Type, BFS_INT);
       }
       return v;
@@ -108,12 +108,12 @@ static double ConvertToDouble(const char* path, const bfs_Value& value) {
     case BFS_INT:
       return (int)value.Value;
     case BFS_DOUBLE:
-      return (double)value.Value;
+      return *((double*)&value.Value);
     case BFS_STRING: {
       std::istringstream sout((const char*)value.Value);
       double v = 0;
       sout >> v;
-      if (!sout.good()) {
+      if (sout.fail()) {
         FailedToConvert(path, ConvertToString(path, value).c_str(), value.Type, BFS_DOUBLE);
       }
       return v;
@@ -125,9 +125,9 @@ static double ConvertToDouble(const char* path, const bfs_Value& value) {
   }
 }
 
-static bfs_Value MakeBool(bool value) { return bfs_Value{BFS_BOOL, (u64)value, sizeof(bool)}; }
-static bfs_Value MakeInt(int value) { return bfs_Value{BFS_INT, (u64)value, sizeof(int)}; }
-static bfs_Value MakeDouble(double value) { return bfs_Value{BFS_DOUBLE, (u64)value, sizeof(double)}; }
+static bfs_Value MakeBool(bool value) { return bfs_Value{BFS_BOOL, *((u64*)&value), sizeof(bool)}; }
+static bfs_Value MakeInt(int value) { return bfs_Value{BFS_INT, *((u64*)&value), sizeof(int)}; }
+static bfs_Value MakeDouble(double value) { return bfs_Value{BFS_DOUBLE, *((u64*)&value), sizeof(double)}; }
 static bfs_Value MakeString(std::string_view value) { return bfs_Value{BFS_STRING, (u64)value.data(), (u32)value.size()}; }
 static bfs_Value MakeByte(const void* data, u32 size) { return bfs_Value{BFS_BYTE, (u64)data, size}; }
 
@@ -189,7 +189,7 @@ Shared& Shared::Get() {
   return *m_instance;
 }
 
-#define BIFROST_READ_WRITE_IMPL(TypeName, Type, TypeForAtomic)                                                          \
+#define BIFROST_READ_WRITE_IMPL(TypeName, Type)                                                                         \
   Type Shared::Read##TypeName(const char* path) {                                                                       \
     bfs_Value value;                                                                                                    \
     if (bfs_Status status; (status = m_api->bfs_Read(path, &value)) != BFS_OK) {                                        \
@@ -205,7 +205,7 @@ Shared& Shared::Get() {
     }                                                                                                                   \
     return ConvertTo##TypeName(path, value);                                                                            \
   }                                                                                                                     \
-  TypeForAtomic Shared::Read##TypeName##Atomic(const char* path) {                                                      \
+  Type Shared::Read##TypeName##Atomic(const char* path) {                                                               \
     bfs_Value value;                                                                                                    \
     if (bfs_Status status; (status = m_api->bfs_ReadAtomic(path, &value)) != BFS_OK) {                                  \
       throw std::runtime_error(StringFormat("Failed to read path \"%s\": %s", path, m_api->bfs_StatusString(status)));  \
@@ -218,9 +218,9 @@ Shared& Shared::Get() {
     }                                                                                                                   \
   }
 
-BIFROST_READ_WRITE_IMPL(Bool, bool, bool)
-BIFROST_READ_WRITE_IMPL(Int, int, int)
-BIFROST_READ_WRITE_IMPL(Double, double, double)
-BIFROST_READ_WRITE_IMPL(String, std::string_view, std::string)
+BIFROST_READ_WRITE_IMPL(Bool, bool)
+BIFROST_READ_WRITE_IMPL(Int, int)
+BIFROST_READ_WRITE_IMPL(Double, double)
+BIFROST_READ_WRITE_IMPL(String, std::string)
 
 }  // namespace bifrost

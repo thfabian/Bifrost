@@ -21,14 +21,39 @@ TEST(Shared, Bool) {
   EXPECT_THROW(Shared::Get().ReadBool("test.boolX"), std::runtime_error);
   EXPECT_EQ(true, Shared::Get().ReadBool("test.bool", false));
   EXPECT_EQ(false, Shared::Get().ReadBool("test.boolX", false));
+  EXPECT_STRCASEEQ("1", Shared::Get().ReadString("test.bool").data());
 }
 
 TEST(Shared, Int) {
-  //Shared::Get().WriteInt("test.int", 42);
-  //EXPECT_EQ(42, Shared::Get().ReadInt("test.int"));
-  //EXPECT_THROW(Shared::Get().ReadInt("test.intX"), std::runtime_error);
-  //EXPECT_EQ(42, Shared::Get().ReadInt("test.int", 1));
-  //EXPECT_EQ(1, Shared::Get().ReadInt("test.intX", 1));
+  Shared::Get().WriteInt("test.int", 42);
+
+  EXPECT_EQ(42, Shared::Get().ReadInt("test.int"));
+  EXPECT_THROW(Shared::Get().ReadInt("test.intX"), std::runtime_error);
+  EXPECT_EQ(42, Shared::Get().ReadInt("test.int", 1));
+  EXPECT_EQ(1, Shared::Get().ReadInt("test.intX", 1));
+  EXPECT_STRCASEEQ("42", Shared::Get().ReadString("test.int").data());
+
+  Shared::Get().WriteString("test.intStr", "84");
+  Shared::Get().WriteString("test.intStrX", "X");
+
+  EXPECT_EQ(84, Shared::Get().ReadInt("test.intStr"));
+  EXPECT_THROW(Shared::Get().ReadInt("test.intStrX"), std::runtime_error);
+}
+
+TEST(Shared, Double) {
+  Shared::Get().WriteDouble("test.double", 0.25);
+
+  EXPECT_EQ(0.25, Shared::Get().ReadDouble("test.double"));
+  EXPECT_THROW(Shared::Get().ReadDouble("test.doubleX"), std::runtime_error);
+  EXPECT_EQ(0.25, Shared::Get().ReadDouble("test.double", 1.25));
+  EXPECT_EQ(1.25, Shared::Get().ReadDouble("test.doubleX", 1.25));
+  EXPECT_STRCASEEQ("0.250000", Shared::Get().ReadString("test.double").data());
+
+  Shared::Get().WriteString("test.doubleStr", "84.25");
+  Shared::Get().WriteString("test.doubleStrX", "X");
+
+  EXPECT_EQ(84.25, Shared::Get().ReadDouble("test.doubleStr"));
+  EXPECT_THROW(Shared::Get().ReadDouble("test.doubleStrX"), std::runtime_error);
 }
 
 }  // namespace
