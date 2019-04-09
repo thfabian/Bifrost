@@ -24,16 +24,18 @@ class Logger {
   using LogSinkT = spdlog::sinks::sink;
 
   /// Log to file
-  using FileSinkT = spdlog::sinks::basic_file_sink_mt;
+  using FileSinkT = spdlog::sinks::basic_file_sink_st;
 
-  /// Log to Stdout
-  using StdoutSinkT = spdlog::sinks::wincolor_stdout_sink_mt;
+  /// Log to Stderr
+  ///
+  /// The underlying wincolor_sink has been modified (see wincolor_sink.h)
+  using StderrSinkT = spdlog::sinks::stderr_color_sink_st;
 
   /// Log to VS
-  using MsvcSinkT = spdlog::sinks::msvc_sink_mt;
+  using MsvcSinkT = spdlog::sinks::msvc_sink_st;
 
   /// Create an stdout color sink with customized colors
-  static std::shared_ptr<StdoutSinkT> MakeStdoutSink();
+  static std::shared_ptr<StderrSinkT> MakeStderrSink();
 
   /// Create a file sink to logging to ``file``
   static std::shared_ptr<FileSinkT> MakeFileSink(const std::filesystem::path& path);
@@ -48,7 +50,7 @@ class Logger {
   ~Logger();
 
   /// Log callback
-  void Log(int level, const char* msg);
+  void Log(int level, const char* module, const char* msg);
 
   /// Register the sink `name`
   void AddSink(const std::string& name, const std::shared_ptr<LogSinkT>& sink);
@@ -72,9 +74,10 @@ class Logger {
   std::shared_ptr<spdlog::logger> m_logger;
   std::unordered_map<std::string, std::shared_ptr<LogSinkT>> m_sinks;
   std::mutex m_mutex;
+  std::string m_buffer;
 };
 
 /// Logging callback
-extern void LogCallback(int level, const char* msg);
+extern void LogCallback(int level, const char* module, const char* msg);
 
 }  // namespace bifrost::injector

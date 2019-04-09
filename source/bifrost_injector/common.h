@@ -15,10 +15,9 @@
 #include "bifrost_core/common.h"
 #include "bifrost_core/type.h"
 
-/** args **/
-#include <args.hxx>
-
 /** spdlog **/
+#define SPDLOG_NO_THREAD_ID
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/sinks/msvc_sink.h>

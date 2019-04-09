@@ -16,9 +16,23 @@
 
 namespace bifrost {
 
+namespace {
+
+[[nodiscard]] static bool FunctionInThisDll() { return true; }
+
+}  // namespace
+
 std::unique_ptr<ModuleLoader> ModuleLoader::m_instance = nullptr;
 
 ModuleLoader::ModuleLoader() {}
+
+ModuleLoader::~ModuleLoader() {
+  for (const auto& m : m_modules) {
+    if (m.second.Loaded) {
+      BIFROST_CHECK_WIN_CALL(::FreeLibrary(m.second.Handle) != 0);
+    }
+  }
+}
 
 ModuleLoader& ModuleLoader::Get() {
   if (!m_instance) {
@@ -29,11 +43,15 @@ ModuleLoader& ModuleLoader::Get() {
 
 HMODULE ModuleLoader::GetModule(const std::string& moduleName) {
   auto it = m_modules.find(moduleName);
-  if (it != m_modules.end()) return it->second;
+  if (it != m_modules.end()) return it->second.Handle;
 
-  HMODULE hmodule = NULL;
-  BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryA(moduleName.c_str())) != NULL, "Failed to load module: '" + moduleName + "'");
-  m_modules.emplace(moduleName, hmodule);
+  bool loaded = false;
+  HMODULE hmodule = ::GetModuleHandleA(moduleName.c_str());
+  if (hmodule == NULL) {
+    BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryA(moduleName.c_str())) != NULL, "Failed to load module: '" + moduleName + "'");
+    loaded = true;
+  }
+  m_modules.emplace(moduleName, Module{hmodule, loaded});
   return hmodule;
 }
 
@@ -41,12 +59,33 @@ HMODULE ModuleLoader::GetModule(const std::wstring& moduleName) {
   auto str = WStringToString(moduleName);
 
   auto it = m_modules.find(str);
-  if (it != m_modules.end()) return it->second;
+  if (it != m_modules.end()) return it->second.Handle;
 
-  HMODULE hmodule = NULL;
-  BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryW(moduleName.c_str())) != NULL, "Failed to load module: '" + str + "'");
-  m_modules.emplace(str, hmodule);
+  bool loaded = false;
+  HMODULE hmodule = ::GetModuleHandleW(moduleName.c_str());
+  if (hmodule == NULL) {
+    BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryW(moduleName.c_str())) != NULL, "Failed to load module: '" + str + "'");
+    loaded = true;
+  }
+  m_modules.emplace(str, Module{hmodule, loaded});
   return hmodule;
 }
+
+HMODULE ModuleLoader::GetCurrentModule() {
+  HMODULE hmodule;
+  BIFROST_ASSERT_WIN_CALL_MSG(
+      ::GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCWSTR)&FunctionInThisDll, &hmodule) != 0,
+      "Failed to load the current module");
+  return hmodule;
+}
+
+std::string ModuleLoader::GetModuleName(HMODULE module) {
+  wchar_t path[2 * MAX_PATH];
+  BIFROST_ASSERT_WIN_CALL_MSG(::GetModuleFileNameW(module, path, ArraySize(path)) != 0, StringFormat("Failed to get name of %p module", module));
+  std::filesystem::path p(path);
+  return p.filename().string();
+}
+
+std::string ModuleLoader::GetCurrentModuleName() { return GetModuleName(GetCurrentModule()); }
 
 }  // namespace bifrost

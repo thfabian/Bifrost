@@ -40,7 +40,7 @@ class Error {
 template <class... Args>
 void Error::Critical(const char* fmt, Args&&... args) {
   assert(!m_program.empty());
-  std::fprintf(stderr, bifrost::StringFormat("%s: error: %s", m_program.c_str(), bifrost::StringFormat(fmt, args...).c_str()).c_str());
+  std::fprintf(stderr, bifrost::StringFormat("%s: error: %s\n", m_program.c_str(), bifrost::StringFormat(fmt, args...).c_str()).c_str());
   std::fflush(stderr);
   std::exit(1);
 }
@@ -48,7 +48,7 @@ void Error::Critical(const char* fmt, Args&&... args) {
 template <class... Args>
 void Error::Warning(const char* fmt, Args&&... args) {
   assert(!m_program.empty());
-  std::fprintf(stderr, bifrost::StringFormat("%s: warning: %s", m_program.c_str(), bifrost::StringFormat(fmt, args...).c_str()).c_str());
+  std::fprintf(stderr, bifrost::StringFormat("%s: warning: %s\n", m_program.c_str(), bifrost::StringFormat(fmt, args...).c_str()).c_str());
 }
 
 }  // namespace bifrost::injector

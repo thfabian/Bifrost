@@ -42,14 +42,7 @@
 extern "C" {
 #endif
 
-/// @brief Supported types of values
-enum bfs_Type {
-  BFS_BOOL = 0,  ///< Boolean (1 byte)
-  BFS_INT,       ///< Integer (4 bytes)
-  BFS_DOUBLE,    ///< Double precision floating point (8 bytes)
-  BFS_STRING,    ///< String
-  BFS_BYTE,      ///< Raw bytes
-};
+#pragma region Error Handling
 
 /// @brief Error status
 enum bfs_Status {
@@ -57,6 +50,29 @@ enum bfs_Status {
   BFS_PATH_NOT_EXIST,  ///< Path does not exists
   BFS_OUT_OF_MEMORY,   ///< Out of shared memory
   BFS_UNKNOWN,         ///< Unknown error
+};
+
+/// @brief Convert the status to string
+BIFROST_SHARED_API const char* bfs_StatusString(bfs_Status status);
+
+#pragma endregion
+
+#pragma region Version
+
+/// @brief Get the version string
+BIFROST_SHARED_API const char* bfs_GetVersion();
+
+#pragma endregion
+
+#pragma region Shared Storage
+
+/// @brief Supported types of values
+enum bfs_Type {
+  BFS_BOOL = 0,  ///< Boolean (1 byte)
+  BFS_INT,       ///< Integer (4 bytes)
+  BFS_DOUBLE,    ///< Double precision floating point (8 bytes)
+  BFS_STRING,    ///< String
+  BFS_BYTE,      ///< Raw bytes
 };
 
 /// @brief Value description
@@ -102,20 +118,50 @@ BIFROST_SHARED_API bfs_Status bfs_Write(const char* path, const bfs_Value* value
 /// Get a list of all paths (should only be used for debugging)
 BIFROST_SHARED_API bfs_Status bfs_Paths(bfs_PathList* paths);
 
-/// @brief Free the queried paths
+/// @brief Deallocate the queried paths
 BIFROST_SHARED_API void bfs_FreePaths(bfs_PathList* paths);
 
-/// @brief Free potentially allocated data of ``value``
+/// @brief Deallocate potentially allocated data of ``value``
 BIFROST_SHARED_API void bfs_FreeValue(bfs_Value* value);
 
 /// @brief Allocates size bytes of uninitialized storage
 BIFROST_SHARED_API void* bfs_Malloc(size_t value);
 
-/// @brief Free allocated storage with ``bfs_Malloc``
+/// @brief Deallocate allocated storage with ``bfs_Malloc``
 BIFROST_SHARED_API void bfs_Free(void* ptr);
 
-/// @brief Convert the status to string
-BIFROST_SHARED_API const char* bfs_StatusString(bfs_Status status);
+/// @brief Get the unused number of bytes in the shared memory region
+BIFROST_SHARED_API uint32_t bfs_NumBytesUnused();
+
+/// @brief Get the total number of bytes mapped in the shared memory region
+BIFROST_SHARED_API uint32_t bfs_NumBytesTotal();
+
+/// @brief Reset all allocated shared memory
+BIFROST_SHARED_API bfs_Status bfs_Reset();
+
+#pragma endregion
+
+#pragma region Logging
+
+/// @brief Logging level
+enum bfs_LogLevel { BFS_LOGLEVEL_DEBUG = 0, BFS_LOGLEVEL_INFO, BFS_LOGLEVEL_WARN, BFS_LOGLEVEL_ERROR, BFS_LOGLEVEL_DISABLE };
+
+/// @brief Function used to sink the logs
+typedef void (*bfs_LogCallback_t)(int, const char*, const char*);
+
+/// @brief Register the logging ``sink`` associated with ``name``
+BIFROST_SHARED_API bfs_Status bfs_RegisterLogCallback(const char* name, bfs_LogCallback_t cb);
+
+/// @brief Unregister the logging sink ``name`` if it exists
+BIFROST_SHARED_API bfs_Status bfs_UnregisterLogCallback(const char* name);
+
+/// @brief Log ``message`` at ``level``
+BIFROST_SHARED_API bfs_Status bfs_Log(int level, const char* module, const char* message);
+
+/// @brief Log ``message`` at ``level``
+BIFROST_SHARED_API bfs_Status bfs_LogStateAsync(int async);
+
+#pragma endregion
 
 #if __cplusplus
 }  // extern "C"

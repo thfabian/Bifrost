@@ -14,15 +14,16 @@
 #include "bifrost_shared/common.h"
 #include "bifrost_shared/malloc_freelist.h"
 #include "bifrost_core/non_copyable.h"
+#include <iosfwd>
 
 namespace bifrost::shared {
 
 /// Shared memory pool shared between server and client
-class SharedMemory : public NonCopyable {
+class BIFROST_SHARED_API SharedMemory : public NonCopyable {
  public:
   struct Config {
-    std::string Name;              ///< Name of the shared memory (used for connection)
-    u64 DataSizeInBytes = 32768L;  ///< Requested size of shared memory depending on the malloc strategy the actually usable memory will be lower
+    std::string Name;     ///< Name of the shared memory
+    u64 DataSizeInBytes;  ///< Requested size of shared memory depending on the malloc strategy the actually usable memory will be lower
   };
 
   SharedMemory(const Config& config);
@@ -53,64 +54,21 @@ class SharedMemory : public NonCopyable {
   MallocFreeList* GetMalloc() noexcept { return m_malloc; }
 
  private:
+  void LogToFile(int level, std::string msg);
+  void LogDebug(std::string msg);
+  void LogWarn(std::string msg);
+  void LogError(std::string msg);
+
+ private:
   MallocFreeList* m_malloc;
 
   LPVOID m_startAddress;
   HANDLE m_handle;
 
   Config m_config;
-};
 
-/// STL compatible allocator
-template <class T>
-class SharedMemoryAllocator {
- private:
-  SharedMemory* m_shared_memory;
-
- public:
-  // Typedefs
-  typedef T value_type;
-  typedef value_type* pointer;
-  typedef const value_type* const_pointer;
-  typedef value_type& reference;
-  typedef const value_type& const_reference;
-  typedef std::size_t size_type;
-  typedef std::ptrdiff_t difference_type;
-
-  inline explicit SharedMemoryAllocator(SharedMemory& shared_memory) : m_shared_memory(&shared_memory) {}
-  inline SharedMemoryAllocator(const SharedMemoryAllocator<T>& other) = default;
-  inline SharedMemoryAllocator(SharedMemoryAllocator<T>&& other) = default;
-
-  // Convert an allocator<T> to allocator<U>
-  template <typename U>
-  struct rebind {
-    typedef SharedMemoryAllocator<U> other;
-  };
-  template <typename U>
-  inline explicit SharedMemoryAllocator(const SharedMemoryAllocator<U>& other) : m_shared_memory(other.GetSharedMemory()) {}
-
-  // Address
-  inline pointer address(reference r) { return &r; }
-  inline const_pointer address(const_reference r) { return &r; }
-
-  // Memory allocation
-  [[nodiscard]] inline pointer allocate(size_type cnt) { return reinterpret_cast<pointer>(m_shared_memory->Allocate(u64(cnt) * sizeof(T))); }
-  inline void deallocate(pointer p, size_type) { m_shared_memory->Deallocate(p); }
-
-  // Size
-  inline size_type max_size() const { return m_shared_memory->GetSizeInBytes() / sizeof(T); }
-
-  // Construction/destruction
-  template <class... Args>
-  inline void construct(pointer p, Args&&... args) {
-    ::new (p) T(std::forward<Args>(args)...);
-  }
-  inline void destroy(pointer p) { p->~T(); }
-
-  inline bool operator==(SharedMemoryAllocator<T> const& other) { return m_shared_memory->GetFirstAdress() == other.GetSharedMemory()->GetFirstAdress(); }
-  inline bool operator!=(SharedMemoryAllocator<T> const& other) { return !(operator==(other)); }
-
-  SharedMemory* GetSharedMemory() const { return const_cast<SharedMemory*>(m_shared_memory); }
+  FILE* m_file;
+  std::string m_module;
 };
 
 }  // namespace bifrost::shared

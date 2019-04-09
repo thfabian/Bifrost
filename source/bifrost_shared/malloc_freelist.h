@@ -177,13 +177,13 @@ class BIFROST_SHARED_API MallocFreeList {
  private:
   MallocFreeList(AllocNode* block, void* baseAddr);
 
-  // Block 0 (this pointer offset)
+  // BlockIt 0 (this pointer offset)
 
-  // Block 1
+  // BlockIt 1
   FreeList m_list;
   Padding<BlockSize - sizeof(FreeList)> m_pad1;
 
-  // Block 2
+  // BlockIt 2
   mutable SpinMutex m_mutex;
   Padding<BlockSize - sizeof(SpinMutex)> m_pad2;
 };

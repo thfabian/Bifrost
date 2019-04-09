@@ -31,68 +31,59 @@ class Logging {
     Disable = BIFROST_LOGLEVEL_DISABLE
   };
 
-  /// Logging callback
-  typedef void (*LogCallBackT)(int, const char*);
-
   /// Initialize Logger object
+  ///
+  /// Load bifrost_shared.dll to connect to the internal log stash
   Logging();
 
   /// Get singleton instance
   static Logging& Get();
 
-  /// Enable/disable logging
-  void Enable(bool enable);
+  typedef void (*LogCallbackT)(int, const char*, const char*);
+
+  /// Set the name of the module
+  void SetModuleName(const char* name);
 
   /// Register a logging callback
-  void SetCallback(const char* name, LogCallBackT loggingCallback);
+  void SetCallback(const char* name, Logging::LogCallbackT loggingCallback);
 
-  /// Deregister a logging callback
+  /// Remove a logging callback
   void RemoveCallback(const char* name);
 
-  /// Get the currently registered logging callback
-  const LogCallBackT GetCallback(const char* name) const;
-
-  /// Get the minimum log level the logging operates on
-  ///
-  /// This is determined by `BIFROST_LOGLEVEL` compile time constant.
-  LogLevel GetMinLogLevel() const noexcept;
+  /// Set async logging off/on
+  void LogStateAsync(bool async);
 
   /// Format `fmt` with `args` and forward the message to the loggers
   ///
   /// (!) This function is for internal use only
   template <LogLevel Level, class... Args>
-  void _Log(const char* fmt, Args&&... args) noexcept;
-
+  void _Log(const char* fmt, Args&&... args);
   template <LogLevel Level, class... Args>
-  void _Log(const wchar_t* fmt, Args&&... args) noexcept;
+  void _Log(const wchar_t* fmt, Args&&... args);
+
+ private:
+  void Log(int level, const char* msg);
 
  private:
   static std::unique_ptr<Logging> m_instance;
-
-  std::map<std::string, LogCallBackT> m_loggingCallback;
-  bool m_enabled;
   std::string m_buffer;
   std::wstring m_wbuffer;
+
+  std::string m_module;
 };
 
 template <Logging::LogLevel Level, class... Args>
-void Logging::_Log(const char* fmt, Args&&... args) noexcept {
-  if (!m_enabled) return;
-
+void Logging::_Log(const char* fmt, Args&&... args) {
   std::memset(m_buffer.data(), 0, m_buffer.size());
   StringFormat(m_buffer, fmt, std::forward<Args>(args)...);
-
-  for (const auto& cb : m_loggingCallback) cb.second((int)Level, m_buffer.c_str());
+  Log((int)Level, m_buffer.c_str());
 }
 
 template <Logging::LogLevel Level, class... Args>
-void Logging::_Log(const wchar_t* fmt, Args&&... args) noexcept {
-  if (!m_enabled) return;
-
+void Logging::_Log(const wchar_t* fmt, Args&&... args) {
   std::memset(m_wbuffer.data(), 0, m_wbuffer.size());
   WStringFormat(m_wbuffer, fmt, std::forward<Args>(args)...);
-
-  for (const auto& cb : m_loggingCallback) cb.second((int)Level, WStringToString(m_wbuffer).c_str());
+  Log((int)Level, WStringToString(m_wbuffer).c_str());
 }
 
 #if BIFROST_LOGLEVEL <= BIFROST_LOGLEVEL_DEBUG

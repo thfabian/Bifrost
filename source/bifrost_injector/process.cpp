@@ -55,7 +55,6 @@ std::unique_ptr<Process> Process::Launch(const std::filesystem::path& executable
                                                &si,        // Pointer to STARTUPINFO structure
                                                &pi) != FALSE,
                               bifrost::StringFormat("Failed to launch process: \"%s\"", bifrost::WStringToString(cmdStr)).c_str());
-
   return std::make_unique<Process>(std::move(si), std::move(pi));
 }
 

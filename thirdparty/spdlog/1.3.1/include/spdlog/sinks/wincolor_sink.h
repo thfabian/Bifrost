@@ -70,8 +70,11 @@ public:
         std::lock_guard<mutex_t> lock(mutex_);
         fmt::memory_buffer formatted;
         formatter_->format(msg, formatted);
-        if (msg.color_range_end > msg.color_range_start)
-        {
+
+        msg.color_range_end = formatted.size();
+
+        //if (msg.color_range_end > msg.color_range_start)
+        //{
             // before color range
             print_range_(formatted, 0, msg.color_range_start);
 
@@ -82,11 +85,11 @@ public:
                 orig_attribs); // reset to orig colors
                                // after color range
             print_range_(formatted, msg.color_range_end, formatted.size());
-        }
-        else // print without colors if color range is invalid
-        {
-            print_range_(formatted, 0, formatted.size());
-        }
+        //}
+        //else // print without colors if color range is invalid
+        //{
+        //    print_range_(formatted, 0, formatted.size());
+        //}
     }
 
     void flush() final override

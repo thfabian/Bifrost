@@ -11,12 +11,18 @@
 
 #include "bifrost_core/common.h"
 #include "bifrost_core/logging.h"
+#include "bifrost_core/api_shared.h"
+#include "bifrost_core/module_loader.h"
 
 namespace bifrost {
 
 std::unique_ptr<Logging> Logging::m_instance = nullptr;
 
-Logging::Logging() : m_enabled(true) { m_buffer.resize(256); }
+Logging::Logging() {
+  m_buffer.resize(256);
+  m_wbuffer.resize(256);
+  m_module = ModuleLoader::Get().GetCurrentModuleName();
+}
 
 Logging& Logging::Get() {
   if (!m_instance) {
@@ -25,17 +31,14 @@ Logging& Logging::Get() {
   return *m_instance;
 }
 
-void Logging::Enable(bool enable) { m_enabled = enable; }
+void Logging::SetModuleName(const char* name) { m_module = name; }
 
-void Logging::SetCallback(const char* name, LogCallBackT loggingCallback) { m_loggingCallback[name] = loggingCallback; }
+void Logging::SetCallback(const char* name, Logging::LogCallbackT loggingCallback) { api::Shared::Get().SetCallback(name, loggingCallback); }
 
-void Logging::RemoveCallback(const char* name) { m_loggingCallback.erase(name); }
+void Logging::RemoveCallback(const char* name) { api::Shared::Get().RemoveCallback(name); }
 
-const Logging::LogCallBackT Logging::GetCallback(const char* name) const {
-  auto it = m_loggingCallback.find(name);
-  return it != m_loggingCallback.end() ? it->second : nullptr;
-}
+void Logging::LogStateAsync(bool async) { api::Shared::Get().LogStateAsync(async); }
 
-Logging::LogLevel Logging::GetMinLogLevel() const noexcept { return static_cast<LogLevel>(BIFROST_LOGLEVEL); }
+void Logging::Log(int level, const char* msg) { api::Shared::Get().Log(level, m_module.c_str(), msg); }
 
 }  // namespace bifrost

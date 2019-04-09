@@ -9,19 +9,8 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "header.h"
+#pragma once
+
 #include <iostream>
 
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-
-int foo(int bar) { return bar + 1; }
-
-int main(int argc, const char* argv) {
-  int bar = 5;
-  std::cout << "bar = " << bar << std::endl;
-  bar = foo(bar);
-  Sleep(500);
-  std::cout << "bar = " << bar << std::endl;
-}
+int hello_world(int bar);

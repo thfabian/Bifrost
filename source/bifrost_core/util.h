@@ -81,4 +81,10 @@ inline constexpr std::size_t ArraySize(T (&)[Size]) {
   return Size;
 }
 
+/// Static cast of unique ptr
+template <typename U, typename T>
+std::unique_ptr<U> StaticUniquePointerCast(std::unique_ptr<T>&& old) {
+  return std::unique_ptr<U>{static_cast<U*>(old.release())};
+}
+
 }  // namespace bifrost

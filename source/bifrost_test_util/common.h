@@ -11,18 +11,8 @@
 
 #pragma once
 
-//
-// FreeList
-//
-#define BIFROST_MALLOC_FREELIST_BLOCKSIZE 64
+/** Bifrost Core **/
+#include "bifrost_core/common.h"
 
-//
-// Shared Memory
-//
-#define BIFROST_SHARED_MEMORY_NAME "__bifrost_shared__"
-#define BIFROST_SHARED_MEMORY_SIZE 1 << 25  // 32 MB
-
-//
-// Log Stash
-//
-#define BIFROST_LOG_STASH_BLOCK_SIZE 1 << 10  // 1 MB
+/** gtest **/
+#include <gtest/gtest.h>

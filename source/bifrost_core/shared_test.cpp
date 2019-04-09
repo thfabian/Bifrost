@@ -9,12 +9,13 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost_core/shared.h"
+#include "bifrost_core/api_shared.h"
 #include <gtest/gtest.h>
 
 namespace {
 
-using namespace bifrost;
+using namespace bifrost::api;
+
 TEST(Shared, Bool) {
   Shared::Get().WriteBool("test.bool", true);
   EXPECT_EQ(true, Shared::Get().ReadBool("test.bool"));
@@ -31,7 +32,7 @@ TEST(Shared, Int) {
   EXPECT_THROW(Shared::Get().ReadInt("test.intX"), std::runtime_error);
   EXPECT_EQ(42, Shared::Get().ReadInt("test.int", 1));
   EXPECT_EQ(1, Shared::Get().ReadInt("test.intX", 1));
-  EXPECT_STRCASEEQ("42", Shared::Get().ReadString("test.int").data());
+  EXPECT_STRCASEEQ("42", Shared::Get().ReadString("test.int").c_str());
 
   Shared::Get().WriteString("test.intStr", "84");
   Shared::Get().WriteString("test.intStrX", "X");
@@ -47,13 +48,22 @@ TEST(Shared, Double) {
   EXPECT_THROW(Shared::Get().ReadDouble("test.doubleX"), std::runtime_error);
   EXPECT_EQ(0.25, Shared::Get().ReadDouble("test.double", 1.25));
   EXPECT_EQ(1.25, Shared::Get().ReadDouble("test.doubleX", 1.25));
-  EXPECT_STRCASEEQ("0.250000", Shared::Get().ReadString("test.double").data());
+  EXPECT_STRCASEEQ("0.250000", Shared::Get().ReadString("test.double").c_str());
 
   Shared::Get().WriteString("test.doubleStr", "84.25");
   Shared::Get().WriteString("test.doubleStrX", "X");
 
   EXPECT_EQ(84.25, Shared::Get().ReadDouble("test.doubleStr"));
   EXPECT_THROW(Shared::Get().ReadDouble("test.doubleStrX"), std::runtime_error);
+}
+
+TEST(Shared, String) {
+  Shared::Get().WriteString("test.string", "foo");
+
+  EXPECT_STRCASEEQ("foo", Shared::Get().ReadString("test.string").c_str());
+  EXPECT_THROW(Shared::Get().ReadString("test.stringX"), std::runtime_error);
+  EXPECT_EQ("foo", Shared::Get().ReadString("test.string", "bar"));
+  EXPECT_EQ("bar", Shared::Get().ReadString("test.stringX", "bar"));
 }
 
 }  // namespace

@@ -10,14 +10,14 @@
 // See LICENSE.txt for details.
 
 #include "bifrost_core/common.h"
-#include "bifrost_core/shared.h"
+#include "bifrost_core/api_shared.h"
 #include "bifrost_core/module_loader.h"
 #include "bifrost_core/error.h"
 #include <sstream>
 
 #include "bifrost_shared/bifrost_shared.h"  // Only for declarations
 
-namespace bifrost {
+namespace bifrost::api {
 
 namespace {
 
@@ -48,7 +48,7 @@ static std::string ConvertToString(const char* path, const bfs_Value& value) {
     case BFS_BOOL:
       return std::to_string(*((bool*)&value.Value));
     case BFS_INT:
-      return std::to_string(*((int*)&value.Value));
+      return std::to_string(*((i32*)&value.Value));
     case BFS_DOUBLE:
       return std::to_string(*((double*)&value.Value));
     case BFS_STRING:
@@ -65,7 +65,7 @@ static bool ConvertToBool(const char* path, const bfs_Value& value) {
     case BFS_BOOL:
       return (bool)value.Value;
     case BFS_INT:
-      return (int)value.Value;
+      return (i32)value.Value;
     case BFS_DOUBLE:
       return *((double*)&value.Value);
     case BFS_STRING:
@@ -106,7 +106,7 @@ static double ConvertToDouble(const char* path, const bfs_Value& value) {
     case BFS_BOOL:
       return (bool)value.Value;
     case BFS_INT:
-      return (int)value.Value;
+      return (i32)value.Value;
     case BFS_DOUBLE:
       return *((double*)&value.Value);
     case BFS_STRING: {
@@ -126,7 +126,7 @@ static double ConvertToDouble(const char* path, const bfs_Value& value) {
 }
 
 static bfs_Value MakeBool(bool value) { return bfs_Value{BFS_BOOL, *((u64*)&value), sizeof(bool)}; }
-static bfs_Value MakeInt(int value) { return bfs_Value{BFS_INT, *((u64*)&value), sizeof(int)}; }
+static bfs_Value MakeInt(i32 value) { return bfs_Value{BFS_INT, *((u64*)&value), sizeof(int)}; }
 static bfs_Value MakeDouble(double value) { return bfs_Value{BFS_DOUBLE, *((u64*)&value), sizeof(double)}; }
 static bfs_Value MakeString(std::string_view value) { return bfs_Value{BFS_STRING, (u64)value.data(), (u32)value.size()}; }
 static bfs_Value MakeByte(const void* data, u32 size) { return bfs_Value{BFS_BYTE, (u64)data, size}; }
@@ -162,6 +162,24 @@ class Shared::bfs_Api {
   using bfs_StatusString_fn = decltype(&bfs_StatusString);
   bfs_StatusString_fn bfs_StatusString;
 
+  using bfs_RegisterLogCallback_fn = decltype(&bfs_RegisterLogCallback);
+  bfs_RegisterLogCallback_fn bfs_RegisterLogCallback;
+
+  using bfs_UnregisterLogCallback_fn = decltype(&bfs_UnregisterLogCallback);
+  bfs_UnregisterLogCallback_fn bfs_UnregisterLogCallback;
+
+  using bfs_Log_fn = decltype(&bfs_Log);
+  bfs_Log_fn bfs_Log;
+
+  using bfs_LogStateAsync_fn = decltype(&bfs_LogStateAsync);
+  bfs_LogStateAsync_fn bfs_LogStateAsync;
+
+  using bfs_GetVersion_fn = decltype(&bfs_GetVersion);
+  bfs_GetVersion_fn bfs_GetVersion;
+
+  using bfs_Reset_fn = decltype(&bfs_Reset);
+  bfs_Reset_fn bfs_Reset;
+
   bfs_Api() {
     auto module = ModuleLoader::Get().GetModule("bifrost_shared.dll");
     BIFROST_ASSERT_WIN_CALL((bfs_Read = (bfs_Read_fn)::GetProcAddress(module, "bfs_Read")) != NULL);
@@ -173,6 +191,12 @@ class Shared::bfs_Api {
     BIFROST_ASSERT_WIN_CALL((bfs_Malloc = (bfs_Malloc_fn)::GetProcAddress(module, "bfs_Malloc")) != NULL);
     BIFROST_ASSERT_WIN_CALL((bfs_Free = (bfs_Free_fn)::GetProcAddress(module, "bfs_Free")) != NULL);
     BIFROST_ASSERT_WIN_CALL((bfs_StatusString = (bfs_StatusString_fn)::GetProcAddress(module, "bfs_StatusString")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((bfs_RegisterLogCallback = (bfs_RegisterLogCallback_fn)::GetProcAddress(module, "bfs_RegisterLogCallback")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((bfs_UnregisterLogCallback = (bfs_UnregisterLogCallback_fn)::GetProcAddress(module, "bfs_UnregisterLogCallback")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((bfs_Log = (bfs_Log_fn)::GetProcAddress(module, "bfs_Log")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((bfs_LogStateAsync = (bfs_LogStateAsync_fn)::GetProcAddress(module, "bfs_LogStateAsync")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((bfs_GetVersion = (bfs_GetVersion_fn)::GetProcAddress(module, "bfs_GetVersion")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((bfs_Reset = (bfs_Reset_fn)::GetProcAddress(module, "bfs_Reset")) != NULL);
   }
 };
 
@@ -188,6 +212,35 @@ Shared& Shared::Get() {
   }
   return *m_instance;
 }
+
+#define BIFROST_ASSERT_BFS_CALL(call, msg, ...)                                                                                                   \
+  if (bfs_Status status = BFS_OK; (status = call) != BFS_OK) {                                                                                    \
+    BIFROST_ASSERT_CALL_MSG(status == BFS_OK && BIFROST_STRINGIFY(call), StringFormat(msg ": %s", __VA_ARGS__, m_api->bfs_StatusString(status))); \
+  }
+
+void* Shared::Alloc(u32 size) { return m_api->bfs_Malloc(size); }
+
+void Shared::Deallocate(void* ptr) { m_api->bfs_Free(ptr); }
+
+void Shared::Log(i32 level, const char* module, const char* message) {
+  if (bfs_Status status = BFS_OK; (status = m_api->bfs_Log(level, module, message)) != BFS_OK) {
+    throw std::runtime_error(StringFormat("Failed to log message\"%s\": %s", message, m_api->bfs_StatusString(status)));
+  }
+}
+
+void Shared::SetCallback(const char* name, Logging::LogCallbackT loggingCallback) {
+  BIFROST_ASSERT_BFS_CALL(m_api->bfs_RegisterLogCallback(name, loggingCallback), "Failed to register callback \"%s\"", name);
+}
+
+void Shared::RemoveCallback(const char* name) { BIFROST_ASSERT_BFS_CALL(m_api->bfs_UnregisterLogCallback(name), "Failed to remove callback \"%s\"", name); }
+
+void Shared::LogStateAsync(bool async) {
+  BIFROST_ASSERT_BFS_CALL(m_api->bfs_LogStateAsync(async), "Failed to set async state to \"%s\"", async ? "true" : "false");
+}
+
+const char* Shared::GetVersion() { return m_api->bfs_GetVersion(); }
+
+void Shared::Reset() { BIFROST_ASSERT_BFS_CALL(m_api->bfs_Reset(), "Failed to reset bifrost_shared"); }
 
 #define BIFROST_READ_WRITE_IMPL(TypeName, Type)                                                                         \
   Type Shared::Read##TypeName(const char* path) {                                                                       \
@@ -219,8 +272,8 @@ Shared& Shared::Get() {
   }
 
 BIFROST_READ_WRITE_IMPL(Bool, bool)
-BIFROST_READ_WRITE_IMPL(Int, int)
+BIFROST_READ_WRITE_IMPL(Int, i32)
 BIFROST_READ_WRITE_IMPL(Double, double)
 BIFROST_READ_WRITE_IMPL(String, std::string)
 
-}  // namespace bifrost
+}  // namespace bifrost::api

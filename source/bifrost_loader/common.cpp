@@ -9,9 +9,4 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost_core/common.h"
-
-#include "bifrost_core/hook.h"
-#include "MinHook.h"
-
-
+#include "bifrost_loader/common.h"

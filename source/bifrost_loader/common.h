@@ -11,4 +11,6 @@
 
 #pragma once
 
-int foo(int bar);
+/** Bifrost Core **/
+#include "bifrost_core/common.h"
+#include "bifrost_core/type.h"

@@ -11,4 +11,9 @@
 
 #pragma once
 
-#include "bifrost_core/common.h"
+namespace bifrost::test_util {
+
+/// Logging callback
+extern void LogCallback(int level, const char* module, const char* msg);
+
+}  // namespace bifrost::test_util

@@ -12,10 +12,12 @@
 #pragma once
 
 #include "bifrost_core/common.h"
+#include "bifrost_core/type.h"
+#include "bifrost_core/logging.h"
 
-namespace bifrost {
+namespace bifrost::api {
 
-/// Shareable storage between DLLs facilitated via bifrost_shared.dll
+/// C++ interface to bifrost_shared.dll - Storage between DLLs
 class Shared {
  public:
   Shared();
@@ -34,9 +36,9 @@ class Shared {
   bool ReadBool(const char* path, bool default);
   bool ReadBoolAtomic(const char* path);
 
-  int ReadInt(const char* path);
-  int ReadInt(const char* path, int default);
-  int ReadIntAtomic(const char* path);
+  i32 ReadInt(const char* path);
+  i32 ReadInt(const char* path, i32 default);
+  i32 ReadIntAtomic(const char* path);
 
   double ReadDouble(const char* path);
   double ReadDouble(const char* path, double default);
@@ -50,10 +52,34 @@ class Shared {
   /// Write ``value`` to ``path``
   /// @{
   void WriteBool(const char* path, bool value);
-  void WriteInt(const char* path, int value);
+  void WriteInt(const char* path, i32 value);
   void WriteDouble(const char* path, double value);
   void WriteString(const char* path, std::string value);
   /// @}
+
+  /// Allocate ``size`` memory
+  void* Alloc(u32 size);
+
+  /// Deallocate ``ptr``
+  void Deallocate(void* ptr);
+
+  /// Push a log message
+  void Log(i32 level, const char* module, const char* message);
+
+  /// Register a logging callback
+  void SetCallback(const char* name, Logging::LogCallbackT loggingCallback);
+
+  /// Remove a logging callback
+  void RemoveCallback(const char* name);
+
+  /// Set async logging off/on
+  void LogStateAsync(bool async);
+
+  /// Get the version of the DLL
+  const char* GetVersion();
+
+  /// Reset all shared memory
+  void Reset();
 
  private:
   static std::unique_ptr<Shared> m_instance;
@@ -61,4 +87,4 @@ class Shared {
   std::unique_ptr<bfs_Api> m_api;
 };
 
-}  // namespace bifrost
+}  // namespace bifrost::api

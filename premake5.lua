@@ -16,7 +16,7 @@ end
 function bifrost_getenv(variable)
   var = os.getenv(variable)
   if var == nil or var == "" then
-    bifrost_error("environment variabe '" .. variable .. "' is not defined\n")
+    bifrost_error("Environment variabe '" .. variable .. "' is not defined\n")
   end
   return var
 end
@@ -38,7 +38,11 @@ workspace "bifrost"
   filter { "configurations:Release" }
     optimize "On"
     
-  -- *** External *** 
+  -- *****
+  -- *** External ***
+  -- *
+  
+  -- *** MinHook ***
   project "external_minhook"
     minhook_dir = bifrost_getenv("BIFROST_MINHOOK_DIR")
 
@@ -51,6 +55,7 @@ workspace "bifrost"
       links "external_minhook"
     end
     
+  -- *** SpdLog *** 
   project "external_spdlog"
     spdlog_dir = bifrost_getenv("BIFROST_SPDLOG_DIR")
 
@@ -62,6 +67,7 @@ workspace "bifrost"
       includedirs(spdlog_dir .. "/include")
     end
     
+  -- *** Args *** 
   project "external_args"
     args_dir = bifrost_getenv("BIFROST_ARGS_DIR")
 
@@ -73,6 +79,7 @@ workspace "bifrost"
       includedirs(args_dir)
     end
 	
+  -- *** GTest *** 
   project "external_gtest"
     gtest_dir = bifrost_getenv("BIFROST_GTEST_DIR")
 
@@ -86,7 +93,11 @@ workspace "bifrost"
       links "external_gtest"
     end
     
+  -- *****
   -- *** Bifrost ***
+  -- *
+    
+  -- *** Core ***
   project "bifrost_core"
     kind "StaticLib"
     includedirs { "source" }
@@ -95,38 +106,14 @@ workspace "bifrost"
     
     files "source/bifrost_core/**"
     removefiles "**_test.cpp"
-    
-    bifrost_add_external_minhook()
+    disablewarnings { "4267" }
 
     function bifrost_add_bifrost_core()
       includedirs "source" 
       links "bifrost_core"
     end
-    
-  project "bifrost_core_test"
-    kind "ConsoleApp"
-    includedirs { "source" }
-    targetname "test-bifrost-core"
-    
-    files "source/bifrost_core/*_test.cpp"
-	
-    bifrost_add_external_gtest()
-    bifrost_add_bifrost_core()
 
-  project "bifrost"
-    kind "SharedLib"
-    defines { "BIFROST_EXPORTS" }
-    includedirs { "source" }
-    
-    files "source/bifrost/**" 
-    
-    bifrost_add_bifrost_core()
-    
-    function bifrost_add_bifrost()
-      includedirs "source" 
-      links "bifrost"
-    end
-
+  -- *** Shared ***
   project "bifrost_shared"
     kind "SharedLib"
     defines { "BIFROST_SHARED_EXPORTS" }
@@ -145,7 +132,77 @@ workspace "bifrost"
       includedirs "source"
       links "bifrost_shared"
     end
+    
+  -- *** Loader ***
+  project "bifrost_loader"
+    kind "SharedLib"
+    defines { "BIFROST_LOADER_EXPORTS" }
+    includedirs { "source" }
+    
+    files "source/bifrost_loader/**" 
+    removefiles "**_test.cpp"
+    
+    pchheader "bifrost_loader/common.h"
+    pchsource "source/bifrost_loader/common.cpp"
+    
+    bifrost_add_bifrost_core()
+    
+    function bifrost_add_bifrost_loader()
+      includedirs "source" 
+      links "bifrost_loader"
+    end
+    
+  -- *** Injector ***
+  project "bifrost_injector"
+    kind "StaticLib"
+    files "source/bifrost_injector/**"
 	
+    pchheader "bifrost_injector/common.h"
+    pchsource "source/bifrost_injector/common.cpp"
+    
+    bifrost_add_bifrost_core()
+    bifrost_add_external_spdlog()
+    
+    function bifrost_add_bifrost_injector()
+      includedirs "source" 
+      links "bifrost_injector"
+      bifrost_add_external_spdlog()
+    end
+    
+  project "bifrost_injector_cli"
+    kind "ConsoleApp"
+    files "source/bifrost_injector_cli/main.cpp"
+    targetname "bifrost-injector"
+    
+    bifrost_add_bifrost_injector()
+    bifrost_add_external_args()
+	
+  -- *****
+  -- *** Test ***
+  -- *****
+  
+  -- *** Test Util ***
+  project "bifrost_test_util"
+    kind "StaticLib"
+    includedirs { "source" }
+    
+    files "source/bifrost_test_util/**" 
+    
+    pchheader "bifrost_test_util/common.h"
+    pchsource "source/bifrost_test_util/common.cpp"
+    
+    bifrost_add_bifrost_core()
+    bifrost_add_external_gtest()
+    
+    function bifrost_add_bifrost_test_util()
+      includedirs "source"
+      links "bifrost_test_util"
+      
+      bifrost_add_bifrost_core()
+      bifrost_add_external_gtest()
+    end
+  
+  -- *** Shared Test ***
   project "bifrost_shared_test"
     kind "ConsoleApp"
     includedirs { "source" }
@@ -154,24 +211,31 @@ workspace "bifrost"
     
     files "source/bifrost_shared/*_test.cpp"
 	
-    bifrost_add_external_gtest()
+    bifrost_add_bifrost_test_util()
     bifrost_add_bifrost_shared()
-	
-  -- *** Bifrost Injector ***
-  project "bifrost_injector"
-    kind "ConsoleApp"
-    files "source/bifrost_injector/**"
-    targetname "bifrost-injector"
-	
-    pchheader "bifrost_injector/common.h"
-    pchsource "source/bifrost_injector/common.cpp"
     
-    bifrost_add_bifrost()
+  -- *** Core Test ***
+  project "bifrost_core_test"
+    kind "ConsoleApp"
+    includedirs { "source" }
+    targetname "test-bifrost-core"
+    
+    files "source/bifrost_core/*_test.cpp"
+	
+    bifrost_add_bifrost_test_util()
     bifrost_add_bifrost_core()
-    bifrost_add_external_args()
-    bifrost_add_external_spdlog()
     
-  project "bifrost_injector_hook_example"
+  -- *****
+  -- *** Example ***
+  -- *
+    
+  -- *** Hello World ***
+  project "01-hello-world"
     kind "ConsoleApp"
-    files "source/bifrost_injector_hook_example/**" 
+    files { "example/01-hello-world/hello_world.h", "example/01-hello-world/hello_world.cpp" }
+  
+  --project "01-hello-world-plugin"
+    --kind "SharedLib"
+    --files "example/01-hello-world/hello-world-plugin.cpp" 
+    
     

@@ -26,11 +26,11 @@ Logger& Logger::Get() {
   return *m_instance;
 }
 
-std::shared_ptr<Logger::StdoutSinkT> Logger::MakeStdoutSink() {
-  auto sink = std::make_shared<StdoutSinkT>();
-  sink->set_color(spdlog::level::trace, sink->WHITE | sink->BOLD);
-  sink->set_color(spdlog::level::debug, sink->WHITE | sink->BOLD);
-  sink->set_color(spdlog::level::warn, sink->CYAN | sink->BOLD);
+std::shared_ptr<Logger::StderrSinkT> Logger::MakeStderrSink() {
+  auto sink = std::make_shared<StderrSinkT>();
+  sink->set_color(spdlog::level::debug, sink->WHITE);
+  sink->set_color(spdlog::level::info, sink->WHITE | sink->BOLD);
+  sink->set_color(spdlog::level::warn, sink->YELLOW | sink->BOLD);
   sink->set_color(spdlog::level::err, sink->RED | sink->BOLD);
   return sink;
 }
@@ -39,7 +39,7 @@ std::shared_ptr<Logger::FileSinkT> Logger::MakeFileSink(const std::filesystem::p
 
 std::shared_ptr<Logger::MsvcSinkT> Logger::MakeMsvcSink() { return std::make_shared<MsvcSinkT>(); }
 
-void Logger::Log(int level, const char* msg) {
+void Logger::Log(int level, const char* module, const char* msg) {
   auto logLevel = (bifrost::Logging::LogLevel)level;
   auto spdLevel = spdlog::level::off;
 
@@ -61,7 +61,14 @@ void Logger::Log(int level, const char* msg) {
       spdLevel = spdlog::level::off;
       break;
   }
-  GetLogger()->log(spdLevel, msg);
+
+  BIFROST_LOCK_GUARD(m_mutex);
+  m_buffer.clear();
+  m_buffer += "[";
+  m_buffer += module;
+  m_buffer += "] ";
+  m_buffer += msg;
+  GetLogger()->log(spdLevel, m_buffer.c_str());
 }
 
 Logger::Logger() {}
@@ -98,13 +105,16 @@ void Logger::MakeLogger() {
   try {
     m_logger = std::make_shared<spdlog::logger>("injector", sinkVec.begin(), sinkVec.end());
     m_logger->set_level(spdlog::level::trace);
-    m_logger->set_pattern("[%H:%M:%S.%e] [%t] [%L] %v");
+    m_logger->set_pattern("[%H:%M:%S.%e] [%=7l] %v");
     spdlog::register_logger(m_logger);
   } catch (const spdlog::spdlog_ex& ex) {
     throw std::runtime_error(fmt::format("Cannot create logger: {}", ex.what()));
   }
 }
 
-void LogCallback(int level, const char* msg) { Logger::Get().Log(level, msg); }
+void LogCallback(int level, const char* module, const char* msg) {
+  if (level == BIFROST_LOGLEVEL_DISABLE) return;
+  Logger::Get().Log(level, module, msg);
+}
 
 }  // namespace bifrost::injector

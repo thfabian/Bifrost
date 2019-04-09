@@ -9,9 +9,14 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+#include "bifrost_core/logging.h"
+#include "bifrost_test_util/logging.h"
 #include <gtest/gtest.h>
 
 int main(int argc, char **argv) {
+  bifrost::Logging::Get().SetCallback("bifrost_core_test", bifrost::test_util::LogCallback);
+  bifrost::Logging::Get().LogStateAsync(false);
+
   ::testing::InitGoogleTest(&argc, argv);
   return RUN_ALL_TESTS();
 }
