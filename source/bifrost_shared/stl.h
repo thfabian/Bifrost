@@ -76,6 +76,9 @@ using vector = std::vector<T, SharedAllocator<T>>;
 template <class T>
 using list = std::list<T, SharedAllocator<T>>;
 
+template <class T>
+using deque = std::deque<T, SharedAllocator<T>>;
+
 template <class K, class V>
 using unordered_map = std::unordered_map<K, V, std::hash<K>, std::equal_to<K>, SharedAllocator<std::pair<const K, V>>>;
 

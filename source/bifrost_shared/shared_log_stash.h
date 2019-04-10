@@ -27,8 +27,6 @@ class SharedLogStash : public NonCopyable {
     stl::string Message;
   };
 
-  using list_t = stl::list<LogMessage>;
-
   SharedLogStash();
   ~SharedLogStash();
 
@@ -49,9 +47,11 @@ class SharedLogStash : public NonCopyable {
   void Pop();
 
  private:
+  using list_t = stl::deque<LogMessage>;
+
   // Allocated blocks
   std::mutex m_messageMutex;
-  stl::list<LogMessage> m_messages;
+  list_t m_messages;
 
   // Consumer
   bool m_done;

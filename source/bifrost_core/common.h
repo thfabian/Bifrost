@@ -19,6 +19,7 @@
 
 /** C/C++ **/
 #include <array>
+#include <atomic>
 #include <cassert>
 #include <chrono>
 #include <codecvt>
@@ -28,6 +29,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
+#include <deque>
 #include <exception>
 #include <filesystem>
 #include <iosfwd>

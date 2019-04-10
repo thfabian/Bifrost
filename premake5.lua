@@ -163,6 +163,8 @@ workspace "bifrost"
     bifrost_add_bifrost_core()
     bifrost_add_external_spdlog()
     
+    dependson { "bifrost_shared", "bifrost_loader" }
+    
     function bifrost_add_bifrost_injector()
       includedirs "source" 
       links "bifrost_injector"
