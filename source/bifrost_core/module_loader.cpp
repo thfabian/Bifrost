@@ -13,6 +13,7 @@
 #include "bifrost_core/module_loader.h"
 #include "bifrost_core/error.h"
 #include "bifrost_core/util.h"
+#include "bifrost_core/mutex.h"
 
 namespace bifrost {
 
@@ -21,8 +22,6 @@ namespace {
 [[nodiscard]] static bool FunctionInThisDll() { return true; }
 
 }  // namespace
-
-std::unique_ptr<ModuleLoader> ModuleLoader::m_instance = nullptr;
 
 ModuleLoader::ModuleLoader() {}
 
@@ -34,14 +33,9 @@ ModuleLoader::~ModuleLoader() {
   }
 }
 
-ModuleLoader& ModuleLoader::Get() {
-  if (!m_instance) {
-    m_instance = std::make_unique<ModuleLoader>();
-  }
-  return *m_instance;
-}
-
 HMODULE ModuleLoader::GetModule(const std::string& moduleName) {
+  BIFROST_LOCK_GUARD(m_mutex);
+
   auto it = m_modules.find(moduleName);
   if (it != m_modules.end()) return it->second.Handle;
 
@@ -56,6 +50,8 @@ HMODULE ModuleLoader::GetModule(const std::string& moduleName) {
 }
 
 HMODULE ModuleLoader::GetModule(const std::wstring& moduleName) {
+  BIFROST_LOCK_GUARD(m_mutex);
+
   auto str = WStringToString(moduleName);
 
   auto it = m_modules.find(str);

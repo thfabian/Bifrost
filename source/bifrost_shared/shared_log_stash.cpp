@@ -25,12 +25,20 @@ SharedLogStash::~SharedLogStash() {
 }
 
 bfs_Status SharedLogStash::SetCallback(const char* name, bfs_LogCallback_t loggingCallback) {
+  BIFROST_LOCK_GUARD(m_callbackMutex);
   m_callbacks[name] = loggingCallback;
   return BFS_OK;
 }
 
 bfs_Status SharedLogStash::RemoveCallback(const char* name) {
+  BIFROST_LOCK_GUARD(m_callbackMutex);
   m_callbacks.erase(name);
+  return BFS_OK;
+}
+
+bfs_Status SharedLogStash::SetAsync(bool async) {
+  BIFROST_LOCK_GUARD(m_callbackMutex);
+  m_asnyc = async;
   return BFS_OK;
 }
 
@@ -64,11 +72,6 @@ void SharedLogStash::Pop() {
       for (const auto& cb : m_callbacks) cb.second(msg.Level, msg.Module.c_str(), msg.Message.c_str());
     }
   }
-}
-
-bfs_Status SharedLogStash::SetAsync(bool async) {
-  m_asnyc = async;
-  return BFS_OK;
 }
 
 }  // namespace bifrost::shared

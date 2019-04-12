@@ -14,21 +14,12 @@
 
 namespace bifrost {
 
-std::unique_ptr<Error> Error::m_instance = nullptr;
+ErrorStash::ErrorStash() {}
 
-Error::Error() {}
+const char* ErrorStash::GetLastError() const noexcept { return m_buffer.empty() ? nullptr : m_buffer.c_str(); }
 
-Error& Error::Get() {
-  if (!m_instance) {
-    m_instance = std::make_unique<Error>();
-  }
-  return *m_instance;
-}
-
-const char* Error::GetLastError() const noexcept { return m_buffer.empty() ? nullptr : m_buffer.c_str(); }
-
-void Error::SetLastError(std::string msg) { m_buffer = std::move(msg); }
-
+void ErrorStash::SetLastError(std::string msg) { m_buffer = std::move(msg); }
+//
 std::string GetLastWin32Error() {
   DWORD errorMessageID = ::GetLastError();
   if (errorMessageID == 0) return "Unknown Error.\n";  // No error message has been recorded

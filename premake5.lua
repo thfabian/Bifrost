@@ -154,9 +154,13 @@ workspace "bifrost"
     
   -- *** Injector ***
   project "bifrost_injector"
-    kind "StaticLib"
+    kind "SharedLib"
+    defines { "BIFROST_INJECTOR_EXPORTS" }
+    includedirs { "source" }
+    
     files "source/bifrost_injector/**"
-	
+    removefiles "**_test.cpp"
+
     pchheader "bifrost_injector/common.h"
     pchsource "source/bifrost_injector/common.cpp"
     

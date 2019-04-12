@@ -16,54 +16,54 @@ namespace {
 
 using namespace bifrost::api;
 
-TEST(Shared, Bool) {
-  Shared::Get().WriteBool("test.bool", true);
-  EXPECT_EQ(true, Shared::Get().ReadBool("test.bool"));
-  EXPECT_THROW(Shared::Get().ReadBool("test.boolX"), std::runtime_error);
-  EXPECT_EQ(true, Shared::Get().ReadBool("test.bool", false));
-  EXPECT_EQ(false, Shared::Get().ReadBool("test.boolX", false));
-  EXPECT_STRCASEEQ("1", Shared::Get().ReadString("test.bool").data());
+TEST(ApiShared, Bool) {
+  ApiShared::Get().WriteBool("test.bool", true);
+  EXPECT_EQ(true, ApiShared::Get().ReadBool("test.bool"));
+  EXPECT_THROW(ApiShared::Get().ReadBool("test.boolX"), std::runtime_error);
+  EXPECT_EQ(true, ApiShared::Get().ReadBool("test.bool", false));
+  EXPECT_EQ(false, ApiShared::Get().ReadBool("test.boolX", false));
+  EXPECT_STRCASEEQ("1", ApiShared::Get().ReadString("test.bool").data());
 }
 
-TEST(Shared, Int) {
-  Shared::Get().WriteInt("test.int", 42);
+TEST(ApiShared, Int) {
+  ApiShared::Get().WriteInt("test.int", 42);
 
-  EXPECT_EQ(42, Shared::Get().ReadInt("test.int"));
-  EXPECT_THROW(Shared::Get().ReadInt("test.intX"), std::runtime_error);
-  EXPECT_EQ(42, Shared::Get().ReadInt("test.int", 1));
-  EXPECT_EQ(1, Shared::Get().ReadInt("test.intX", 1));
-  EXPECT_STRCASEEQ("42", Shared::Get().ReadString("test.int").c_str());
+  EXPECT_EQ(42, ApiShared::Get().ReadInt("test.int"));
+  EXPECT_THROW(ApiShared::Get().ReadInt("test.intX"), std::runtime_error);
+  EXPECT_EQ(42, ApiShared::Get().ReadInt("test.int", 1));
+  EXPECT_EQ(1, ApiShared::Get().ReadInt("test.intX", 1));
+  EXPECT_STRCASEEQ("42", ApiShared::Get().ReadString("test.int").c_str());
 
-  Shared::Get().WriteString("test.intStr", "84");
-  Shared::Get().WriteString("test.intStrX", "X");
+  ApiShared::Get().WriteString("test.intStr", "84");
+  ApiShared::Get().WriteString("test.intStrX", "X");
 
-  EXPECT_EQ(84, Shared::Get().ReadInt("test.intStr"));
-  EXPECT_THROW(Shared::Get().ReadInt("test.intStrX"), std::runtime_error);
+  EXPECT_EQ(84, ApiShared::Get().ReadInt("test.intStr"));
+  EXPECT_THROW(ApiShared::Get().ReadInt("test.intStrX"), std::runtime_error);
 }
 
-TEST(Shared, Double) {
-  Shared::Get().WriteDouble("test.double", 0.25);
+TEST(ApiShared, Double) {
+  ApiShared::Get().WriteDouble("test.double", 0.25);
 
-  EXPECT_EQ(0.25, Shared::Get().ReadDouble("test.double"));
-  EXPECT_THROW(Shared::Get().ReadDouble("test.doubleX"), std::runtime_error);
-  EXPECT_EQ(0.25, Shared::Get().ReadDouble("test.double", 1.25));
-  EXPECT_EQ(1.25, Shared::Get().ReadDouble("test.doubleX", 1.25));
-  EXPECT_STRCASEEQ("0.250000", Shared::Get().ReadString("test.double").c_str());
+  EXPECT_EQ(0.25, ApiShared::Get().ReadDouble("test.double"));
+  EXPECT_THROW(ApiShared::Get().ReadDouble("test.doubleX"), std::runtime_error);
+  EXPECT_EQ(0.25, ApiShared::Get().ReadDouble("test.double", 1.25));
+  EXPECT_EQ(1.25, ApiShared::Get().ReadDouble("test.doubleX", 1.25));
+  EXPECT_STRCASEEQ("0.250000", ApiShared::Get().ReadString("test.double").c_str());
 
-  Shared::Get().WriteString("test.doubleStr", "84.25");
-  Shared::Get().WriteString("test.doubleStrX", "X");
+  ApiShared::Get().WriteString("test.doubleStr", "84.25");
+  ApiShared::Get().WriteString("test.doubleStrX", "X");
 
-  EXPECT_EQ(84.25, Shared::Get().ReadDouble("test.doubleStr"));
-  EXPECT_THROW(Shared::Get().ReadDouble("test.doubleStrX"), std::runtime_error);
+  EXPECT_EQ(84.25, ApiShared::Get().ReadDouble("test.doubleStr"));
+  EXPECT_THROW(ApiShared::Get().ReadDouble("test.doubleStrX"), std::runtime_error);
 }
 
-TEST(Shared, String) {
-  Shared::Get().WriteString("test.string", "foo");
+TEST(ApiShared, String) {
+  ApiShared::Get().WriteString("test.string", "foo");
 
-  EXPECT_STRCASEEQ("foo", Shared::Get().ReadString("test.string").c_str());
-  EXPECT_THROW(Shared::Get().ReadString("test.stringX"), std::runtime_error);
-  EXPECT_EQ("foo", Shared::Get().ReadString("test.string", "bar"));
-  EXPECT_EQ("bar", Shared::Get().ReadString("test.stringX", "bar"));
+  EXPECT_STRCASEEQ("foo", ApiShared::Get().ReadString("test.string").c_str());
+  EXPECT_THROW(ApiShared::Get().ReadString("test.stringX"), std::runtime_error);
+  EXPECT_EQ("foo", ApiShared::Get().ReadString("test.string", "bar"));
+  EXPECT_EQ("bar", ApiShared::Get().ReadString("test.stringX", "bar"));
 }
 
 }  // namespace

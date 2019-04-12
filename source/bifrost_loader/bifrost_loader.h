@@ -44,7 +44,7 @@ extern "C" {
 
 #pragma region Error Handling
 
-/// @brief Error status
+/// @brief ErrorStash status
 enum bfl_Status {
   BFL_OK = 0,         ///< Everything is fine - no error
   BFL_OUT_OF_MEMORY,  ///< Out of shared memory
@@ -74,14 +74,23 @@ struct bfl_Plugin_t {
 typedef bfl_Plugin_t bfl_Plugin;
 
 /// @brief Load all plugins into the executable with the given PID
+/// @remarks
+///    This function is thread-safe.
 BIFROST_LOADER_API bfl_Status bfl_Reset();
 
 /// @brief Register a new plugin which will be loaded when bifrost_loader is injected in the registered executable
+///
+/// @param plugin  Plugin description
+/// @remarks
+///    This function is thread-safe.
 BIFROST_LOADER_API bfl_Status bfl_RegisterPlugin(const bfl_Plugin* plugin);
 
 /// @brief Load all plugins into the executable with the given PID
+///
+/// @param pid  Process identifier
+/// @remarks
+///    This function is thread-safe.
 BIFROST_LOADER_API bfl_Status bfl_RegisterExecutable(int pid);
-
 
 #pragma endregion
 

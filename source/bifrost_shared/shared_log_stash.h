@@ -58,6 +58,7 @@ class SharedLogStash : public NonCopyable {
   std::thread m_consumerThread;
   std::condition_variable m_consumerCondVar;
 
+  std::mutex m_callbackMutex;
   bool m_asnyc;
   stl::unordered_map<stl::string, bfs_LogCallback_t> m_callbacks;
 };

@@ -14,16 +14,15 @@
 #include "bifrost_core/common.h"
 #include "bifrost_core/type.h"
 
-namespace bifrost::api {
+namespace bifrost {
 
 /// C++ interface to bifrost_loader.dll - Load Plugins
-class Loader {
+///
+/// Access to methods is thread-safe if the access to the underlying dll function is thread-safe.
+class ApiLoader {
  public:
-  Loader();
-  ~Loader();
-
-  /// Get singleton instance
-  static Loader& Get();
+  ApiLoader();
+  ~ApiLoader();
 
   struct Plugin {
     std::string Name;
@@ -35,13 +34,12 @@ class Loader {
   void Register(const Plugin& plugin) const;
 
   /// Get the version of the DLL
-  const char* GetVersion();
+  const char* GetVersion() const;
 
   /// Reset all registered plugins
   void Reset() const;
 
  private:
-  static std::unique_ptr<Loader> m_instance;
   class bfl_Api;
   std::unique_ptr<bfl_Api> m_api;
 };

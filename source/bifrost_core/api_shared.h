@@ -15,16 +15,15 @@
 #include "bifrost_core/type.h"
 #include "bifrost_core/logging.h"
 
-namespace bifrost::api {
+namespace bifrost {
 
 /// C++ interface to bifrost_shared.dll - Storage between DLLs
-class Shared {
+///
+/// Access to methods is thread-safe if the access to the underlying dll function is thread-safe.
+class ApiShared {
  public:
-  Shared();
-  ~Shared();
-
-  /// Get singleton instance
-  static Shared& Get();
+  ApiShared();
+  ~ApiShared();
 
   /// Read the value of ``path``
   ///
@@ -32,57 +31,56 @@ class Shared {
   /// get a copy of the data use the *Atomic* version of the function.
   /// Throws an exception in case the path does not exists or type does not match.
   /// @{
-  bool ReadBool(const char* path);
-  bool ReadBool(const char* path, bool default);
-  bool ReadBoolAtomic(const char* path);
+  bool ReadBool(const char* path) const;
+  bool ReadBool(const char* path, bool default) const;
+  bool ReadBoolAtomic(const char* path) const;
 
-  i32 ReadInt(const char* path);
-  i32 ReadInt(const char* path, i32 default);
-  i32 ReadIntAtomic(const char* path);
+  i32 ReadInt(const char* path) const;
+  i32 ReadInt(const char* path, i32 default) const;
+  i32 ReadIntAtomic(const char* path) const;
 
-  double ReadDouble(const char* path);
-  double ReadDouble(const char* path, double default);
-  double ReadDoubleAtomic(const char* path);
+  double ReadDouble(const char* path) const;
+  double ReadDouble(const char* path, double default) const;
+  double ReadDoubleAtomic(const char* path) const;
 
-  std::string ReadString(const char* path);
-  std::string ReadString(const char* path, std::string default);
-  std::string ReadStringAtomic(const char* path);
+  std::string ReadString(const char* path) const;
+  std::string ReadString(const char* path, std::string default) const;
+  std::string ReadStringAtomic(const char* path) const;
   /// @}
 
   /// Write ``value`` to ``path``
   /// @{
-  void WriteBool(const char* path, bool value);
-  void WriteInt(const char* path, i32 value);
-  void WriteDouble(const char* path, double value);
-  void WriteString(const char* path, std::string value);
+  void WriteBool(const char* path, bool value) const;
+  void WriteInt(const char* path, i32 value) const;
+  void WriteDouble(const char* path, double value) const;
+  void WriteString(const char* path, std::string value) const;
   /// @}
 
   /// Allocate ``size`` memory
-  void* Alloc(u32 size);
+  void* Alloc(u32 size) const;
 
   /// Deallocate ``ptr``
-  void Deallocate(void* ptr);
+  void Deallocate(void* ptr) const;
 
   /// Push a log message
-  void Log(i32 level, const char* module, const char* message);
+  void Log(i32 level, const char* module, const char* message) const;
 
   /// Register a logging callback
-  void SetCallback(const char* name, Logging::LogCallbackT loggingCallback);
+  void SetCallback(const char* name, Logging::LogCallbackT loggingCallback) const;
 
   /// Remove a logging callback
-  void RemoveCallback(const char* name);
+  void RemoveCallback(const char* name) const;
 
   /// Set async logging off/on
-  void LogStateAsync(bool async);
+  void LogStateAsync(bool async) const;
 
   /// Get the version of the DLL
-  const char* GetVersion();
+  const char* GetVersion() const;
 
   /// Reset all shared memory
-  void Reset();
+  void Reset() const;
 
  private:
-  static std::unique_ptr<Shared> m_instance;
   class bfs_Api;
   std::unique_ptr<bfs_Api> m_api;
 };

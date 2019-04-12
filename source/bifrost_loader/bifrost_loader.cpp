@@ -15,9 +15,14 @@
 #include "bifrost_core/macros.h"
 #include "bifrost_core/type.h"
 #include "bifrost_core/api_shared.h"
+#include "bifrost_core/global_object.h"
+#include "bifrost_core/mutex.h"
 
 using namespace bifrost;
 using namespace bifrost::loader;
+
+// Serialize all access
+static std::mutex g_Mutex;
 
 #define BIFROST_LOADER_CATCH_ALL(stmts) \
   try {                                 \
@@ -33,6 +38,7 @@ namespace {
 bfl_Status Attach(HMODULE hModule) {
   BIFROST_LOADER_CATCH_ALL({
     using namespace bifrost::api;
+    GlobalObject().Logging().SetModuleName("bifrost_loader.dll");
 
     i32 pid = Shared::Get().ReadInt(BFL("executable.pid"), -1);
     if (pid == -1) return BFL_OK;
@@ -43,7 +49,10 @@ bfl_Status Attach(HMODULE hModule) {
 }
 
 bfl_Status Detach(HMODULE hModule) {
-  BIFROST_LOADER_CATCH_ALL({ return BFL_OK; });
+  BIFROST_LOADER_CATCH_ALL({
+    GlobalObject::Unload();
+    return BFL_OK;
+  });
 }
 
 }  // namespace
@@ -65,14 +74,17 @@ BIFROST_LOADER_API const char* bfl_GetVersion() {
 }
 
 BIFROST_LOADER_API bfl_Status bfl_Reset() {
+  BIFROST_LOCK_GUARD(g_Mutex);
   BIFROST_LOADER_CATCH_ALL({ return PluginLoader::Get().Reset(); });
 }
 
 BIFROST_LOADER_API bfl_Status bfl_RegisterPlugin(const bfl_Plugin* plugin) {
+  BIFROST_LOCK_GUARD(g_Mutex);
   BIFROST_LOADER_CATCH_ALL({ return PluginLoader::Get().RegisterPlugin(plugin); });
 }
 
 BIFROST_LOADER_API bfl_Status bfl_RegisterExecutable(int pid) {
+  BIFROST_LOCK_GUARD(g_Mutex);
   BIFROST_LOADER_CATCH_ALL({
     bifrost::api::Shared::Get().WriteInt(BFL("executable.pid"), pid);
     return BFL_OK;
@@ -82,7 +94,6 @@ BIFROST_LOADER_API bfl_Status bfl_RegisterExecutable(int pid) {
 extern "C" BOOL APIENTRY DllMain(HMODULE hModule, DWORD ulReasonForCall, LPVOID lpReserved) {
   switch (ulReasonForCall) {
     case DLL_PROCESS_ATTACH:
-      Logging::Get().SetModuleName("bifrost_loader.dll");
       return Attach(hModule) == BFL_OK;
     case DLL_PROCESS_DETACH:
       return Detach(hModule) == BFL_OK;

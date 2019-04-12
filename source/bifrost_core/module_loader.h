@@ -16,18 +16,17 @@
 namespace bifrost {
 
 /// Load DLLs (modules) and query the state of the current module
+///
+/// All methods are thread-safe.
 class ModuleLoader {
  public:
   ModuleLoader();
   ~ModuleLoader();
 
-  /// Get singleton instance
-  static ModuleLoader& Get();
-
   /// Get module given by ``moduleName`` or throw std::runtime_error on error
   HMODULE GetModule(const std::string& moduleName);
   HMODULE GetModule(const std::wstring& moduleName);
-  
+
   /// Get the current module
   HMODULE GetCurrentModule();
 
@@ -42,7 +41,8 @@ class ModuleLoader {
     HMODULE Handle;
     bool Loaded;
   };
-  static std::unique_ptr<ModuleLoader> m_instance;
+
+  std::mutex m_mutex;
   std::unordered_map<std::string, Module> m_modules;
 };
 

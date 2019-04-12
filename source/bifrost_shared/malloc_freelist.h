@@ -177,7 +177,7 @@ class BIFROST_SHARED_API MallocFreeList {
  private:
   MallocFreeList(AllocNode* block, void* baseAddr);
 
-  // BlockIt 0 (this pointer offset)
+  // BlockIt 0 ("this" pointer offset)
 
   // BlockIt 1
   FreeList m_list;

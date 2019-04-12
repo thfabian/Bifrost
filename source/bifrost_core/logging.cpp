@@ -16,19 +16,10 @@
 
 namespace bifrost {
 
-std::unique_ptr<Logging> Logging::m_instance = nullptr;
-
 Logging::Logging() {
   m_buffer.resize(256);
   m_wbuffer.resize(256);
   m_module = ModuleLoader::Get().GetCurrentModuleName();
-}
-
-Logging& Logging::Get() {
-  if (!m_instance) {
-    m_instance = std::make_unique<Logging>();
-  }
-  return *m_instance;
 }
 
 void Logging::SetModuleName(const char* name) { m_module = name; }

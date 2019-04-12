@@ -13,11 +13,12 @@
 #include "bifrost_core/api_shared.h"
 #include "bifrost_core/module_loader.h"
 #include "bifrost_core/error.h"
+#include "bifrost_core/mutex.h"
 #include <sstream>
 
 #include "bifrost_shared/bifrost_shared.h"  // Only for declarations
 
-namespace bifrost::api {
+namespace bifrost {
 
 namespace {
 
@@ -133,7 +134,7 @@ static bfs_Value MakeByte(const void* data, u32 size) { return bfs_Value{BFS_BYT
 
 }  // namespace
 
-class Shared::bfs_Api {
+class ApiShared::bfs_Api {
  public:
   using bfs_Read_fn = decltype(&bfs_Read);
   bfs_Read_fn bfs_Read;
@@ -200,57 +201,50 @@ class Shared::bfs_Api {
   }
 };
 
-std::unique_ptr<Shared> Shared::m_instance = nullptr;
+ApiShared::ApiShared() { m_api = std::make_unique<bfs_Api>(); }
 
-Shared::Shared() { m_api = std::make_unique<bfs_Api>(); }
-
-Shared::~Shared() = default;
-
-Shared& Shared::Get() {
-  if (!m_instance) {
-    m_instance = std::make_unique<Shared>();
-  }
-  return *m_instance;
-}
+ApiShared::~ApiShared() = default;
 
 #define BIFROST_ASSERT_BFS_CALL(call, msg, ...)                                                                                                   \
   if (bfs_Status status = BFS_OK; (status = call) != BFS_OK) {                                                                                    \
     BIFROST_ASSERT_CALL_MSG(status == BFS_OK && BIFROST_STRINGIFY(call), StringFormat(msg ": %s", __VA_ARGS__, m_api->bfs_StatusString(status))); \
   }
 
-void* Shared::Alloc(u32 size) { return m_api->bfs_Malloc(size); }
+void* ApiShared::Alloc(u32 size) const { return m_api->bfs_Malloc(size); }
 
-void Shared::Deallocate(void* ptr) { m_api->bfs_Free(ptr); }
+void ApiShared::Deallocate(void* ptr) const { m_api->bfs_Free(ptr); }
 
-void Shared::Log(i32 level, const char* module, const char* message) {
+void ApiShared::Log(i32 level, const char* module, const char* message) const {
   if (bfs_Status status = BFS_OK; (status = m_api->bfs_Log(level, module, message)) != BFS_OK) {
     throw std::runtime_error(StringFormat("Failed to log message\"%s\": %s", message, m_api->bfs_StatusString(status)));
   }
 }
 
-void Shared::SetCallback(const char* name, Logging::LogCallbackT loggingCallback) {
+void ApiShared::SetCallback(const char* name, Logging::LogCallbackT loggingCallback) const {
   BIFROST_ASSERT_BFS_CALL(m_api->bfs_RegisterLogCallback(name, loggingCallback), "Failed to register callback \"%s\"", name);
 }
 
-void Shared::RemoveCallback(const char* name) { BIFROST_ASSERT_BFS_CALL(m_api->bfs_UnregisterLogCallback(name), "Failed to remove callback \"%s\"", name); }
+void ApiShared::RemoveCallback(const char* name) const {
+  BIFROST_ASSERT_BFS_CALL(m_api->bfs_UnregisterLogCallback(name), "Failed to remove callback \"%s\"", name);
+}
 
-void Shared::LogStateAsync(bool async) {
+void ApiShared::LogStateAsync(bool async) const {
   BIFROST_ASSERT_BFS_CALL(m_api->bfs_LogStateAsync(async), "Failed to set async state to \"%s\"", async ? "true" : "false");
 }
 
-const char* Shared::GetVersion() { return m_api->bfs_GetVersion(); }
+const char* ApiShared::GetVersion() const { return m_api->bfs_GetVersion(); }
 
-void Shared::Reset() { BIFROST_ASSERT_BFS_CALL(m_api->bfs_Reset(), "Failed to reset bifrost_shared"); }
+void ApiShared::Reset() const { BIFROST_ASSERT_BFS_CALL(m_api->bfs_Reset(), "Failed to reset bifrost_shared"); }
 
 #define BIFROST_READ_WRITE_IMPL(TypeName, Type)                                                                         \
-  Type Shared::Read##TypeName(const char* path) {                                                                       \
+  Type ApiShared::Read##TypeName(const char* path) const {                                                                 \
     bfs_Value value;                                                                                                    \
     if (bfs_Status status; (status = m_api->bfs_Read(path, &value)) != BFS_OK) {                                        \
       throw std::runtime_error(StringFormat("Failed to read path \"%s\": %s", path, m_api->bfs_StatusString(status)));  \
     }                                                                                                                   \
     return ConvertTo##TypeName(path, value);                                                                            \
   }                                                                                                                     \
-  Type Shared::Read##TypeName(const char* path, Type default) {                                                         \
+  Type ApiShared::Read##TypeName(const char* path, Type default) const {                                                   \
     bfs_Value value;                                                                                                    \
     if (bfs_Status status; (status = m_api->bfs_Read(path, &value)) != BFS_OK) {                                        \
       if (status == BFS_PATH_NOT_EXIST) return default;                                                                 \
@@ -258,14 +252,14 @@ void Shared::Reset() { BIFROST_ASSERT_BFS_CALL(m_api->bfs_Reset(), "Failed to re
     }                                                                                                                   \
     return ConvertTo##TypeName(path, value);                                                                            \
   }                                                                                                                     \
-  Type Shared::Read##TypeName##Atomic(const char* path) {                                                               \
+  Type ApiShared::Read##TypeName##Atomic(const char* path) const {                                                         \
     bfs_Value value;                                                                                                    \
     if (bfs_Status status; (status = m_api->bfs_ReadAtomic(path, &value)) != BFS_OK) {                                  \
       throw std::runtime_error(StringFormat("Failed to read path \"%s\": %s", path, m_api->bfs_StatusString(status)));  \
     }                                                                                                                   \
     return ConvertTo##TypeName(path, value);                                                                            \
   }                                                                                                                     \
-  void Shared::Write##TypeName(const char* path, Type value) {                                                          \
+  void ApiShared::Write##TypeName(const char* path, Type value) const {                                                    \
     if (bfs_Status status; (status = m_api->bfs_Write(path, &Make##TypeName(value))) != BFS_OK) {                       \
       throw std::runtime_error(StringFormat("Failed to write path \"%s\": %s", path, m_api->bfs_StatusString(status))); \
     }                                                                                                                   \

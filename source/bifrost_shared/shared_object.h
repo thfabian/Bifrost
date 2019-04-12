@@ -48,7 +48,8 @@ class SharedObject : NonCopyable {
   SharedLogStash* GetSharedLogStash();
 
  private:
-  static u32 s_refCount;
+  static std::mutex s_mutex;
+  static std::atomic<u32> s_refCount;
   static SharedObject* s_instance;
 
   SharedMemory* m_smem = nullptr;

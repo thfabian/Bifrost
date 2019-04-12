@@ -226,7 +226,7 @@ namespace args
     }
 
 #ifdef ARGS_NOEXCEPT
-    /// Error class, for when ARGS_NOEXCEPT is defined
+    /// ErrorStash class, for when ARGS_NOEXCEPT is defined
     enum class Error
     {
         None,
@@ -295,7 +295,7 @@ namespace args
             virtual ~MapError() {}
     };
 
-    /** Error that occurs when a singular flag is specified multiple times
+    /** ErrorStash that occurs when a singular flag is specified multiple times
      */
     class ExtraError : public ParseError
     {
@@ -1614,7 +1614,7 @@ namespace args
      * \endcode
      *
      * For ARGS_NOEXCEPT mode don't forget to check `s.GetError()` after `s.Parse()`
-     * and return if it isn't equals to args::Error::None.
+     * and return if it isn't equals to args::ErrorStash::None.
      *
      * \sa Command
      */

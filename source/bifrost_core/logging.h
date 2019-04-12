@@ -16,7 +16,7 @@
 
 namespace bifrost {
 
-/// Logger adapter
+/// Logger adapter using bifrost_shared.dll
 ///
 /// To make use of this Logger class, you are required to register your own logging callback via `SetCallback`.
 /// Use the macros `BIFROST_LOG_TRACE`, `BIFROST_LOG_INFO`, `BIFROST_LOG_WARN` and `BIFROST_LOG_ERROR` to perform the logging.
@@ -32,12 +32,7 @@ class Logging {
   };
 
   /// Initialize Logger object
-  ///
-  /// Load bifrost_shared.dll to connect to the internal log stash
   Logging();
-
-  /// Get singleton instance
-  static Logging& Get();
 
   typedef void (*LogCallbackT)(int, const char*, const char*);
 
@@ -65,7 +60,6 @@ class Logging {
   void Log(int level, const char* msg);
 
  private:
-  static std::unique_ptr<Logging> m_instance;
   std::string m_buffer;
   std::wstring m_wbuffer;
 

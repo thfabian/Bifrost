@@ -11,6 +11,7 @@
 
 #include "bifrost_shared/common.h"
 #include "bifrost_shared/malloc_freelist.h"
+#include "bifrost_core/mutex.h"
 
 namespace bifrost::shared {
 
@@ -66,7 +67,7 @@ void* MallocFreeList::Allocate(u64 size, void* base_addr) noexcept {
 
   if (size == 0) return ptr;
 
-  std::lock_guard<SpinMutex> lock(m_mutex);
+  BIFROST_LOCK_GUARD(m_mutex);
 
   // Always allocate in blocks
   size = AlignUp<BlockSize>(size);
@@ -102,7 +103,7 @@ void* MallocFreeList::Allocate(u64 size, void* base_addr) noexcept {
 void MallocFreeList::Deallocate(void* ptr, void* baseAddr) noexcept {
   if (!ptr) return;
 
-  std::lock_guard<SpinMutex> lock(m_mutex);
+  BIFROST_LOCK_GUARD(m_mutex);
 
   AllocNode* block = (AllocNode*)((u64)ptr - sizeof(AllocNode));
   bool blockAdded = false;

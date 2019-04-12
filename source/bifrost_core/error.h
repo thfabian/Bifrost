@@ -18,12 +18,9 @@
 namespace bifrost {
 
 /// Storage of last error message
-class Error {
+class ErrorStash {
  public:
-  Error();
-
-  /// Get singleton instance
-  static Error& Get();
+  ErrorStash();
 
   /// Get the explanation string of the last error (or NULL if no error occurred)
   const char* GetLastError() const noexcept;
@@ -32,7 +29,6 @@ class Error {
   void SetLastError(std::string msg);
 
  private:
-  static std::unique_ptr<Error> m_instance;
   std::string m_buffer;
 };
 

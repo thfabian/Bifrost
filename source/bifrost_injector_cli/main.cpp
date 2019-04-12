@@ -16,7 +16,6 @@
 #include "bifrost_injector/util.h"
 #include "bifrost_injector/injector.h"
 #include "bifrost_core/logging.h"
-#include "bifrost_core/api_shared.h"
 #include "bifrost_core/util.h"
 #include <iostream>
 #include <args.hxx>
@@ -29,10 +28,6 @@ int main(int argc, const char* argv[]) {
     // Extract the program name
     auto program = argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "injector";
     Error::Get().SetProgram(program);
-
-    // Reset the shared memory (first make sure we have ShareMemory allocated)
-    api::Shared::Get().WriteBool("__dummy__", true);
-    api::Shared::Get().Reset();
 
     // Setup logging
     Logger::Get().AddSinks({{"stderr", Logger::MakeStderrSink()}, {"file", Logger::MakeFileSink("injector.log.txt")}, {"mscv", Logger::MakeMsvcSink()}});
@@ -122,14 +117,11 @@ int main(int argc, const char* argv[]) {
     Injector injector(std::move(injectArgs));
     injector.InjectAndWait();
 
-    api::Shared::Get().Reset();
-
   } catch (std::runtime_error& e) {
     Error::Get().Critical(e.what());
   } catch (std::exception& e) {
     Error::Get().Critical("Unexpected error: %s", e.what());
   }
 
-  // Force shared memory to reset
   return 0;
 }
