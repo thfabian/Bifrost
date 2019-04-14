@@ -101,11 +101,12 @@ workspace "bifrost"
   project "bifrost_core"
     kind "StaticLib"
     includedirs { "source" }
-    pchheader "bifrost_core/common.h"
-    pchsource "source/bifrost_core/common.cpp"
     
-    files "source/bifrost_core/**"
-    removefiles "**_test.cpp"
+    pchheader "bifrost/core/common.h"
+    pchsource "source/bifrost/core/common.cpp"
+    
+    files "source/bifrost/core/**"
+    removefiles { "**_test.cpp", "**/test.*" }
     disablewarnings { "4267" }
 
     function bifrost_add_bifrost_core()
@@ -113,112 +114,112 @@ workspace "bifrost"
       links "bifrost_core"
     end
 
-  -- *** Shared ***
-  project "bifrost_shared"
-    kind "SharedLib"
-    defines { "BIFROST_SHARED_EXPORTS" }
-    includedirs { "source" }
-    disablewarnings { "4251", "4146", "4244" }
+--  -- *** Shared ***
+--  project "bifrost_shared"
+--    kind "SharedLib"
+--    defines { "BIFROST_SHARED_EXPORTS" }
+--    includedirs { "source" }
+--    disablewarnings { "4251", "4146", "4244" }
     
-    files "source/bifrost_shared/**" 
-    removefiles "**_test.cpp"
+--    files "source/bifrost/shared/**" 
+--    removefiles { "**_test.cpp", "**_test.h" }
     
-    pchheader "bifrost_shared/common.h"
-    pchsource "source/bifrost_shared/common.cpp"
+--    pchheader "bifrost/shared/common.h"
+--    pchsource "source/bifrost/shared/common.cpp"
     
-    bifrost_add_bifrost_core()
+--    bifrost_add_bifrost_core()
     
-    function bifrost_add_bifrost_shared()
-      includedirs "source"
-      links "bifrost_shared"
-    end
+--    function bifrost_add_bifrost_shared()
+--      includedirs "source"
+--      links "bifrost_shared"
+--    end
     
-  -- *** Loader ***
-  project "bifrost_loader"
-    kind "SharedLib"
-    defines { "BIFROST_LOADER_EXPORTS" }
-    includedirs { "source" }
+--  -- *** Loader ***
+--  project "bifrost_loader"
+--    kind "SharedLib"
+--    defines { "BIFROST_LOADER_EXPORTS" }
+--    includedirs { "source" }
     
-    files "source/bifrost_loader/**" 
-    removefiles "**_test.cpp"
+--    files "source/bifrost/loader/**" 
+--    removefiles { "**_test.cpp", "**_test.h" }
     
-    pchheader "bifrost_loader/common.h"
-    pchsource "source/bifrost_loader/common.cpp"
+--    pchheader "bifrost/loader/common.h"
+--    pchsource "source/bifrost/loader/common.cpp"
     
-    bifrost_add_bifrost_core()
+--    bifrost_add_bifrost_core()
     
-    function bifrost_add_bifrost_loader()
-      includedirs "source" 
-      links "bifrost_loader"
-    end
+--    function bifrost_add_bifrost_loader()
+--      includedirs "source" 
+--      links "bifrost_loader"
+--    end
     
-  -- *** Injector ***
-  project "bifrost_injector"
-    kind "SharedLib"
-    defines { "BIFROST_INJECTOR_EXPORTS" }
-    includedirs { "source" }
+--  -- *** Injector ***
+--  project "bifrost_injector"
+--    kind "SharedLib"
+--    defines { "BIFROST_INJECTOR_EXPORTS" }
+--    includedirs { "source" }
     
-    files "source/bifrost_injector/**"
-    removefiles "**_test.cpp"
+--    files "source/bifrost/injector/**"
+--    removefiles { "**_test.cpp", "**_test.h", "*/cli/*" }
 
-    pchheader "bifrost_injector/common.h"
-    pchsource "source/bifrost_injector/common.cpp"
+--    pchheader "bifrost/injector/common.h"
+--    pchsource "source/bifrost/injector/common.cpp"
     
-    bifrost_add_bifrost_core()
-    bifrost_add_external_spdlog()
+--    bifrost_add_bifrost_core()
+--    bifrost_add_external_spdlog()
     
-    dependson { "bifrost_shared", "bifrost_loader" }
+--    dependson { "bifrost_shared", "bifrost_loader" }
     
-    function bifrost_add_bifrost_injector()
-      includedirs "source" 
-      links "bifrost_injector"
-      bifrost_add_external_spdlog()
-    end
+--    function bifrost_add_bifrost_injector()
+--      includedirs "source" 
+--      links "bifrost_injector"
+--      bifrost_add_external_spdlog()
+--    end
     
-  project "bifrost_injector_cli"
-    kind "ConsoleApp"
-    files "source/bifrost_injector_cli/main.cpp"
-    targetname "bifrost-injector"
+--  project "bifrost_injector_cli"
+--    kind "ConsoleApp"
+--    files "source/bifrost/injector/cli/main.cpp"
+--    targetname "bifrost-injector"
     
-    bifrost_add_bifrost_injector()
-    bifrost_add_external_args()
+--    bifrost_add_bifrost_injector()
+--    bifrost_add_external_args()
 	
   -- *****
   -- *** Test ***
   -- *****
   
   -- *** Test Util ***
-  project "bifrost_test_util"
-    kind "StaticLib"
-    includedirs { "source" }
+--  project "bifrost_test_util"
+--    kind "StaticLib"
+--    includedirs { "source" }
     
-    files "source/bifrost_test_util/**" 
+--    pchheader "bifrost/test_util/common.h"
+--    pchsource "source/bifrost/test_util/common.cpp"
     
-    pchheader "bifrost_test_util/common.h"
-    pchsource "source/bifrost_test_util/common.cpp"
+--    files "source/bifrost/test_util/**" 
     
-    bifrost_add_bifrost_core()
-    bifrost_add_external_gtest()
+--    bifrost_add_bifrost_core()
+--    bifrost_add_external_gtest()
     
-    function bifrost_add_bifrost_test_util()
-      includedirs "source"
-      links "bifrost_test_util"
+--    function bifrost_add_bifrost_test_util()
+--      includedirs "source"
+--      links "bifrost_test_util"
       
-      bifrost_add_bifrost_core()
-      bifrost_add_external_gtest()
-    end
+--      bifrost_add_bifrost_core()
+--      bifrost_add_external_gtest()
+--    end
   
   -- *** Shared Test ***
-  project "bifrost_shared_test"
-    kind "ConsoleApp"
-    includedirs { "source" }
-    targetname "test-bifrost-shared"
-    disablewarnings { "4251", "4146" }
+--  project "bifrost_shared_test"
+--    kind "ConsoleApp"
+--    includedirs { "source" }
+--    targetname "test-bifrost-shared"
+--    disablewarnings { "4251", "4146" }
     
-    files "source/bifrost_shared/*_test.cpp"
+--    files "source/bifrost/shared/*_test.*"
 	
-    bifrost_add_bifrost_test_util()
-    bifrost_add_bifrost_shared()
+--    bifrost_add_bifrost_test_util()
+--    bifrost_add_bifrost_shared()
     
   -- *** Core Test ***
   project "bifrost_core_test"
@@ -226,9 +227,12 @@ workspace "bifrost"
     includedirs { "source" }
     targetname "test-bifrost-core"
     
-    files "source/bifrost_core/*_test.cpp"
+    pchheader "bifrost/core/test.h"
+    pchsource "source/bifrost/core/test.cpp"
+    
+    files { "source/bifrost/core/*_test.*", "source/bifrost/core/test.*" }
 	
-    bifrost_add_bifrost_test_util()
+    bifrost_add_external_gtest()
     bifrost_add_bifrost_core()
     
   -- *****
