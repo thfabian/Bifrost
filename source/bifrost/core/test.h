@@ -14,11 +14,12 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/context.h"
 #include "bifrost/core/ilogger.h"
+#include "bifrost/core/shared_memory.h"
 #include <gtest/gtest.h>
 
 namespace bifrost {
 
-class TestLogger : public ILogger {
+class TestLogger final : public ILogger {
  public:
   virtual void SetModule(const char* module) override;
 
@@ -30,6 +31,7 @@ class TestLogger : public ILogger {
   std::string m_module;
 };
 
+template <bool UseSharedMemory>
 class TestBase : public ::testing::Test {
  public:
   TestBase() { m_logger = std::make_unique<TestLogger>(); }
@@ -37,13 +39,30 @@ class TestBase : public ::testing::Test {
   void SetUp() override {
     m_context = std::make_unique<Context>();
     m_context->SetLogger(m_logger.get());
+
+    if (UseSharedMemory) {
+      m_memory = std::make_unique<SharedMemory>(m_context.get(), "bifrost::test::memory", 1 << 20);
+      m_context->SetSharedMemory(m_memory.get());
+    }
   }
-  void TearDown() override { m_context.reset(); }
+  void TearDown() override {
+    if (UseSharedMemory) {
+      m_memory.reset();
+    }
+    m_context.reset();
+  }
+
+  template <class T>
+  T* Resolve(Ptr<T> ptr) {
+    assert(UseSharedMemory);
+    return ptr.Resolve((void*)m_memory->GetBaseAddress());
+  }
 
   Context* GetContext() { return m_context.get(); }
 
  private:
   std::unique_ptr<ILogger> m_logger = nullptr;
+  std::unique_ptr<ISharedMemory> m_memory = nullptr;
   std::unique_ptr<Context> m_context = nullptr;
 };
 

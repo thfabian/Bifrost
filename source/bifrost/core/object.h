@@ -13,6 +13,7 @@
 
 #include "bifrost/core/context.h"
 #include "bifrost/core/ilogger.h"
+#include "bifrost/core/ishared_memory.h"
 
 namespace bifrost {
 
@@ -32,6 +33,10 @@ class Object {
   /// Get the logger
   inline ILogger& Logger() { return m_ctx->Logger(); }
   inline const ILogger& Logger() const { return m_ctx->Logger(); }
+
+  /// Get shared memory
+  inline ISharedMemory& SharedMemory() { return m_ctx->SharedMemory(); }
+  inline const ISharedMemory& SharedMemory() const { return m_ctx->SharedMemory(); }
 
  private:
   Context* m_ctx;

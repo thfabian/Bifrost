@@ -19,7 +19,7 @@ namespace bifrost {
 /// Load DLLs (modules) and query the state of the current module
 ///
 /// All methods are thread-safe.
-class ModuleLoader : public Object {
+class ModuleLoader final: public Object {
  public:
   ModuleLoader(Context* ctx);
   ~ModuleLoader();

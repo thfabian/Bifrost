@@ -86,11 +86,13 @@ inline void CheckCall(Object* obj, bool cond, std::string_view msg, const char* 
   ::bifrost::internal::CheckCall<throwOnError, hasCustomMsg, isWinApi>(obj, cond, msg, BIFROST_STRINGIFY(cond), __FILE__, __LINE__)
 #endif
 
+/// Check that the condition is true and throw an exception on error (this function needs to be called inside an bifrost::Object)
 #define BIFROST_ASSERT_CALL(cond) BIFROST_CALL_IMPL(this, cond, true, false, false, std::string_view{})
 #define BIFROST_ASSERT_CALL_MSG(cond, msg) BIFROST_CALL_IMPL(this, cond, true, true, false, msg)
 #define BIFROST_ASSERT_WIN_CALL(cond) BIFROST_CALL_IMPL(this, cond, true, false, true, std::string_view{})
 #define BIFROST_ASSERT_WIN_CALL_MSG(cond, msg) BIFROST_CALL_IMPL(this, cond, true, true, true, msg)
 
+/// Check that the condition is true and issue a warning in case of an errorr (this function needs to be called inside an bifrost::Object)
 #define BIFROST_CHECK_CALL(cond) BIFROST_CALL_IMPL(this, cond, false, false, false, std::string_view{})
 #define BIFROST_CHECK_CALL_MSG(cond, msg) BIFROST_CALL_IMPL(this, cond, false, true, false, msg)
 #define BIFROST_CHECK_WIN_CALL(cond) BIFROST_CALL_IMPL(this, cond, false, false, true, std::string_view{})

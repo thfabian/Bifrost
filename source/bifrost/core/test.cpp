@@ -30,28 +30,33 @@ void TestLogger::Sink(LogLevel level, const char* msg) {
 
   auto timeStr = StringFormat("%02i:%02i:%02i.%03i", localTime->tm_hour, localTime->tm_min, localTime->tm_sec, tm_ms.count());
 
-  std::cout << "[" << timeStr << "]";
+  std::stringstream ss;
+  ss << "[" << timeStr << "]";
 
   switch (level) {
     case ILogger::LogLevel::Debug:
-      std::cout << " [DEBUG]";
+      ss << " [DEBUG]";
       break;
     case ILogger::LogLevel::Info:
-      std::cout << " [INFO]";
+      ss << " [INFO]";
       break;
     case ILogger::LogLevel::Warn:
-      std::cout << " [WARN]";
+      ss << " [WARN]";
       break;
     case ILogger::LogLevel::Error:
-      std::cout << " [ERROR]";
+      ss << " [ERROR]";
       break;
   }
 
   auto moduleStr = std::string_view(m_module);
   if (!moduleStr.empty()) {
-    std::cout << " [" << moduleStr << "]";
+    ss << " [" << moduleStr << "]";
   }
-  std::cout << ": " << msg << std::endl;
+  ss << ": " << msg << std::endl;
+
+  auto outMsg = ss.str();
+  std::cerr << outMsg;
+  ::OutputDebugStringA(outMsg.c_str());
 }
 
 void TestLogger::SetModule(const char* module) {

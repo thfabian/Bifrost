@@ -11,10 +11,16 @@
 
 #pragma once
 
-#include "bifrost/shared/bifrost_shared.h"
-#include "bifrost/shared/common.h"
+#include "bifrost/core/common.h"
+#include "bifrost/core/type.h"
 
-namespace bifrost::shared {
+namespace bifrost {
+
+namespace internal {
+
+std::ostream& StreamOffset(std::ostream& os, u64 offset) noexcept;
+
+}
 
 /// Pointer represented as an offset from a base address
 template <class T>
@@ -86,10 +92,4 @@ class Ptr {
   u64 m_offsetInBytes;
 };
 
-namespace internal {
-
-BIFROST_SHARED_API std::ostream& StreamOffset(std::ostream& os, u64 offset) noexcept;
-
-}
-
-}  // namespace bifrost::shared
+}  // namespace bifrost

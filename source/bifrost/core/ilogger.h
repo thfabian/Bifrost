@@ -18,6 +18,8 @@ namespace bifrost {
 /// Logger interface
 class ILogger {
  public:
+  virtual ~ILogger() {}
+
   enum class LogLevel : int { Debug = 0, Info, Warn, Error, Disable };
 
   /// Log message at debug level
@@ -68,7 +70,6 @@ class ILogger {
     Sink(LogLevel::Error, WStringToString(StringFormat(fmt, std::forward<Args>(args)...)).c_str());
   }
 
- public:
   /// Set the current module
   virtual void SetModule(const char* module) = 0;
 

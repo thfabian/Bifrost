@@ -16,25 +16,28 @@
 namespace bifrost {
 
 class ILogger;
+class ISharedMemory;
 
 /// Context object holding all persistent data
 class Context {
  public:
   /// Get the logger
-  inline ILogger& Logger() {
-    assert(m_logger);
-    return *m_logger;
-  }
-  inline const ILogger& Logger() const {
-    assert(m_logger);
-    return *m_logger;
-  }
+  inline ILogger& Logger() { return *m_logger; }
+  inline const ILogger& Logger() const { return *m_logger; }
 
   /// Set the logger
   inline void SetLogger(ILogger* logger) { m_logger = logger; }
 
+  /// Get the shared memory
+  inline ISharedMemory& SharedMemory() { return *m_memory; }
+  inline const ISharedMemory& SharedMemory() const { return *m_memory; }
+
+  /// Set the logger
+  inline void SetSharedMemory(ISharedMemory* memory) { m_memory = memory; }
+
  private:
   ILogger* m_logger;
+  ISharedMemory* m_memory;
 };
 
 }  // namespace bifrost

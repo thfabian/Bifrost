@@ -9,13 +9,12 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/shared/ptr.h"
-#include <gtest/gtest.h>
+#include "bifrost/core/test.h"
+#include "bifrost/core/ptr.h"
 
 namespace {
 
 using namespace bifrost;
-using namespace bifrost::shared;
 
 TEST(PtrTest, Comparison) {
   Ptr<i32> p0;

@@ -16,7 +16,7 @@ namespace {
 
 using namespace bifrost;
 
-class ModuleLoaderTest : public TestBase {};
+class ModuleLoaderTest : public TestBase<false> {};
 
 TEST_F(ModuleLoaderTest, Loader) {
   ModuleLoader loader(GetContext());
