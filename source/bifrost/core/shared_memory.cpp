@@ -17,7 +17,7 @@
 namespace bifrost {
 
 SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) : m_name(std::move(name)), m_dataSizeInBytes(dataSizeInBytes), m_ctx(ctx) {
-  m_ctx->Logger().DebugFormat("Trying to allocating shared memory \"%s\" (size = %lu)", GetName(), m_dataSizeInBytes);
+  m_ctx->Logger().DebugFormat("Trying to allocating shared memory \"%s\" (size = %lu) ...", GetName(), m_dataSizeInBytes);
 
   // Check if the file already exists
   m_handle = ::CreateFileMappingA(INVALID_HANDLE_VALUE,  // use paging file
@@ -70,7 +70,7 @@ SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) 
 }
 
 SharedMemory::~SharedMemory() {
-  m_ctx->Logger().DebugFormat("Deallocating shared memory \"%s\"", GetName());
+  m_ctx->Logger().DebugFormat("Deallocating shared memory \"%s\" ...", GetName());
 
   if (::UnmapViewOfFile(m_startAddress) == 0) {
     m_ctx->Logger().WarnFormat("Failed to unmap shared memory \"%s\": %s", GetName(), GetLastWin32Error().c_str());

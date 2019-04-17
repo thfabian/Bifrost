@@ -28,7 +28,7 @@ ModuleLoader::ModuleLoader(Context* ctx) : Object(ctx) {}
 ModuleLoader::~ModuleLoader() {
   for (const auto& m : m_modules) {
     if (m.second.Loaded) {
-      Logger().DebugFormat("Unloading library '%s' ...", m.first.c_str());
+      Logger().DebugFormat("Unloading library '%s'", m.first.c_str());
       BIFROST_CHECK_WIN_CALL(::FreeLibrary(m.second.Handle) != 0);
     }
   }
@@ -43,7 +43,7 @@ HMODULE ModuleLoader::GetModule(const std::string& moduleName) {
   bool loaded = false;
   HMODULE hmodule = ::GetModuleHandleA(moduleName.c_str());
   if (hmodule == NULL) {
-    Logger().DebugFormat("Loading library '%s' ...", moduleName.c_str());
+    Logger().DebugFormat("Loading library '%s'", moduleName.c_str());
     BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryA(moduleName.c_str())) != NULL, "Failed to load module: '" + moduleName + "'");
     loaded = true;
   }
@@ -62,7 +62,7 @@ HMODULE ModuleLoader::GetModule(const std::wstring& moduleName) {
   bool loaded = false;
   HMODULE hmodule = ::GetModuleHandleW(moduleName.c_str());
   if (hmodule == NULL) {
-    Logger().DebugFormat(L"Loading library '%s' ...", moduleName.c_str());
+    Logger().DebugFormat(L"Loading library '%s'", moduleName.c_str());
     BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryW(moduleName.c_str())) != NULL, "Failed to load module: '" + str + "'");
     loaded = true;
   }

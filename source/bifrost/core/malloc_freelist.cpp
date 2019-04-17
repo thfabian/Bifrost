@@ -42,9 +42,9 @@ MallocFreeList* MallocFreeList::Create(void* startAddress, u64 numBytes) {
   static_assert((sizeof(MallocFreeList) & (MallocFreeList::BlockSize - 1)) == 0, "MallocFreeList not blocked aligned");
 
   MallocFreeList* this_ptr = (MallocFreeList*)curStartAddress;
-  u64 this_ptr_offset_from_start_in_bytes = (u64)curStartAddress - (u64)startAddress;
+  u64 thisPtrOffsetFromStartInBytes = (u64)curStartAddress - (u64)startAddress;
 
-  std::memcpy(startAddress, &this_ptr_offset_from_start_in_bytes, sizeof(u64));
+  std::memcpy(startAddress, &thisPtrOffsetFromStartInBytes, sizeof(u64));
   curStartAddress += sizeof(MallocFreeList);
   curNumBytes -= sizeof(MallocFreeList);
 

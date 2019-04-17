@@ -25,6 +25,7 @@ inline Ptr<T> NewArray(ISharedMemory* mem, u64 len, ArgsT&&... args) {
   for (u64 i = 0; i < len; ++i) {
     ::new (ptr + i) T(std::forward<ArgsT>(args)...);
   }
+
   return Ptr<T>(mem->Offset(static_cast<void*>(ptr)));
 }
 template <class T, class... ArgsT>
@@ -32,7 +33,7 @@ inline Ptr<T> NewArray(Context* ctx, u64 len, ArgsT&&... args) {
   return NewArray<T>(&ctx->SharedMemory(), len, std::forward<ArgsT>(args)...);
 };
 template <class T, class... ArgsT>
-inline Ptr<T> New(Object* obj, u64 len, ArgsT&&... args) {
+inline Ptr<T> NewArray(Object* obj, u64 len, ArgsT&&... args) {
   return NewArray<T>(&obj->GetContext(), len, std::forward<ArgsT>(args)...);
 }
 
@@ -56,7 +57,7 @@ inline void Delete(ISharedMemory* mem, Ptr<T> ptr) {
   DeleteArray(mem, ptr, 1);
 }
 template <class T>
-inline void Delete(Context* mem, Ptr<T> ptr) {
+inline void Delete(Context* ctx, Ptr<T> ptr) {
   Delete(&ctx->SharedMemory(), ptr);
 }
 template <class T>
@@ -68,13 +69,14 @@ inline void Delete(Object* obj, Ptr<T> ptr) {
 template <class T>
 inline void DeleteArray(ISharedMemory* mem, Ptr<T> ptr, u64 len) {
   for (u64 i = 0; i < len; ++i) {
-    auto ptrV = ptr->Resolve(mem->GetBaseAddress());
-    ptrV->~T();
-    mem->Deallocate(ptrV);
+    auto ptrV = ptr.Resolve((void*)mem->GetBaseAddress());
+    (ptrV + i)->~T();
   }
+  auto ptrV = ptr.Resolve((void*)mem->GetBaseAddress());
+  mem->Deallocate((void*)ptrV);
 }
 template <class T>
-inline void DeleteArray(Context* mem, Ptr<T> ptr, u64 len) {
+inline void DeleteArray(Context* ctx, Ptr<T> ptr, u64 len) {
   DeleteArray(&ctx->SharedMemory(), ptr, len);
 }
 template <class T>

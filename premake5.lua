@@ -107,7 +107,7 @@ workspace "bifrost"
     
     files "source/bifrost/core/**"
     removefiles { "**_test.cpp", "**/test.*" }
-    disablewarnings { "4267" }
+    disablewarnings { "4267", "4146" }
 
     function bifrost_add_bifrost_core()
       includedirs "source" 

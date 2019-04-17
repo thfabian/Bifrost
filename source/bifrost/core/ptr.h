@@ -52,7 +52,7 @@ class Ptr {
 
   /// Resolve the offset to recover the pointer
   inline T* Resolve(void* base_address) noexcept { return (T*)(u64(base_address) + m_offsetInBytes); }
-  inline const T* Resolve(void* base_address) const noexcept { return (T*)(u64(base_address) + m_offsetInBytes); }
+  inline T* Resolve(const void* base_address) const noexcept { return (T*)(u64(base_address) + m_offsetInBytes); }
 
   /// Get the offset in bytes
   inline u64 Offset() const noexcept { return m_offsetInBytes; }

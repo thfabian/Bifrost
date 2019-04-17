@@ -14,6 +14,7 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/object.h"
 #include "bifrost/core/ptr.h"
+#include "bifrost/core/new.h"
 
 namespace bifrost {
 
@@ -21,31 +22,141 @@ namespace bifrost {
 template <class KeyT, class ValueT>
 class SMHashMap final : public Object {
  public:
-  static constexpr u64 InitialSize = 256;
-  static constexpr u64 MaxChainLength = 8;
+  static constexpr u32 MaxChainLength = 8;
+  static constexpr i32 Invalid = -1;
 
   struct Node {
     KeyT Key;
-    bool InUse;
-    ValueT Data;
+    ValueT Value;
+  };
+  struct InternalNode {
+    Node Node;
+    bool InUse = false;
   };
 
   /// Create an empty hash map
-  SMHashMap();
-  ~SMHashMap();
+  SMHashMap(Context* ctx, u32 initialCapacity = 16) : Object(ctx) {
+    m_capacity = initialCapacity;
+    m_size = 0;
+    m_data = NewArray<InternalNode>(this, m_capacity);
+  }
+
+  ~SMHashMap() { DeleteArray(this, m_data, m_capacity); }
+
+  /// Get the value of element with key ``k`` or NULL if no such key exists
+  const ValueT* Get(const KeyT& k) const {
+    i32 idx = HashKey(k);
+
+    // Linear probing
+    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    for (u32 i = 0; i < MaxChainLength; i++) {
+      if (data[idx].InUse && data[idx].Node.Key == k) return &data[idx].Node.Value;
+      idx = (idx + 1) % m_capacity;
+    }
+    return nullptr;
+  }
+
+  /// Insert the element with key ``k`` and value ``v``
+  Node* Insert(const KeyT& k, ValueT v) {
+    i32 index = Hash(k);
+    while (index == Invalid) {
+      Rehash();
+      index = Hash(k);
+    }
+
+    // Set the data
+    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    data[index].Node.Key = k;
+    data[index].Node.Value = std::move(v);
+    data[index].InUse = true;
+    m_size += 1;
+
+    return &data[index].Node;
+  }
+
+  /// Remove the key ``k``
+  void Remove(const KeyT& k) {
+    i32 idx = HashKey(k);
+
+    // Linear probing
+    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    for (u32 i = 0; i < MaxChainLength; i++) {
+      if (data[idx].InUse && data[idx].Node.Key == k) {
+        data[idx].InUse = false;
+        --m_size;
+        return;
+      }
+      idx = (idx + 1) % m_capacity;
+    }
+  }
+
+  /// Get the size of the map
+  u32 Size() const { return m_size; }
+
+  /// Get the capacity of the map
+  u32 Capacity() const { return m_capacity; }
 
  private:
-  u32 m_tableSize;
+  i32 Hash(const KeyT& key) const {
+    if (m_size >= (m_capacity / 2)) return Invalid;
+
+    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+
+    // Find the best index
+    i32 idx = HashKey(key);
+
+    // Linear probing
+    for (u32 i = 0; i < MaxChainLength; i++) {
+      if (!data[idx].InUse) return idx;
+      if (data[idx].InUse && data[idx].Node.Key == key) return idx;
+      idx = (idx + 1) % m_capacity;
+    }
+
+    return Invalid;
+  }
+
+  i32 HashKey(const KeyT& key) const {
+    auto hasher = std::hash<KeyT>();
+    std::size_t hash = hasher(key);
+
+    // Robert Jenkins' 32 bit Mix Function
+    hash += (hash << 12);
+    hash ^= (hash >> 22);
+    hash += (hash << 4);
+    hash ^= (hash >> 9);
+    hash += (hash << 10);
+    hash ^= (hash >> 2);
+    hash += (hash << 7);
+    hash ^= (hash >> 12);
+
+    // Knuth's Multiplicative Method
+    hash = (hash >> 3) * 2654435761;
+    return hash % m_capacity;
+  }
+
+  void Rehash() {
+    // Update the array
+    auto oldData = m_data;
+    m_data = NewArray<InternalNode>(this, 2 * m_capacity);
+
+    // Update the size
+    u32 oldTableSize = m_capacity;
+    m_capacity = 2 * m_capacity;
+    m_size = 0;
+
+    // Rehash the elements
+    InternalNode* oldDataP = oldData.Resolve(SharedMemory().GetBaseAddress());
+    for (u32 i = 0; i < oldTableSize; i++) {
+      if (!oldDataP[i].InUse) continue;
+      Insert(oldDataP[i].Node.Key, std::move(oldDataP[i].Node.Value));
+    }
+    DeleteArray(this, oldData, oldTableSize);
+  }
+
+ private:
+  Ptr<InternalNode> m_data;
+  u32 m_capacity;
   u32 m_size;
-  Ptr<Node> m_data;
 };
-
-template <class KeyT, class ValueT>
-SMHashMap<KeyT, ValueT>::SMHashMap() {
-  m_data = New<Node>(this, InitialSize);
-}
-
-template <class KeyT, class ValueT>
-SMHashMap<KeyT, ValueT>::~SMHashMap() {}
 
 }  // namespace bifrost

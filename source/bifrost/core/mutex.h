@@ -44,6 +44,14 @@ class SpinMutex {
 
 #pragma pack(pop)
 
+/// Pass-through implementation 
+class NullLock {
+ public:
+  inline void lock() noexcept {}
+  inline void unlock() noexcept {}
+  inline bool try_lock() noexcept { return true; }
+};
+
 }  // namespace bifrost
 
 /// RAII construct to lock/unlock the `mutex`
