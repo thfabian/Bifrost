@@ -47,13 +47,13 @@ class SMString final : public Object {
 
   /// Get a view of the data
   std::string_view AsView() const {
-    char* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    char* data = Resolve(m_data);
     return std::string_view{data, m_size};
   }
 
   /// Get a copy of the data
   std::string AsString() const {
-    char* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    char* data = Resolve(m_data);
     return std::string{data, m_size};
   }
 
@@ -77,7 +77,7 @@ class SMString final : public Object {
 
   void Copy(std::string_view s) {
     assert(m_size >= s.size());
-    char* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    char* data = Resolve(m_data);
     std::memcpy(data, s.data(), s.size());
     m_size = static_cast<u32>(s.size());
   }

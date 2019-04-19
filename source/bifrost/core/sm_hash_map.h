@@ -43,12 +43,12 @@ class SMHashMap final : public Object {
 
   ~SMHashMap() { DeleteArray(this, m_data, m_capacity); }
 
-  /// Get the value of element with key ``k`` or NULL if no such key exists
+  /// Get the value of element with key `k` or NULL if no such key exists
   const ValueT* Get(const KeyT& k) const {
     i32 idx = HashKey(k);
 
     // Linear probing
-    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    InternalNode* data = Resolve(m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
       if (data[idx].InUse && data[idx].Node.Key == k) return &data[idx].Node.Value;
       idx = (idx + 1) % m_capacity;
@@ -65,7 +65,7 @@ class SMHashMap final : public Object {
     }
 
     // Set the data
-    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    InternalNode* data = Resolve(m_data);
     data[index].Node.Key = k;
     data[index].Node.Value = std::move(v);
     data[index].InUse = true;
@@ -74,12 +74,12 @@ class SMHashMap final : public Object {
     return &data[index].Node;
   }
 
-  /// Remove the key ``k``
+  /// Remove the key `k`
   void Remove(const KeyT& k) {
     i32 idx = HashKey(k);
 
     // Linear probing
-    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    InternalNode* data = Resolve(m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
       if (data[idx].InUse && data[idx].Node.Key == k) {
         data[idx].InUse = false;
@@ -100,7 +100,7 @@ class SMHashMap final : public Object {
   i32 Hash(const KeyT& key) const {
     if (m_size >= (m_capacity / 2)) return Invalid;
 
-    InternalNode* data = m_data.Resolve(SharedMemory().GetBaseAddress());
+    InternalNode* data = Resolve(m_data);
 
     // Find the best index
     i32 idx = HashKey(key);
@@ -145,7 +145,7 @@ class SMHashMap final : public Object {
     m_size = 0;
 
     // Rehash the elements
-    InternalNode* oldDataP = oldData.Resolve(SharedMemory().GetBaseAddress());
+    InternalNode* oldDataP = Resolve(oldData);
     for (u32 i = 0; i < oldTableSize; i++) {
       if (!oldDataP[i].InUse) continue;
       Insert(oldDataP[i].Node.Key, std::move(oldDataP[i].Node.Value));

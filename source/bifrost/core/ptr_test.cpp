@@ -22,12 +22,11 @@ TEST(PtrTest, Comparison) {
   Ptr<i32> p2(2);
   Ptr<i32> p1_clone = p1;
 
-  EXPECT_EQ(0, p0.Offset());
+  EXPECT_TRUE(p0.IsNull());
   EXPECT_EQ(1, p1.Offset());
   EXPECT_EQ(2, p2.Offset());
 
   void* base_addr = (void*)100;
-  EXPECT_EQ(100, (u64)p0.Resolve(base_addr));
   EXPECT_EQ(101, (u64)p1.Resolve(base_addr));
   EXPECT_EQ(102, (u64)p2.Resolve(base_addr));
 

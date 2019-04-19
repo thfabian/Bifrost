@@ -12,6 +12,7 @@
 #pragma once
 
 #include "bifrost/core/common.h"
+#include "bifrost/core/macros.h"
 #include "bifrost/core/type.h"
 
 namespace bifrost {
@@ -31,7 +32,7 @@ inline std::unique_ptr<CharT> StringCopy(const std::basic_string<CharT, TraitsT,
 template <class... Args>
 inline void StringFormat(std::string& str, const char* fmt, Args&&... args) {
   if (str.empty()) str.resize(std::strlen(fmt) * 2);
-  assert(str.size() > 0);
+  if (str.size() == 0) return;
 
   i32 size = 0;
   while ((size = std::snprintf(str.data(), str.size(), fmt, std::forward<Args>(args)...)) < 0 || size >= str.size()) {
@@ -52,7 +53,7 @@ inline std::string StringFormat(const char* fmt, Args&&... args) {
 template <class... Args>
 inline void WStringFormat(std::wstring& str, const wchar_t* fmt, Args&&... args) {
   if (str.empty()) str.resize(std::wcslen(fmt) * 2);
-  assert(str.size() > 0);
+  if (str.size() == 0) return;
 
   i32 size = 0;
   while ((size = _snwprintf(str.data(), str.size(), fmt, std::forward<Args>(args)...)) < 0 || size >= str.size()) {

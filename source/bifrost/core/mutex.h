@@ -45,7 +45,7 @@ class SpinMutex {
 #pragma pack(pop)
 
 /// Pass-through implementation 
-class NullLock {
+class NullMutex {
  public:
   inline void lock() noexcept {}
   inline void unlock() noexcept {}

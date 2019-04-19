@@ -21,9 +21,9 @@ static void Dump(FreeList& free_list, void* base_addr) noexcept {
   free_list.ForeachHeadToTail(
       [&index, base_addr](Ptr<FreeListNode> node) -> bool {
         AllocNode* n = (AllocNode*)node.Resolve(base_addr);
-        std::cout << "[Node " << index << "] " << (node.Offset()) << "\n";
-        std::cout << "  Next = " << (n->Node.Next.Offset() == 0 ? "NULL" : std::to_string(n->Node.Next.Offset())) << "\n";
-        std::cout << "  Prev = " << (n->Node.Prev.Offset() == 0 ? "NULL" : std::to_string(n->Node.Prev.Offset())) << "\n";
+        std::cout << "[Node " << index << "] " << (node.IsNull() ? "NULL" : std::to_string(node.Offset())) << "\n";
+        std::cout << "  Next = " << (n->Node.Next.IsNull() ? "NULL" : std::to_string(n->Node.Next.Offset())) << "\n";
+        std::cout << "  Prev = " << (n->Node.Prev.IsNull() ? "NULL" : std::to_string(n->Node.Prev.Offset())) << "\n";
         std::cout << "  Size = " << n->Size << "\n";
         index += 1;
         return true;
@@ -38,6 +38,7 @@ TEST(MallocFreelistTest, Allocate128) {
 
   MallocFreeList* freelist = MallocFreeList::Create(start_address, num_bytes);
   ASSERT_EQ((u64)freelist - (u64)start_address, *((u64*)start_address));
+
   ASSERT_EQ(1, freelist->GetFreeList().Size(start_address));
   u64 free_bytes_after_construction = freelist->GetNumFreeBytes(start_address);
 
@@ -150,6 +151,7 @@ TEST(MallocFreelistTest, Defragmentation) {
     AllocNode* alloc_node = (AllocNode*)((u64)ptr - sizeof(AllocNode));
     EXPECT_EQ(block_size, alloc_node->Size);
   }
+
 
   ASSERT_EQ(1, freelist->GetFreeList().Size(start_address));
   EXPECT_EQ(0, ((AllocNode*)freelist->GetFreeList().GetHead().Resolve(start_address))->Size);

@@ -54,7 +54,7 @@ class TestBase : public ::testing::Test {
 
   template <class T>
   T* Resolve(Ptr<T> ptr) {
-    assert(UseSharedMemory);
+    BIFROST_ASSERT(UseSharedMemory);
     return ptr.Resolve((void*)m_memory->GetBaseAddress());
   }
 

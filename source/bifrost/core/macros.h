@@ -13,5 +13,18 @@
 
 #define BIFROST_STRINGIFY_IMPL(x) #x
 
-/// Convert ``x`` to a string constant
+/// Convert `x` to a string constant
 #define BIFROST_STRINGIFY(x) BIFROST_STRINGIFY_IMPL(x)
+
+/// Assert macro
+#ifdef NDEBUG
+#define BIFROST_ASSERT(expression) assert(expression)
+#else
+#define BIFROST_ASSERT(expression)                 \
+  {                                                \
+    if (!(expression)) {                           \
+      if (::IsDebuggerPresent()) ::__debugbreak(); \
+      assert(expression);                          \
+    }                                              \
+  }
+#endif

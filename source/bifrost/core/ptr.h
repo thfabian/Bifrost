@@ -12,6 +12,7 @@
 #pragma once
 
 #include "bifrost/core/common.h"
+#include "bifrost/core/macros.h"
 #include "bifrost/core/type.h"
 
 namespace bifrost {
@@ -25,8 +26,11 @@ std::ostream& StreamOffset(std::ostream& os, u64 offset) noexcept;
 /// Pointer represented as an offset from a base address
 template <class T>
 class Ptr {
+  static constexpr u64 Invalid = std::numeric_limits<u64>::max();
+
  public:
-  inline Ptr() : m_offsetInBytes(0) {}
+
+  inline Ptr() : m_offsetInBytes(Invalid) {}
 
   inline Ptr(const Ptr<T>& other) = default;
   inline Ptr(Ptr<T>&&) = default;
@@ -44,6 +48,9 @@ class Ptr {
     return *this;
   }
 
+  /// Check if the pointer is null (i.e unassigned)
+  bool IsNull() const { return m_offsetInBytes == Invalid; }
+
   /// Cast to `U`
   template <class U>
   inline Ptr<U> Cast() const noexcept {
@@ -51,8 +58,14 @@ class Ptr {
   }
 
   /// Resolve the offset to recover the pointer
-  inline T* Resolve(void* base_address) noexcept { return (T*)(u64(base_address) + m_offsetInBytes); }
-  inline T* Resolve(const void* base_address) const noexcept { return (T*)(u64(base_address) + m_offsetInBytes); }
+  inline T* Resolve(void* base_address) noexcept {
+    BIFROST_ASSERT(!IsNull());
+    return (T*)(u64(base_address) + m_offsetInBytes);
+  }
+  inline T* Resolve(const void* base_address) const noexcept {
+    BIFROST_ASSERT(!IsNull());
+    return (T*)(u64(base_address) + m_offsetInBytes);
+  }
 
   /// Get the offset in bytes
   inline u64 Offset() const noexcept { return m_offsetInBytes; }

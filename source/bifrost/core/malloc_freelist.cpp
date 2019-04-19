@@ -33,10 +33,10 @@ MallocFreeList* MallocFreeList::Create(void* startAddress, u64 numBytes) {
 
   curNumBytes -= offsetFromStart;
   curStartAddress += offsetFromStart;
-  assert(((u64)curStartAddress & (MallocFreeList::BlockSize - 1)) == 0 && "start address of MallocFreeList not block aligned");
+  BIFROST_ASSERT(((u64)curStartAddress & (MallocFreeList::BlockSize - 1)) == 0 && "start address of MallocFreeList not block aligned");
 
   curNumBytes -= curNumBytes % MallocFreeList::BlockSize;
-  assert(curNumBytes % MallocFreeList::BlockSize == 0 && "invalid size");
+  BIFROST_ASSERT(curNumBytes % MallocFreeList::BlockSize == 0 && "invalid size");
 
   // Allocate space for MallocFreeList
   static_assert((sizeof(MallocFreeList) & (MallocFreeList::BlockSize - 1)) == 0, "MallocFreeList not blocked aligned");
@@ -52,8 +52,7 @@ MallocFreeList* MallocFreeList::Create(void* startAddress, u64 numBytes) {
   assert(((u64)curStartAddress & (MallocFreeList::BlockSize - 1)) == 0 && "start address of first block not block aligned");
 
   AllocNode* first_block = (AllocNode*)curStartAddress;
-  std::memset(first_block, 0, sizeof(AllocNode));
-
+  ::new (first_block) AllocNode();
   first_block->Size = curNumBytes - sizeof(AllocNode);
 
   // Construct MallocFreeList

@@ -67,7 +67,7 @@ inline void CheckCall(Object* obj, bool cond, std::string_view msg, const char* 
     if (ThrowOnError) {
 #ifndef NDEBUG
       ::OutputDebugStringA(fmtMsg.c_str());
-      if (::IsDebuggerPresent()) __debugbreak();
+      if (::IsDebuggerPresent()) ::__debugbreak();
 #endif
       throw std::runtime_error(fmtMsg.c_str());
     }

@@ -47,8 +47,8 @@ class FreeList {
 
     m_head = node;
     m_head.Resolve(baseAddr)->Prev = oldHead;
-    if (oldHead.Offset() != 0) oldHead.Resolve(baseAddr)->Next = m_head;
-    if (m_tail.Offset() == 0) m_tail = m_head;
+    if (!oldHead.IsNull()) oldHead.Resolve(baseAddr)->Next = m_head;
+    if (m_tail.IsNull()) m_tail = m_head;
   }
 
   /// Make `node` the new tail
@@ -57,8 +57,8 @@ class FreeList {
 
     m_tail = node;
     m_tail.Resolve(baseAddr)->Next = old_tail;
-    if (old_tail.Offset() != 0) old_tail.Resolve(baseAddr)->Prev = m_tail;
-    if (m_head.Offset() == 0) m_head = m_tail;
+    if (!old_tail.IsNull()) old_tail.Resolve(baseAddr)->Prev = m_tail;
+    if (m_head.IsNull()) m_head = m_tail;
   }
 
   /// Insert `node` after pos
@@ -118,7 +118,7 @@ class FreeList {
   /// Return `false` to stop iteration, `true` to continue
   template <class FunctorT>
   inline void ForeachHeadToTail(FunctorT&& functor, void* baseAddr) {
-    for (Ptr<FreeListNode> curNode = m_head; curNode != Ptr<FreeListNode>(); curNode = curNode.Resolve(baseAddr)->Prev) {
+    for (Ptr<FreeListNode> curNode = m_head; !curNode.IsNull(); curNode = curNode.Resolve(baseAddr)->Prev) {
       if (!functor(curNode)) break;
     }
   }
@@ -128,7 +128,7 @@ class FreeList {
   /// Return `false` to stop iteration, `true` to continue
   template <class FunctorT>
   inline void ForeachTailToHead(FunctorT&& functor, void* baseAddr) {
-    for (Ptr<FreeListNode> curNode = m_tail; curNode != Ptr<FreeListNode>(); curNode = curNode.Resolve(baseAddr)->Next) {
+    for (Ptr<FreeListNode> curNode = m_tail; !curNode.IsNull(); curNode = curNode.Resolve(baseAddr)->Next) {
       if (!functor(curNode)) break;
     }
   }
