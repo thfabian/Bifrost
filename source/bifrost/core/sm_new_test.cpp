@@ -10,13 +10,14 @@
 // See LICENSE.txt for details.
 
 #include "bifrost/core/test.h"
-#include "bifrost/core/new.h"
+#include "bifrost/core/sm_new.h"
 
 namespace {
 
 using namespace bifrost;
 
-class NewTest : public TestBase<true> {};
+class SMNewTest : public TestBase<true> {};
+
 class Foo {
  public:
   int Integer = 1;
@@ -30,7 +31,15 @@ class Foo {
   }
 };
 
-TEST_F(NewTest, Object) {
+class SharedFoo : public SMObject {
+  bool* m_destructed = nullptr;
+
+ public:
+  SharedFoo(bool* D) : m_destructed(D) {}
+  void Destruct(SharedMemory* mem) { *m_destructed = true; }
+};
+
+TEST_F(SMNewTest, Object) {
   Ptr<Foo> ptr;
   ASSERT_NO_THROW((ptr = New<Foo>(GetContext())));
 
@@ -41,7 +50,16 @@ TEST_F(NewTest, Object) {
   ASSERT_NO_THROW(Delete(GetContext(), ptr));
 }
 
-TEST_F(NewTest, ObjectConstructor) {
+TEST_F(SMNewTest, SharedObject) {
+  Ptr<SharedFoo> ptr;
+
+  bool destructed = false;
+  ASSERT_NO_THROW((ptr = New<SharedFoo>(GetContext(), &destructed)));
+  ASSERT_NO_THROW(Delete(GetContext(), ptr));
+  EXPECT_TRUE(destructed);
+}
+
+TEST_F(SMNewTest, ObjectConstructor) {
   Ptr<Foo> ptr;
   ASSERT_NO_THROW((ptr = New<Foo>(GetContext(), 2, 3.0f)));
 
@@ -52,7 +70,7 @@ TEST_F(NewTest, ObjectConstructor) {
   ASSERT_NO_THROW(Delete(GetContext(), ptr));
 }
 
-TEST_F(NewTest, Array) {
+TEST_F(SMNewTest, Array) {
   Ptr<Foo> ptr;
   ASSERT_NO_THROW((ptr = NewArray<Foo>(GetContext(), 5)));
 

@@ -36,13 +36,17 @@ class TestBase : public ::testing::Test {
  public:
   TestBase() { m_logger = std::make_unique<TestLogger>(); }
 
+  std::unique_ptr<SharedMemory> CreateSharedMemory(std::string name = "bifrost::test::memory", u64 size = 1 << 12) {
+    return std::make_unique<SharedMemory>(m_context.get(), std::move(name), size);
+  }
+
   void SetUp() override {
     m_context = std::make_unique<Context>();
     m_context->SetLogger(m_logger.get());
 
     if (UseSharedMemory) {
-      m_memory = std::make_unique<SharedMemory>(m_context.get(), "bifrost::test::memory", 1 << 20);
-      m_context->SetSharedMemory(m_memory.get());
+      m_memory = CreateSharedMemory();
+      m_context->SetMemory(m_memory.get());
     }
   }
   void TearDown() override {
@@ -62,7 +66,7 @@ class TestBase : public ::testing::Test {
 
  private:
   std::unique_ptr<ILogger> m_logger = nullptr;
-  std::unique_ptr<ISharedMemory> m_memory = nullptr;
+  std::unique_ptr<SharedMemory> m_memory = nullptr;
   std::unique_ptr<Context> m_context = nullptr;
 };
 

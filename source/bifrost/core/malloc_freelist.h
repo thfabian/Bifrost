@@ -53,11 +53,11 @@ class FreeList {
 
   /// Make `node` the new tail
   inline void PushBack(Ptr<FreeListNode> node, void* baseAddr) {
-    Ptr<FreeListNode> old_tail = m_tail;
+    Ptr<FreeListNode> oldTail = m_tail;
 
     m_tail = node;
-    m_tail.Resolve(baseAddr)->Next = old_tail;
-    if (!old_tail.IsNull()) old_tail.Resolve(baseAddr)->Prev = m_tail;
+    m_tail.Resolve(baseAddr)->Next = oldTail;
+    if (!oldTail.IsNull()) oldTail.Resolve(baseAddr)->Prev = m_tail;
     if (m_head.IsNull()) m_head = m_tail;
   }
 

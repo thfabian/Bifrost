@@ -12,6 +12,7 @@
 #pragma once
 
 #include "bifrost/core/common.h"
+#include "bifrost/core/type.h"
 
 namespace bifrost {
 

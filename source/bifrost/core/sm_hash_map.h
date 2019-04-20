@@ -12,15 +12,14 @@
 #pragma once
 
 #include "bifrost/core/common.h"
-#include "bifrost/core/object.h"
 #include "bifrost/core/ptr.h"
-#include "bifrost/core/new.h"
+#include "bifrost/core/sm_new.h"
 
 namespace bifrost {
 
 /// Shared memory hash map
 template <class KeyT, class ValueT>
-class SMHashMap final : public Object {
+class SMHashMap : public SMObject {
  public:
   static constexpr u32 MaxChainLength = 8;
   static constexpr i32 Invalid = -1;
@@ -35,20 +34,21 @@ class SMHashMap final : public Object {
   };
 
   /// Create an empty hash map
-  SMHashMap(Context* ctx, u32 initialCapacity = 16) : Object(ctx) {
+  SMHashMap(Context* ctx, u32 initialCapacity = 16) {
     m_capacity = initialCapacity;
     m_size = 0;
-    m_data = NewArray<InternalNode>(this, m_capacity);
+    m_data = NewArray<InternalNode>(ctx, m_capacity);
   }
 
-  ~SMHashMap() { DeleteArray(this, m_data, m_capacity); }
+  /// Destruct the map
+  void Destruct(SharedMemory* mem) { DeleteArray(mem, m_data, m_capacity); }
 
   /// Get the value of element with key `k` or NULL if no such key exists
-  const ValueT* Get(const KeyT& k) const {
+  const ValueT* Get(Context* ctx, const KeyT& k) const {
     i32 idx = HashKey(k);
 
     // Linear probing
-    InternalNode* data = Resolve(m_data);
+    InternalNode* data = Resolve(ctx, m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
       if (data[idx].InUse && data[idx].Node.Key == k) return &data[idx].Node.Value;
       idx = (idx + 1) % m_capacity;
@@ -57,15 +57,15 @@ class SMHashMap final : public Object {
   }
 
   /// Insert the element with key ``k`` and value ``v``
-  Node* Insert(const KeyT& k, ValueT v) {
-    i32 index = Hash(k);
+  Node* Insert(Context* ctx, const KeyT& k, ValueT v) {
+    i32 index = Hash(ctx, k);
     while (index == Invalid) {
-      Rehash();
-      index = Hash(k);
+      Rehash(ctx);
+      index = Hash(ctx, k);
     }
 
     // Set the data
-    InternalNode* data = Resolve(m_data);
+    InternalNode* data = Resolve(ctx, m_data);
     data[index].Node.Key = k;
     data[index].Node.Value = std::move(v);
     data[index].InUse = true;
@@ -75,11 +75,11 @@ class SMHashMap final : public Object {
   }
 
   /// Remove the key `k`
-  void Remove(const KeyT& k) {
+  void Remove(Context* ctx, const KeyT& k) {
     i32 idx = HashKey(k);
 
     // Linear probing
-    InternalNode* data = Resolve(m_data);
+    InternalNode* data = Resolve(ctx, m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
       if (data[idx].InUse && data[idx].Node.Key == k) {
         data[idx].InUse = false;
@@ -97,10 +97,10 @@ class SMHashMap final : public Object {
   u32 Capacity() const { return m_capacity; }
 
  private:
-  i32 Hash(const KeyT& key) const {
+  i32 Hash(Context* ctx, const KeyT& key) const {
     if (m_size >= (m_capacity / 2)) return Invalid;
 
-    InternalNode* data = Resolve(m_data);
+    InternalNode* data = Resolve(ctx, m_data);
 
     // Find the best index
     i32 idx = HashKey(key);
@@ -134,10 +134,10 @@ class SMHashMap final : public Object {
     return hash % m_capacity;
   }
 
-  void Rehash() {
+  void Rehash(Context* ctx) {
     // Update the array
     auto oldData = m_data;
-    m_data = NewArray<InternalNode>(this, 2 * m_capacity);
+    m_data = NewArray<InternalNode>(ctx, 2 * m_capacity);
 
     // Update the size
     u32 oldTableSize = m_capacity;
@@ -145,12 +145,12 @@ class SMHashMap final : public Object {
     m_size = 0;
 
     // Rehash the elements
-    InternalNode* oldDataP = Resolve(oldData);
+    InternalNode* oldDataP = Resolve(ctx, oldData);
     for (u32 i = 0; i < oldTableSize; i++) {
       if (!oldDataP[i].InUse) continue;
-      Insert(oldDataP[i].Node.Key, std::move(oldDataP[i].Node.Value));
+      Insert(ctx, oldDataP[i].Node.Key, std::move(oldDataP[i].Node.Value));
     }
-    DeleteArray(this, oldData, oldTableSize);
+    DeleteArray(ctx, oldData, oldTableSize);
   }
 
  private:

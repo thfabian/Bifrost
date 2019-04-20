@@ -13,7 +13,7 @@
 
 #include "bifrost/core/context.h"
 #include "bifrost/core/ilogger.h"
-#include "bifrost/core/ishared_memory.h"
+#include "bifrost/core/shared_memory.h"
 #include "bifrost/core/ptr.h"
 
 namespace bifrost {
@@ -36,17 +36,17 @@ class Object {
   inline const ILogger& Logger() const { return m_ctx->Logger(); }
 
   /// Get shared memory
-  inline ISharedMemory& SharedMemory() { return m_ctx->SharedMemory(); }
-  inline const ISharedMemory& SharedMemory() const { return m_ctx->SharedMemory(); }
+  inline SharedMemory& Memory() { return m_ctx->Memory(); }
+  inline const SharedMemory& Memory() const { return m_ctx->Memory(); }
 
   /// Resolve the given pointer
   template <class T>
   inline T* Resolve(Ptr<T> ptr) {
-    return ptr.Resolve((void*)SharedMemory().GetBaseAddress());
+    return ptr.Resolve((void*)Memory().GetBaseAddress());
   }
   template <class T>
   inline T* Resolve(const Ptr<T>& ptr) const {
-    return ptr.Resolve((void*)SharedMemory().GetBaseAddress());
+    return ptr.Resolve((void*)Memory().GetBaseAddress());
   }
 
  private:

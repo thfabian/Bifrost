@@ -19,58 +19,64 @@ using namespace bifrost;
 class SMHashMapTest : public TestBase<true> {};
 
 TEST_F(SMHashMapTest, ConstructionI32) {
-  SMHashMap<i32, i32> map1(GetContext(), 1);
+  auto ctx = GetContext();
+
+  SMHashMap<i32, i32> map1(ctx, 1);
   EXPECT_EQ(0, map1.Size());
   EXPECT_EQ(1, map1.Capacity());
 
-  SMHashMap<i32, i32> map2(GetContext(), 10);
+  SMHashMap<i32, i32> map2(ctx, 10);
   EXPECT_EQ(0, map2.Size());
   EXPECT_EQ(10, map2.Capacity());
 }
 
 TEST_F(SMHashMapTest, InsertI32) {
+  auto ctx = GetContext();
+
   for (auto initialCap : {1, 16}) {
-    SMHashMap<i32, i32> map(GetContext(), initialCap);
+    SMHashMap<i32, i32> map(ctx, initialCap);
     EXPECT_EQ(0, map.Size());
 
-    auto ptr = map.Insert(0, 2);
+    auto ptr = map.Insert(ctx, 0, 2);
     EXPECT_EQ(1, map.Size());
     EXPECT_EQ(0, ptr->Key);
     EXPECT_EQ(2, ptr->Value);
 
-    ASSERT_NE(nullptr, map.Get(0));
-    EXPECT_EQ(2, *map.Get(0));
+    ASSERT_NE(nullptr, map.Get(ctx, 0));
+    EXPECT_EQ(2, *map.Get(ctx, 0));
 
-    ptr = map.Insert(1, 2);
+    ptr = map.Insert(ctx, 1, 2);
     EXPECT_EQ(2, map.Size());
     EXPECT_EQ(1, ptr->Key);
     EXPECT_EQ(2, ptr->Value);
 
-    ASSERT_NE(nullptr, map.Get(1));
-    EXPECT_EQ(2, *map.Get(1));
+    ASSERT_NE(nullptr, map.Get(ctx, 1));
+    EXPECT_EQ(2, *map.Get(ctx, 1));
 
     if (initialCap != 1) {
-      EXPECT_EQ(ptr, map.Insert(1, 2));
+      EXPECT_EQ(ptr, map.Insert(ctx, 1, 2));
     }
   }
 }
 
 TEST_F(SMHashMapTest, RemoveI32) {
-  SMHashMap<i32, i32> map(GetContext());
+  auto ctx = GetContext();
+
+  SMHashMap<i32, i32> map(ctx);
   EXPECT_EQ(0, map.Size());
 
   for (auto i : {1, 2, 3}) {
-    map.Insert(i, i);
-    EXPECT_NE(nullptr, map.Get(i));
+    map.Insert(ctx, i, i);
+    EXPECT_NE(nullptr, map.Get(ctx, i));
   }
   EXPECT_EQ(3, map.Size());
 
-  EXPECT_NO_THROW(map.Remove(3));
+  EXPECT_NO_THROW(map.Remove(ctx, 3));
   EXPECT_EQ(2, map.Size());
-  EXPECT_EQ(nullptr, map.Get(3));
+  EXPECT_EQ(nullptr, map.Get(ctx, 3));
 
   for (auto i : {1, 2, 3}) {
-    EXPECT_NO_THROW(map.Remove(i));
+    EXPECT_NO_THROW(map.Remove(ctx, i));
   }
   EXPECT_EQ(0, map.Size());
 }

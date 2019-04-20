@@ -19,13 +19,97 @@ using namespace bifrost;
 class SMListTest : public TestBase<true> {};
 
 TEST_F(SMListTest, Construction) {
-  // SMHashMap<i32, i32> map1(GetContext(), 1);
-  // EXPECT_EQ(0, map1.Size());
-  // EXPECT_EQ(1, map1.Capacity());
+  auto ctx = GetContext();
 
-  // SMHashMap<i32, i32> map2(GetContext(), 10);
-  // EXPECT_EQ(0, map2.Size());
-  // EXPECT_EQ(10, map2.Capacity());
+  SMList<i32> list;
+  EXPECT_EQ(0, list.Size(ctx));
+  EXPECT_TRUE(list.Empty());
+}
+
+TEST_F(SMListTest, Destruction) {}
+
+TEST_F(SMListTest, PushPopFront) {
+  auto ctx = GetContext();
+
+  SMList<i32> list;
+  i32* headValue = nullptr;
+  i32* tailValue = nullptr;
+
+  list.PushFront(ctx, 42);
+  EXPECT_FALSE(list.Empty());
+  EXPECT_EQ(1, list.Size(ctx));
+
+  headValue = list.PeekFront(ctx);
+  ASSERT_NE(nullptr, headValue);
+  EXPECT_EQ(42, *headValue);
+
+  tailValue = list.PeekBack(ctx);
+  ASSERT_NE(nullptr, tailValue);
+  EXPECT_EQ(42, *tailValue);
+
+  list.PushFront(ctx, 43);
+  list.PushFront(ctx, 44);
+  EXPECT_FALSE(list.Empty());
+  EXPECT_EQ(3, list.Size(ctx));
+
+  headValue = list.PeekFront(ctx);
+  ASSERT_NE(nullptr, headValue);
+  EXPECT_EQ(44, *headValue);
+
+  tailValue = list.PeekBack(ctx);
+  ASSERT_NE(nullptr, tailValue);
+  EXPECT_EQ(42, *tailValue);
+
+  list.PopFront(ctx);
+  headValue = list.PeekFront(ctx);
+  ASSERT_NE(nullptr, headValue);
+  EXPECT_EQ(43, *headValue);
+
+  tailValue = list.PeekBack(ctx);
+  ASSERT_NE(nullptr, tailValue);
+  EXPECT_EQ(42, *tailValue);
+}
+
+TEST_F(SMListTest, PushPopBack) {
+  auto ctx = GetContext();
+
+  SMList<i32> list;
+  i32* headValue = nullptr;
+  i32* tailValue = nullptr;
+
+  list.PushBack(ctx, 42);
+  EXPECT_FALSE(list.Empty());
+  EXPECT_EQ(1, list.Size(ctx));
+
+  headValue = list.PeekFront(ctx);
+  ASSERT_NE(nullptr, headValue);
+  EXPECT_EQ(42, *headValue);
+
+  tailValue = list.PeekBack(ctx);
+  ASSERT_NE(nullptr, tailValue);
+  EXPECT_EQ(42, *tailValue);
+
+  list.PushBack(ctx, 43);
+  list.PushBack(ctx, 44);
+  EXPECT_FALSE(list.Empty());
+  EXPECT_EQ(3, list.Size(ctx));
+
+  headValue = list.PeekFront(ctx);
+  ASSERT_NE(nullptr, headValue);
+  EXPECT_EQ(42, *headValue);
+
+  tailValue = list.PeekBack(ctx);
+  ASSERT_NE(nullptr, tailValue);
+  EXPECT_EQ(44, *tailValue);
+
+  list.PopBack(ctx);
+  headValue = list.PeekFront(ctx);
+  ASSERT_NE(nullptr, headValue);
+  EXPECT_EQ(42, *headValue);
+
+  tailValue = list.PeekBack(ctx);
+  ASSERT_NE(nullptr, tailValue);
+  EXPECT_EQ(43, *tailValue);
 }
 
 }  // namespace
