@@ -65,6 +65,8 @@ inline void DeleteArray(Context* ctx, Ptr<T> ptr, u64 len) {
 }
 template <class T>
 inline void DeleteArray(SharedMemory* mem, Ptr<T> ptr, u64 len) {
+  if (len == 0) return;
+
   T* ptrV = ptr.Resolve((void*)mem->GetBaseAddress());
   for (u64 i = 0; i < len; ++i) {
     internal::Destruct(mem, ptrV + i);

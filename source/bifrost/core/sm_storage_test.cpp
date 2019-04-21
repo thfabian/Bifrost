@@ -18,6 +18,41 @@ using namespace bifrost;
 
 class SharedStorageTest : public TestBase<true> {};
 
-TEST_F(SharedStorageTest, Insert) {}
+//TEST_F(SharedStorageTest, InsertString) {
+//  Context* ctx = GetContext();
+//  SMStorage& storage = *ctx->Memory().GetSMStorage();
+//  ASSERT_EQ(0, storage.Size());
+//
+//  SMString key{ctx, "key"};
+//  storage.Insert(ctx, key, SMStorageValue::FromString(ctx, "value"));
+//  ASSERT_EQ(1, storage.Size());
+//  ASSERT_NO_THROW(storage.GetOrThrow(ctx, key));
+//
+//  // As string
+//  EXPECT_STREQ("value", storage.GetOrThrow(ctx, key).AsString(ctx).c_str());
+//  EXPECT_EQ(std::string_view{"value"}, storage.GetOrThrow(ctx, key).AsStringView(ctx));
+//
+//  ASSERT_ANY_THROW(storage.GetOrThrow(ctx, key).AsBool(ctx));
+//  ASSERT_ANY_THROW(storage.GetOrThrow(ctx, key).AsInt(ctx));
+//  ASSERT_ANY_THROW(storage.GetOrThrow(ctx, key).AsDouble(ctx));
+//}
+//
+//TEST_F(SharedStorageTest, InsertBool) {
+//  Context* ctx = GetContext();
+//  SMStorage& storage = *ctx->Memory().GetSMStorage();
+//  ASSERT_EQ(0, storage.Size());
+//
+//  SMString key{ctx, "key"};
+//  storage.Insert(ctx, key, SMStorageValue::FromBool(ctx, true));
+//  ASSERT_EQ(1, storage.Size());
+//  ASSERT_NO_THROW(storage.GetOrThrow(ctx, key));
+//
+//  EXPECT_EQ(true, storage.GetOrThrow(ctx, key).AsBool(ctx));
+//  EXPECT_EQ(1, storage.GetOrThrow(ctx, key).AsInt(ctx));
+//  EXPECT_EQ(1.0, storage.GetOrThrow(ctx, key).AsDouble(ctx));
+//  EXPECT_STREQ("1", storage.GetOrThrow(ctx, key).AsString(ctx).c_str());
+//
+//  ASSERT_ANY_THROW(storage.GetOrThrow(ctx, key).AsStringView(ctx));
+//}
 
 }  // namespace

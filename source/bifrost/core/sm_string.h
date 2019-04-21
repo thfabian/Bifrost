@@ -14,6 +14,7 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/ptr.h"
 #include "bifrost/core/sm_new.h"
+#include "bifrost/core/sm_type_traits.h"
 
 namespace bifrost {
 
@@ -93,6 +94,30 @@ class SMString : public SMObject {
  private:
   Ptr<char> m_data;
   u32 m_size;
+};
+
+template <>
+struct SMHasher<SMString> {
+  std::size_t operator()(const SMString& key) const noexcept { return std::hash<std::string_view>{}(key.AsView(Ctx)); }
+
+  SMHasher(Context* C) : Ctx(C) {}
+  Context* Ctx;
+};
+
+template <>
+struct SMEqualTo<SMString> {
+  constexpr bool operator()(const SMString& left, const SMString& right) const { return left.AsView(Ctx) == right.AsView(Ctx); }
+
+  SMEqualTo(Context* C) : Ctx(C) {}
+  Context* Ctx;
+};
+
+template <>
+struct SMAssign<SMString> {
+  void operator()(SMString& left, const SMString& right) const { left.Assign(Ctx, right); }
+
+  SMAssign(Context* C) : Ctx(C) {}
+  Context* Ctx;
 };
 
 }  // namespace bifrost

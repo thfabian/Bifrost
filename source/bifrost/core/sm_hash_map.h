@@ -14,16 +14,12 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/ptr.h"
 #include "bifrost/core/sm_new.h"
+#include "bifrost/core/sm_type_traits.h"
 
 namespace bifrost {
 
-template <class T>
-struct SMHasher : public std::hash<T> {
-  SMHasher(Context* ctx) {}
-};
-
 /// Shared memory hash map
-template <class KeyT, class ValueT, class HasherT = SMHasher<KeyT>>
+template <class KeyT, class ValueT, class HasherT = SMHasher<KeyT>, class EqualToT = SMEqualTo<KeyT>, class AssignT = SMAssign<KeyT>>
 class SMHashMap : public SMObject {
  public:
   static constexpr u32 MaxChainLength = 8;
@@ -52,7 +48,9 @@ class SMHashMap : public SMObject {
   }
 
   /// Destruct the map
-  void Destruct(SharedMemory* mem) { DeleteArray(mem, m_data, m_capacity); }
+  void Destruct(SharedMemory* mem) { 
+    DeleteArray(mem, m_data, m_capacity); 
+  }
 
   /// Get the value of element with key `k` or NULL if no such key exists
   const ValueT* Get(Context* ctx, const KeyT& k) const {
@@ -61,7 +59,7 @@ class SMHashMap : public SMObject {
     // Linear probing
     InternalNode* data = Resolve(ctx, m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
-      if (data[idx].InUse && data[idx].Node.Key == k) return &data[idx].Node.Value;
+      if (data[idx].InUse && EqualToKey(ctx, data[idx].Node.Key, k)) return &data[idx].Node.Value;
       idx = (idx + 1) % m_capacity;
     }
     return nullptr;
@@ -77,7 +75,10 @@ class SMHashMap : public SMObject {
 
     // Set the data
     InternalNode* data = Resolve(ctx, m_data);
-    data[index].Node.Key = k;
+
+    AssignT assigner{ctx};
+    assigner(data[index].Node.Key, k);
+
     data[index].Node.Value = std::move(v);
     data[index].InUse = true;
     m_size += 1;
@@ -92,7 +93,7 @@ class SMHashMap : public SMObject {
     // Linear probing
     InternalNode* data = Resolve(ctx, m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
-      if (data[idx].InUse && data[idx].Node.Key == k) {
+      if (data[idx].InUse && EqualToKey(ctx, data[idx].Node.Key, k)) {
         data[idx].InUse = false;
         --m_size;
         return;
@@ -119,7 +120,7 @@ class SMHashMap : public SMObject {
     // Linear probing
     for (u32 i = 0; i < MaxChainLength; i++) {
       if (!data[idx].InUse) return idx;
-      if (data[idx].InUse && data[idx].Node.Key == key) return idx;
+      if (data[idx].InUse && EqualToKey(ctx, data[idx].Node.Key, key)) return idx;
       idx = (idx + 1) % m_capacity;
     }
 
@@ -143,6 +144,11 @@ class SMHashMap : public SMObject {
     // Knuth's Multiplicative Method
     hash = (hash >> 3) * 2654435761;
     return hash % m_capacity;
+  }
+
+  bool EqualToKey(Context* ctx, const KeyT& key1, const KeyT& key2) const {
+    EqualToT equal{ctx};
+    return equal(key1, key2);
   }
 
   void Rehash(Context* ctx) {
