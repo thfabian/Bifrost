@@ -49,4 +49,8 @@ void SMContext::Destruct(SharedMemory* mem, SMContext* smCtx) {
   }
 }
 
+SMLogStash* SMContext::GetSMLogStash(SharedMemory* mem) { return m_logstash.Resolve(mem->GetBaseAddress()); }
+
+SMStorage* SMContext::GetSMStorage(SharedMemory* mem) { return m_storage.Resolve(mem->GetBaseAddress()); }
+
 }  // namespace bifrost

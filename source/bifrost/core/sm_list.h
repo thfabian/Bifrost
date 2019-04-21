@@ -34,7 +34,7 @@ class SMList : public SMObject {
       Node* tailP = Resolve(mem, tailA);
 
       m_tail = tailP->Next;
-      Resolve(mem, m_tail)->Prev = Ptr<Node>();
+      if (!m_tail.IsNull()) Resolve(mem, m_tail)->Prev = Ptr<Node>();
 
       Delete(mem, tailA);
     }
@@ -103,7 +103,7 @@ class SMList : public SMObject {
   }
 
   /// Erase the node `pos`
-  inline void Erase(Context* ctx, Node* pos) {
+  inline void Erase(Context* ctx, Node* pos, bool deferDelete = false) {
     Node* posP = pos;
     Ptr<Node> posA = Ptr<Node>::FromAddress(posP, ctx->Memory().GetBaseAddress());
 
@@ -126,14 +126,17 @@ class SMList : public SMObject {
       Resolve(ctx, oldPrev)->Next = oldNext;
       Resolve(ctx, oldNext)->Prev = oldPrev;
     }
-    Delete(ctx, posA);
+
+    if (!deferDelete) {
+      Delete(ctx, posA);
+    }
   }
 
   /// Remove the tail
   void PopBack(Context* ctx) { Erase(ctx, Resolve(ctx, GetTail())); }
 
   /// Remove the head
-  void PopFront(Context* ctx) { Erase(ctx, Resolve(ctx, GetHead())); }
+  void PopFront(Context* ctx, bool deferDelete = false) { Erase(ctx, Resolve(ctx, GetHead()), deferDelete); }
 
   /// Iterate from head to tail
   ///

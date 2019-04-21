@@ -13,5 +13,6 @@
 
 int main(int argc, char** argv) {
   ::testing::InitGoogleTest(&argc, argv);
+  ::testing::AddGlobalTestEnvironment(new bifrost::TestEnviroment);
   return RUN_ALL_TESTS();
 }

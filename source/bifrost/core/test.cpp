@@ -16,7 +16,7 @@
 
 namespace bifrost {
 
-void TestLogger::Sink(LogLevel level, const char* msg) {
+void TestLogger::Sink(LogLevel level, const char* module, const char* msg) {
   if (level == ILogger::LogLevel::Disable) return;
 
   // Get current date-time (up to ms accuracy)
@@ -59,9 +59,27 @@ void TestLogger::Sink(LogLevel level, const char* msg) {
   ::OutputDebugStringA(outMsg.c_str());
 }
 
+void TestLogger::Sink(LogLevel level, const char* msg) { Sink(level, m_module.empty() ? "" : m_module.c_str(), msg); }
+
 void TestLogger::SetModule(const char* module) {
   BIFROST_LOCK_GUARD(m_mutex);
   m_module = module;
+}
+
+std::unique_ptr<TestEnviroment> TestEnviroment::s_instance = nullptr;
+
+std::string TestEnviroment::TestCaseName() const {
+  const ::testing::TestInfo* testInfo = ::testing::UnitTest::GetInstance()->current_test_info();
+  if (testInfo) return testInfo->test_case_name();
+  BIFROST_ASSERT(false && "TestCaseName() called outside test");
+  return "";
+}
+
+std::string TestEnviroment::TestName() const {
+  const ::testing::TestInfo* testInfo = ::testing::UnitTest::GetInstance()->current_test_info();
+  if (testInfo) return testInfo->name();
+  BIFROST_ASSERT(false && "TestName() called outside test");
+  return "";
 }
 
 }  // namespace bifrost

@@ -30,6 +30,14 @@ class SMObject {
   inline T* Resolve(Context* ctx, const Ptr<T>& ptr) const {
     return ptr.Resolve((void*)ctx->Memory().GetBaseAddress());
   }
+  template <class T>
+  inline T* Resolve(SharedMemory* mem, Ptr<T> ptr) {
+    return ptr.Resolve((void*)mem->GetBaseAddress());
+  }
+  template <class T>
+  inline T* Resolve(SharedMemory* mem, const Ptr<T>& ptr) const {
+    return ptr.Resolve((void*)mem->GetBaseAddress());
+  }
 
   /// Destruct the object (use instead of destructor - called by `Delete` and `DeleteArray`)
   void Destruct(SharedMemory* mem) { BIFROST_ASSERT(false && "Destructor not implemented"); }

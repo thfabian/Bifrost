@@ -20,7 +20,7 @@ class ILogger {
  public:
   virtual ~ILogger() {}
 
-  enum class LogLevel : int { Debug = 0, Info, Warn, Error, Disable };
+  enum class LogLevel : i32 { Debug = 0, Info, Warn, Error, Disable };
 
   /// Log message at debug level
   void Debug(const char* msg) { Sink(LogLevel::Debug, msg); }
@@ -73,8 +73,10 @@ class ILogger {
   /// Set the current module
   virtual void SetModule(const char* module) = 0;
 
- protected:
-  /// Sink the log message
+  /// Sink the log message `msg` from `module`
+  virtual void Sink(LogLevel level, const char* module, const char* msg) = 0;
+
+  /// Sink the log message `msg` from the current module (set via `SetModule`)
   virtual void Sink(LogLevel level, const char* msg) = 0;
 };
 

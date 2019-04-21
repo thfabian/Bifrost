@@ -20,6 +20,8 @@ namespace bifrost {
 /// Shared memory string
 class SMString : public SMObject {
  public:
+  SMString() : m_size(0), m_data() {}
+
   SMString(Context* ctx, u32 initialSize = 0) : m_size(0) { Allocate(ctx, initialSize); }
   SMString(Context* ctx, const std::string& s) : SMString(ctx, std::string_view{s}) {}
   SMString(Context* ctx, const char* s) : SMString(ctx, std::string_view{s}) {}

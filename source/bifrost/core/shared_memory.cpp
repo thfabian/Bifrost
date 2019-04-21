@@ -19,42 +19,39 @@
 namespace bifrost {
 
 SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) : m_name(std::move(name)), m_dataSizeInBytes(dataSizeInBytes), m_ctx(ctx) {
-  ModuleLoader moduleLoader(ctx);
-  auto moduleName = moduleLoader.GetCurrentModuleName();
-
-  m_ctx->Logger().DebugFormat("Trying to allocate shared memory \"%s\" (%lu bytes) for %s ...", GetName(), m_dataSizeInBytes, moduleName.c_str());
+  m_ctx->Logger().DebugFormat("Trying to allocate shared memory \"%s\" (%lu bytes) ...", GetName(), m_dataSizeInBytes);
 
   // Create file mapping if possible
-  m_handle = ::CreateFileMappingA(INVALID_HANDLE_VALUE,  // use paging file
-                                  NULL,                  // default security
-                                  PAGE_READWRITE,        // read/write access
+  m_handle = ::CreateFileMappingA(INVALID_HANDLE_VALUE,  // Use paging file
+                                  NULL,                  // Default security
+                                  PAGE_READWRITE,        // Read/write access
                                   0, (DWORD)m_dataSizeInBytes, GetName());
 
   bool alreadyExist = ::GetLastError() == ERROR_ALREADY_EXISTS;
   if (alreadyExist) {
-    if (m_handle != NULL) 
-      ::CloseHandle(m_handle);
+    if (m_handle != NULL) ::CloseHandle(m_handle);
 
-    m_ctx->Logger().DebugFormat("Shared memory \"%s\" for %s already exists, opening shared memory mapping", GetName(), moduleName.c_str());
-    m_handle = ::OpenFileMappingA(FILE_MAP_ALL_ACCESS,  // read/write access
-                                  FALSE, GetName());
+    m_ctx->Logger().DebugFormat("Shared memory \"%s\" already exists, opening shared memory mapping", GetName());
+    m_handle = ::OpenFileMappingA(FILE_MAP_ALL_ACCESS,  // Read/write access
+                                  FALSE,                // Propagate handles
+                                  GetName());
   }
 
   if (m_handle == NULL) {
-    std::string msg = StringFormat("Failed to allocate shared memory \"%s\" for %s: %s", GetName(), moduleName.c_str(), GetLastWin32Error().c_str());
+    std::string msg = StringFormat("Failed to allocate shared memory \"%s\": %s", GetName(), GetLastWin32Error().c_str());
     m_ctx->Logger().Error(msg.c_str());
     throw std::runtime_error(msg.c_str());
   } else {
-    if (alreadyExist) m_ctx->Logger().DebugFormat("Opened shared memory mapping \"%s\" for %s", GetName(), moduleName.c_str());
+    if (alreadyExist) m_ctx->Logger().DebugFormat("Opened shared memory mapping \"%s\"", GetName());
   }
 
-  m_startAddress = ::MapViewOfFile(m_handle,             // handle to map object
-                                   FILE_MAP_ALL_ACCESS,  // read/write permission
+  m_startAddress = ::MapViewOfFile(m_handle,             // Handle to map object
+                                   FILE_MAP_ALL_ACCESS,  // Read/write permission
                                    0, 0, m_dataSizeInBytes);
 
   if (m_startAddress == NULL) {
     ::CloseHandle(m_handle);
-    std::string msg = StringFormat("Failed to map shared memory \"%s\" for %s: %s", GetName(), moduleName.c_str(), GetLastWin32Error().c_str());
+    std::string msg = StringFormat("Failed to map shared memory \"%s\": %s", GetName(), GetLastWin32Error().c_str());
     m_ctx->Logger().Error(msg.c_str());
     throw std::runtime_error(msg.c_str());
   }
@@ -79,12 +76,12 @@ SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) 
   } else {
     m_sharedCtx = SMContext::Map(GetFirstAdress());
     if (m_sharedCtx->GetMemorySize() != dataSizeInBytes) {
-      m_ctx->Logger().WarnFormat("Opened shared memory's size (%lu bytes) for %s does not match original size (%lu bytes)", dataSizeInBytes, moduleName.c_str(),
+      m_ctx->Logger().WarnFormat("Opened shared memory's size (%lu bytes) does not match original size (%lu bytes)", dataSizeInBytes,
                                  m_sharedCtx->GetMemorySize());
     }
   }
 
-  m_ctx->Logger().DebugFormat("Allocated shared memory \"%s\" for %s", GetName(), moduleName.c_str());
+  m_ctx->Logger().DebugFormat("Allocated shared memory \"%s\"", GetName());
 }
 
 SharedMemory::~SharedMemory() {
@@ -93,17 +90,21 @@ SharedMemory::~SharedMemory() {
 
   SMContext::Destruct(this, m_sharedCtx);
 
-  m_ctx->Logger().DebugFormat("Deallocating shared memory \"%s\" for %s ...", GetName(), moduleName.c_str());
+  m_ctx->Logger().DebugFormat("Deallocating shared memory \"%s\" ...", GetName());
 
   if (::UnmapViewOfFile(m_startAddress) == 0) {
-    m_ctx->Logger().WarnFormat("Failed to unmap shared memory \"%s\" for %s: %s", GetName(), moduleName.c_str(), GetLastWin32Error().c_str());
+    m_ctx->Logger().WarnFormat("Failed to unmap shared memory \"%s\": %s", GetName(), GetLastWin32Error().c_str());
   }
 
   if (::CloseHandle(m_handle) == 0) {
-    m_ctx->Logger().WarnFormat("Failed to deallocate shared memory: \"%s\" for %s: %s", GetName(), moduleName.c_str(), GetLastWin32Error().c_str());
+    m_ctx->Logger().WarnFormat("Failed to deallocate shared memory: \"%s\": %s", GetName(), GetLastWin32Error().c_str());
   }
 
-  m_ctx->Logger().DebugFormat("Deallocated shared memory \"%s\" for %s", GetName(), moduleName.c_str());
+  m_ctx->Logger().DebugFormat("Deallocated shared memory \"%s\"", GetName());
 }
+
+SMLogStash* SharedMemory::GetSMLogStash() noexcept { return m_sharedCtx->GetSMLogStash(this); }
+
+SMStorage* SharedMemory::GetSMStorage() noexcept { return m_sharedCtx->GetSMStorage(this); }
 
 }  // namespace bifrost

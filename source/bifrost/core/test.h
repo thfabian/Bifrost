@@ -15,6 +15,7 @@
 #include "bifrost/core/context.h"
 #include "bifrost/core/ilogger.h"
 #include "bifrost/core/shared_memory.h"
+#include "bifrost/core/module_loader.h"
 #include <gtest/gtest.h>
 
 namespace bifrost {
@@ -23,7 +24,7 @@ class TestLogger final : public ILogger {
  public:
   virtual void SetModule(const char* module) override;
 
- protected:
+  virtual void Sink(LogLevel level, const char* module, const char* msg) override;
   virtual void Sink(LogLevel level, const char* msg) override;
 
  private:
@@ -31,16 +32,42 @@ class TestLogger final : public ILogger {
   std::string m_module;
 };
 
+class TestEnviroment final : public ::testing::Environment {
+ public:
+  /// Name of the current test-case
+  std::string TestCaseName() const;
+
+  /// Name of the current test
+  std::string TestName() const;
+
+  static TestEnviroment& Get() { return *s_instance; }
+
+  virtual void SetUp() override { s_instance = std::make_unique<TestEnviroment>(); }
+  virtual void TearDown() override { s_instance.reset(); }
+
+ private:
+  static std::unique_ptr<TestEnviroment> s_instance;
+};
+
 template <bool UseSharedMemory>
 class TestBase : public ::testing::Test {
  public:
   TestBase() { m_logger = std::make_unique<TestLogger>(); }
 
-  std::unique_ptr<SharedMemory> CreateSharedMemory(std::string name = "bifrost::test::memory", u64 size = 1 << 12) {
-    return std::make_unique<SharedMemory>(m_context.get(), std::move(name), size);
+  /// Create shared memory (if `name` is NULL the current test case and test name is used
+  std::unique_ptr<SharedMemory> CreateSharedMemory(u64 size = 1 << 12, const char* name = nullptr) {
+    auto smName = name == nullptr ? TestEnviroment::Get().TestCaseName() + "." + TestEnviroment::Get().TestName() : std::string(name);
+    return std::make_unique<SharedMemory>(m_context.get(), std::move(smName), size);
   }
 
-  void SetUp() override {
+  /// Get the test logger
+  ILogger* GetLogger() { return m_logger.get(); }
+
+  /// Get the test context
+  Context* GetContext() { return m_context.get(); }
+
+  /// Called before each test
+  virtual void SetUp() override {
     m_context = std::make_unique<Context>();
     m_context->SetLogger(m_logger.get());
 
@@ -49,7 +76,9 @@ class TestBase : public ::testing::Test {
       m_context->SetMemory(m_memory.get());
     }
   }
-  void TearDown() override {
+
+  /// Called after each test
+  virtual void TearDown() override {
     if (UseSharedMemory) {
       m_memory.reset();
     }
@@ -61,8 +90,6 @@ class TestBase : public ::testing::Test {
     BIFROST_ASSERT(UseSharedMemory);
     return ptr.Resolve((void*)m_memory->GetBaseAddress());
   }
-
-  Context* GetContext() { return m_context.get(); }
 
  private:
   std::unique_ptr<ILogger> m_logger = nullptr;

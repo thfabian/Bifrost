@@ -18,6 +18,8 @@
 namespace bifrost {
 
 class SMContext;
+class SMLogStash;
+class SMStorage;
 
 /// Shared memory pool shared between processes
 class SharedMemory {
@@ -54,7 +56,13 @@ class SharedMemory {
   MallocFreeList* GetMalloc() noexcept { return m_malloc; }
 
   /// Get the shared context
-  SMContext* GetSMContext() const noexcept { return m_sharedCtx; }
+  SMContext* GetSMContext() noexcept { return m_sharedCtx; }
+
+  /// Get the log stash of SMContext
+  SMLogStash* GetSMLogStash() noexcept;
+
+  /// Get the storage of SMContext
+  SMStorage* GetSMStorage() noexcept;
 
  private:
   MallocFreeList* m_malloc;

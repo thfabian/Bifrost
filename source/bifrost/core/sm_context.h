@@ -38,6 +38,12 @@ class SMContext {
   /// Get the allocated shared memory
   u64 GetMemorySize() const { return m_memorySize; }
 
+  /// Get the log stash
+  SMLogStash* GetSMLogStash(SharedMemory* mem);
+
+  /// Get the storage
+  SMStorage* GetSMStorage(SharedMemory* mem);
+
  private:
   Ptr<SMStorage> m_storage;
   Ptr<SMLogStash> m_logstash;
