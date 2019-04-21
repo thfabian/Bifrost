@@ -62,7 +62,7 @@ TEST_F(SMHashMapTest, InsertI32) {
 TEST_F(SMHashMapTest, RemoveI32) {
   auto ctx = GetContext();
 
-  SMHashMap<i32, i32> map(ctx);
+  SMHashMap<i32, i32> map;
   EXPECT_EQ(0, map.Size());
 
   for (auto i : {1, 2, 3}) {

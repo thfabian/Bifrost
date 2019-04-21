@@ -17,8 +17,13 @@
 
 namespace bifrost {
 
+template <class T>
+struct SMHasher : public std::hash<T> {
+  SMHasher(Context* ctx) {}
+};
+
 /// Shared memory hash map
-template <class KeyT, class ValueT>
+template <class KeyT, class ValueT, class HasherT = SMHasher<KeyT>>
 class SMHashMap : public SMObject {
  public:
   static constexpr u32 MaxChainLength = 8;
@@ -34,8 +39,14 @@ class SMHashMap : public SMObject {
   };
 
   /// Create an empty hash map
-  SMHashMap(Context* ctx, u32 initialCapacity = 16) {
-    m_capacity = initialCapacity;
+  SMHashMap() {
+    m_capacity = 0;
+    m_size = 0;
+  }
+
+  /// Create an empty hash with given capacity
+  SMHashMap(Context* ctx, u32 capacity) {
+    m_capacity = capacity;
     m_size = 0;
     m_data = NewArray<InternalNode>(ctx, m_capacity);
   }
@@ -45,7 +56,7 @@ class SMHashMap : public SMObject {
 
   /// Get the value of element with key `k` or NULL if no such key exists
   const ValueT* Get(Context* ctx, const KeyT& k) const {
-    i32 idx = HashKey(k);
+    i32 idx = HashKey(ctx, k);
 
     // Linear probing
     InternalNode* data = Resolve(ctx, m_data);
@@ -76,7 +87,7 @@ class SMHashMap : public SMObject {
 
   /// Remove the key `k`
   void Remove(Context* ctx, const KeyT& k) {
-    i32 idx = HashKey(k);
+    i32 idx = HashKey(ctx, k);
 
     // Linear probing
     InternalNode* data = Resolve(ctx, m_data);
@@ -103,7 +114,7 @@ class SMHashMap : public SMObject {
     InternalNode* data = Resolve(ctx, m_data);
 
     // Find the best index
-    i32 idx = HashKey(key);
+    i32 idx = HashKey(ctx, key);
 
     // Linear probing
     for (u32 i = 0; i < MaxChainLength; i++) {
@@ -115,8 +126,8 @@ class SMHashMap : public SMObject {
     return Invalid;
   }
 
-  i32 HashKey(const KeyT& key) const {
-    auto hasher = std::hash<KeyT>();
+  i32 HashKey(Context* ctx, const KeyT& key) const {
+    HasherT hasher{ctx};
     std::size_t hash = hasher(key);
 
     // Robert Jenkins' 32 bit Mix Function
@@ -137,20 +148,22 @@ class SMHashMap : public SMObject {
   void Rehash(Context* ctx) {
     // Update the array
     auto oldData = m_data;
-    m_data = NewArray<InternalNode>(ctx, 2 * m_capacity);
+    u32 oldCapacity = m_capacity;
 
     // Update the size
-    u32 oldTableSize = m_capacity;
-    m_capacity = 2 * m_capacity;
+    m_capacity = std::max((u32)1, 2 * m_capacity);
     m_size = 0;
+    m_data = NewArray<InternalNode>(ctx, 2 * m_capacity);
 
     // Rehash the elements
-    InternalNode* oldDataP = Resolve(ctx, oldData);
-    for (u32 i = 0; i < oldTableSize; i++) {
-      if (!oldDataP[i].InUse) continue;
-      Insert(ctx, oldDataP[i].Node.Key, std::move(oldDataP[i].Node.Value));
+    if (!oldData.IsNull()) {
+      InternalNode* oldDataP = Resolve(ctx, oldData);
+      for (u32 i = 0; i < oldCapacity; i++) {
+        if (!oldDataP[i].InUse) continue;
+        Insert(ctx, oldDataP[i].Node.Key, std::move(oldDataP[i].Node.Value));
+      }
+      DeleteArray(ctx, oldData, oldCapacity);
     }
-    DeleteArray(ctx, oldData, oldTableSize);
   }
 
  private:
