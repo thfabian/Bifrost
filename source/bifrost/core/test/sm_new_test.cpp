@@ -9,14 +9,14 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/test.h"
+#include "bifrost/core/test/test.h"
 #include "bifrost/core/sm_new.h"
 
 namespace {
 
 using namespace bifrost;
 
-class SMNewTest : public TestBase<true> {};
+class SMNewTest : public TestBaseSharedMemory {};
 
 class Foo {
  public:

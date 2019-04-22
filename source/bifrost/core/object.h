@@ -25,8 +25,6 @@ class Object {
   Object(Context* ctx) : m_ctx(ctx) {}
   Object(Object* obj) : m_ctx(&obj->GetContext()) {}
 
-  virtual ~Object() {}
-
   /// Access the context
   inline Context& GetContext() { return *m_ctx; }
   inline const Context& GetContext() const { return *m_ctx; }

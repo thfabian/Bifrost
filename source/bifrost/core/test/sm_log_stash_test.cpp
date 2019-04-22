@@ -9,14 +9,14 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/test.h"
+#include "bifrost/core/test/test.h"
 #include "bifrost/core/sm_log_stash.h"
 
 namespace {
 
 using namespace bifrost;
 
-class SharedLogStashTest : public TestBase<true> {
+class SharedLogStashTest : public TestBaseSharedMemory {
  public:
   void Log(Context* ctx, ILogger::LogLevel level, const char* module, const char* msg) { ctx->Memory().GetSMLogStash()->Push(ctx, (u32)level, module, msg); }
 };

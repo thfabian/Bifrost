@@ -9,10 +9,12 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/test.h"
+#pragma once
 
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  ::testing::AddGlobalTestEnvironment(new bifrost::TestEnviroment);
-  return RUN_ALL_TESTS();
-}
+#include "bifrost/core/common.h"
+
+namespace bifrost {
+
+class Injector {};
+
+}  // namespace bifrost

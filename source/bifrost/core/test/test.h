@@ -40,6 +40,9 @@ class TestEnviroment final : public ::testing::Environment {
   /// Name of the current test
   std::string TestName() const;
 
+  /// Get the full path to the mock executable
+  std::wstring GetMockExecutable() const;
+
   static TestEnviroment& Get() { return *s_instance; }
 
   virtual void SetUp() override { s_instance = std::make_unique<TestEnviroment>(); }
@@ -96,5 +99,8 @@ class TestBase : public ::testing::Test {
   std::unique_ptr<SharedMemory> m_memory = nullptr;
   std::unique_ptr<Context> m_context = nullptr;
 };
+
+using TestBaseNoSharedMemory = TestBase<false>;
+using TestBaseSharedMemory = TestBase<true>;
 
 }  // namespace bifrost

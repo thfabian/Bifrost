@@ -9,14 +9,14 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/test.h"
+#include "bifrost/core/test/test.h"
 #include "bifrost/core/sm_string.h"
 
 namespace {
 
 using namespace bifrost;
 
-class SMStringTest : public TestBase<true> {};
+class SMStringTest : public TestBaseSharedMemory {};
 
 TEST_F(SMStringTest, ValueConstructor) {
   auto ctx = GetContext();

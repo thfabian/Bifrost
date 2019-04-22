@@ -9,7 +9,7 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/test.h"
+#include "bifrost/core/test/test.h"
 #include "bifrost/core/util.h"
 #include "bifrost/core/mutex.h"
 #include <iostream>
@@ -80,6 +80,11 @@ std::string TestEnviroment::TestName() const {
   if (testInfo) return testInfo->name();
   BIFROST_ASSERT(false && "TestName() called outside test");
   return "";
+}
+
+std::wstring TestEnviroment::GetMockExecutable() const {
+  auto p = std::filesystem::current_path();
+  return p.native();
 }
 
 }  // namespace bifrost

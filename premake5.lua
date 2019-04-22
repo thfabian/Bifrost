@@ -105,8 +105,7 @@ workspace "bifrost"
     pchheader "bifrost/core/common.h"
     pchsource "source/bifrost/core/common.cpp"
     
-    files "source/bifrost/core/**"
-    removefiles { "**_test.cpp", "**/test.*" }
+    files "source/bifrost/core/*"
     disablewarnings { "4267", "4146" }
 
     function bifrost_add_bifrost_core()
@@ -221,19 +220,27 @@ workspace "bifrost"
 --    bifrost_add_bifrost_test_util()
 --    bifrost_add_bifrost_shared()
     
+  -- *** Core Test (mock executable) ***
+  project "bifrost_core_test_mock_executable"
+    kind "ConsoleApp"
+    targetname "test-bifrost-core-mock-executable"
+    files { "source/bifrost/core/test/data/mock_executable.cpp" }
+
+
   -- *** Core Test ***
   project "bifrost_core_test"
     kind "ConsoleApp"
     includedirs { "source" }
     targetname "test-bifrost-core"
     
-    pchheader "bifrost/core/test.h"
-    pchsource "source/bifrost/core/test.cpp"
+    pchheader "bifrost/core/test/test.h"
+    pchsource "source/bifrost/core/test/test.cpp"
     
-    files { "source/bifrost/core/*_test.*", "source/bifrost/core/test.*" }
+    files { "source/bifrost/core/test/*" }
 	
     bifrost_add_external_gtest()
     bifrost_add_bifrost_core()
+    dependson { "bifrost_core_test_mock_executable" } 
     
   -- *****
   -- *** Example ***

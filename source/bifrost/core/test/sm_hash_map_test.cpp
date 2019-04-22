@@ -9,7 +9,7 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/test.h"
+#include "bifrost/core/test/test.h"
 #include "bifrost/core/sm_hash_map.h"
 #include "bifrost/core/sm_string.h"
 
@@ -17,7 +17,7 @@ namespace {
 
 using namespace bifrost;
 
-class SMHashMapTest : public TestBase<true> {};
+class SMHashMapTest : public TestBaseSharedMemory {};
 
 TEST_F(SMHashMapTest, ConstructionI32) {
   auto ctx = GetContext();

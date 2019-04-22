@@ -9,14 +9,14 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/test.h"
+#include "bifrost/core/test/test.h"
 #include "bifrost/core/sm_context.h"
 
 namespace {
 
 using namespace bifrost;
 
-class SMContextTest : public TestBase<false> {};
+class SMContextTest : public TestBaseNoSharedMemory {};
 
 TEST_F(SMContextTest, CreateAndMap) {
   auto mem1 = CreateSharedMemory();
