@@ -29,7 +29,13 @@ class SMHashMap : public SMObject {
     KeyT Key;
     ValueT Value;
   };
-  struct InternalNode {
+  struct SMNode : public SMObject {
+    void Destruct(SharedMemory* mem) {
+      if(!InUse) return;
+      internal::Destruct(mem, &Node.Key);
+      internal::Destruct(mem, &Node.Value);
+    }
+
     Node Node;
     bool InUse = false;
   };
@@ -44,20 +50,18 @@ class SMHashMap : public SMObject {
   SMHashMap(Context* ctx, u32 capacity) {
     m_capacity = capacity;
     m_size = 0;
-    m_data = NewArray<InternalNode>(ctx, m_capacity);
+    m_data = NewArray<SMNode>(ctx, m_capacity);
   }
 
   /// Destruct the map
-  void Destruct(SharedMemory* mem) { 
-    DeleteArray(mem, m_data, m_capacity); 
-  }
+  void Destruct(SharedMemory* mem) { DeleteArray(mem, m_data, m_capacity); }
 
   /// Get the value of element with key `k` or NULL if no such key exists
   const ValueT* Get(Context* ctx, const KeyT& k) const {
     i32 idx = HashKey(ctx, k);
 
     // Linear probing
-    InternalNode* data = Resolve(ctx, m_data);
+    SMNode* data = Resolve(ctx, m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
       if (data[idx].InUse && EqualToKey(ctx, data[idx].Node.Key, k)) return &data[idx].Node.Value;
       idx = (idx + 1) % m_capacity;
@@ -74,7 +78,7 @@ class SMHashMap : public SMObject {
     }
 
     // Set the data
-    InternalNode* data = Resolve(ctx, m_data);
+    SMNode* data = Resolve(ctx, m_data);
 
     AssignT assigner{ctx};
     assigner(data[index].Node.Key, k);
@@ -87,19 +91,21 @@ class SMHashMap : public SMObject {
   }
 
   /// Remove the key `k`
-  void Remove(Context* ctx, const KeyT& k) {
+  bool Remove(Context* ctx, const KeyT& k) {
     i32 idx = HashKey(ctx, k);
 
     // Linear probing
-    InternalNode* data = Resolve(ctx, m_data);
+    SMNode* data = Resolve(ctx, m_data);
     for (u32 i = 0; i < MaxChainLength; i++) {
       if (data[idx].InUse && EqualToKey(ctx, data[idx].Node.Key, k)) {
+        data[idx].Destruct(&ctx->Memory());
         data[idx].InUse = false;
         --m_size;
-        return;
+        return true;
       }
       idx = (idx + 1) % m_capacity;
     }
+    return false;
   }
 
   /// Get the size of the map
@@ -108,11 +114,18 @@ class SMHashMap : public SMObject {
   /// Get the capacity of the map
   u32 Capacity() const { return m_capacity; }
 
+  /// Clear the map
+  void Clear(Context* ctx) {
+    Destruct(&ctx->Memory());
+    m_capacity = 0;
+    m_size = 0;
+  }
+
  private:
   i32 Hash(Context* ctx, const KeyT& key) const {
     if (m_size >= (m_capacity / 2)) return Invalid;
 
-    InternalNode* data = Resolve(ctx, m_data);
+    SMNode* data = Resolve(ctx, m_data);
 
     // Find the best index
     i32 idx = HashKey(ctx, key);
@@ -157,13 +170,13 @@ class SMHashMap : public SMObject {
     u32 oldCapacity = m_capacity;
 
     // Update the size
-    m_capacity = std::max((u32)1, 2 * m_capacity);
+    m_capacity = std::max((u32)4, 2 * m_capacity);
     m_size = 0;
-    m_data = NewArray<InternalNode>(ctx, 2 * m_capacity);
+    m_data = NewArray<SMNode>(ctx, 2 * m_capacity);
 
     // Rehash the elements
     if (!oldData.IsNull()) {
-      InternalNode* oldDataP = Resolve(ctx, oldData);
+      SMNode* oldDataP = Resolve(ctx, oldData);
       for (u32 i = 0; i < oldCapacity; i++) {
         if (!oldDataP[i].InUse) continue;
         Insert(ctx, oldDataP[i].Node.Key, std::move(oldDataP[i].Node.Value));
@@ -173,7 +186,7 @@ class SMHashMap : public SMObject {
   }
 
  private:
-  Ptr<InternalNode> m_data;
+  Ptr<SMNode> m_data;
   u32 m_capacity;
   u32 m_size;
 };

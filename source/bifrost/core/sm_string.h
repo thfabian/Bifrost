@@ -63,6 +63,8 @@ class SMString : public SMObject {
   }
   void Assign(Context* ctx, const SMString& s) { Assign(ctx, s.AsView(ctx)); }
 
+  void Clear(Context* ctx) { Deallocate(&ctx->Memory()); }
+
  private:
   void Move(SMString&& s) {
     m_data = s.m_data;

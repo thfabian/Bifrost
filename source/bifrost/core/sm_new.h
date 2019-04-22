@@ -22,13 +22,10 @@ namespace internal {
 template <class T>
 std::enable_if_t<std::is_base_of<SMObject, T>::value> Destruct(SharedMemory* mem, T* ptr) {
   ptr->Destruct(mem);
-  ptr->~T();
 }
 
 template <class T>
-std::enable_if_t<!std::is_base_of<SMObject, T>::value> Destruct(SharedMemory* mem, T* ptr) {
-  ptr->~T();
-}
+std::enable_if_t<!std::is_base_of<SMObject, T>::value> Destruct(SharedMemory* mem, T* ptr) {}
 
 }  // namespace internal
 
@@ -65,11 +62,15 @@ inline void DeleteArray(Context* ctx, Ptr<T> ptr, u64 len) {
 }
 template <class T>
 inline void DeleteArray(SharedMemory* mem, Ptr<T> ptr, u64 len) {
-  if (len == 0) return;
+  if (len == 0 || ptr.IsNull()) return;
 
   T* ptrV = ptr.Resolve((void*)mem->GetBaseAddress());
-  for (u64 i = 0; i < len; ++i) {
-    internal::Destruct(mem, ptrV + i);
+  if (!std::is_fundamental<T>::value) {
+    for (u64 i = 0; i < len; ++i) {
+      T* p = ptrV + i;
+      internal::Destruct(mem, p);
+      p->~T();
+    }
   }
   mem->Deallocate((void*)ptrV);
 }

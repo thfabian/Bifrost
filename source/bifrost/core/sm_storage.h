@@ -14,7 +14,6 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/sm_string.h"
 #include "bifrost/core/sm_hash_map.h"
-#include "bifrost/core/sm_list.h"
 
 namespace bifrost {
 
@@ -30,8 +29,8 @@ class SMStorageValue : public SMObject {
   };
 
   SMStorageValue();
-  SMStorageValue(SMStorageValue&&) = default;
-  SMStorageValue& operator=(SMStorageValue&&) = default;
+  SMStorageValue(SMStorageValue&&);
+  SMStorageValue& operator=(SMStorageValue&&);
 
   SMStorageValue(Context* ctx, bool v);
   SMStorageValue(Context* ctx, int v);
@@ -53,10 +52,19 @@ class SMStorageValue : public SMObject {
 
  private:
   void FailConversion(Context* ctx, const char* to) const;
+  void Move(SMStorageValue&& s);
 
  private:
   EType m_type;
-  std::array<u8, sizeof(SMString)> m_value;  // in place storage of bool, int, double or SMString
+
+  union Value {
+    bool Bool;
+    int Int;
+    double Double;
+    SMString String;
+
+    Value() : String() {}
+  } m_value;
 };
 
 /// Key/value storage - unique per shared memory region (allocated in SMContext)
@@ -66,24 +74,31 @@ class SMStorage : public SMObject {
   void Destruct(SharedMemory* mem);
 
   /// Insert a value
-  void InsertBool(Context* ctx, const SMString& key, bool value);
-  void InsertInt(Context* ctx, const SMString& key, int value);
-  void InsertDouble(Context* ctx, const SMString& key, double value);
-  void InsertString(Context* ctx, const SMString& key, std::string_view value);
-  void InsertString(Context* ctx, const SMString& key, SMString value);
+  void InsertBool(Context* ctx, std::string_view key, bool value);
+  void InsertInt(Context* ctx, std::string_view key, int value);
+  void InsertDouble(Context* ctx, std::string_view key, double value);
+  void InsertString(Context* ctx, std::string_view key, std::string_view value);
+  void InsertString(Context* ctx, std::string_view key, SMString value);
 
-  /// Get a pointer to the value or return NULL
-  bool GetBool(Context* ctx, const SMString& key);
-  int GetInt(Context* ctx, const SMString& key);
-  double GetDouble(Context* ctx, const SMString& key);
-  std::string GetString(Context* ctx, const SMString& key);
-  std::string_view GetStringView(Context* ctx, const SMString& key);
+  /// Get the value or throw
+  bool GetBool(Context* ctx, std::string_view key);
+  int GetInt(Context* ctx, std::string_view key);
+  double GetDouble(Context* ctx, std::string_view key);
+  std::string GetString(Context* ctx, std::string_view key);
+  std::string_view GetStringView(Context* ctx, std::string_view key);
+
+  /// Remove the given key
+  bool Remove(Context* ctx, std::string_view key);
 
   /// Get the number of items in the shared storage
   u32 Size();
 
+  /// Clear the storage
+  void Clear(Context* ctx);
+
  private:
   SpinMutex m_mutex;
+  SMString m_keyBuffer;
   SMHashMap<SMString, SMStorageValue> m_map;
 };
 

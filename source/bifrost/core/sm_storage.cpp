@@ -31,25 +31,53 @@ static const char* TypeToString(SMStorageValue::EType type) {
   }
 }
 
-SMStorageValue::SMStorageValue() : m_type(E_Unknown) {}
+SMStorageValue::SMStorageValue() : m_type(E_Unknown), m_value() {}
 
-SMStorageValue::SMStorageValue(Context* ctx, bool v) : m_type(E_Bool) { std::memcpy(m_value.data(), &v, sizeof(v)); }
+SMStorageValue::SMStorageValue(Context* ctx, bool v) : m_type(E_Bool) { m_value.Bool = v; }
 
-SMStorageValue::SMStorageValue(Context* ctx, int v) : m_type(E_Int) { std::memcpy(m_value.data(), &v, sizeof(v)); }
+SMStorageValue::SMStorageValue(Context* ctx, int v) : m_type(E_Int) { m_value.Int = v; }
 
-SMStorageValue::SMStorageValue(Context* ctx, double v) : m_type(E_Double) { std::memcpy(m_value.data(), &v, sizeof(v)); }
+SMStorageValue::SMStorageValue(Context* ctx, double v) : m_type(E_Double) { m_value.Double = v;}
 
-SMStorageValue::SMStorageValue(Context* ctx, SMString v) : m_type(E_String) { std::memcpy(m_value.data(), &v, sizeof(v)); }
+SMStorageValue::SMStorageValue(Context* ctx, SMString v) : m_type(E_String)  { m_value.String = std::move(v); }
 
-void SMStorageValue::Destruct(SharedMemory* mem) {
+void SMStorageValue::Move(SMStorageValue&& s) {
+  m_type = s.m_type;
+  switch (m_type) {
+    case SMStorageValue::E_Bool:
+      m_value.Bool = s.m_value.Bool;
+      break;
+    case SMStorageValue::E_Int:
+      m_value.Int = s.m_value.Int;
+      break;
+    case SMStorageValue::E_Double:
+      m_value.Double = s.m_value.Double;
+      break;
+    case SMStorageValue::E_String:
+      m_value.String = std::move(s.m_value.String);
+      break;
+    case SMStorageValue::E_Unknown:
+    default:
+      break;
+  }
+}
+
+SMStorageValue::SMStorageValue(SMStorageValue&& s) { Move(std::forward<SMStorageValue>(s)); }
+
+SMStorageValue& SMStorageValue::operator=(SMStorageValue&& s) {
+  Move(std::forward<SMStorageValue>(s));
+  return *this;
+}
+
+ void SMStorageValue::Destruct(SharedMemory* mem) {
   if (m_type == E_String) {
-    ((SMString*)m_value.data())->Destruct(mem);
+    m_value.String.Destruct(mem);
   }
 }
 
 std::string_view SMStorageValue::AsStringView(Context* ctx) const {
   if (m_type == E_String) {
-    return ((SMString*)m_value.data())->AsView(ctx);
+    return m_value.String.AsView(ctx);
   } else {
     FailConversion(ctx, "string view");
   }
@@ -58,13 +86,13 @@ std::string_view SMStorageValue::AsStringView(Context* ctx) const {
 std::string SMStorageValue::AsString(Context* ctx) const {
   switch (m_type) {
     case SMStorageValue::E_Bool:
-      return std::to_string(*(bool*)m_value.data());
+      return std::to_string(m_value.Bool);
     case SMStorageValue::E_Int:
-      return std::to_string(*(int*)m_value.data());
+      return std::to_string(m_value.Int);
     case SMStorageValue::E_Double:
-      return std::to_string(*(double*)m_value.data());
+      return std::to_string(m_value.Double);
     case SMStorageValue::E_String:
-      return ((SMString*)m_value.data())->AsString(ctx);
+      return m_value.String.AsString(ctx);
     case SMStorageValue::E_Unknown:
     default:
       FailConversion(ctx, "string");
@@ -74,13 +102,13 @@ std::string SMStorageValue::AsString(Context* ctx) const {
 bool SMStorageValue::AsBool(Context* ctx) const {
   switch (m_type) {
     case SMStorageValue::E_Bool:
-      return *(bool*)m_value.data();
+      return m_value.Bool;
     case SMStorageValue::E_Int:
-      return *(int*)m_value.data();
+      return m_value.Int;
     case SMStorageValue::E_Double:
-      return *(double*)m_value.data();
+      return m_value.Double;
     case SMStorageValue::E_String: {
-      std::istringstream sout(((SMString*)m_value.data())->AsString(ctx));
+      std::istringstream sout(m_value.String.AsString(ctx));
       bool v = 0;
       sout >> v;
       if (sout.fail()) FailConversion(ctx, "bool");
@@ -95,13 +123,13 @@ bool SMStorageValue::AsBool(Context* ctx) const {
 int SMStorageValue::AsInt(Context* ctx) const {
   switch (m_type) {
     case SMStorageValue::E_Bool:
-      return *(bool*)m_value.data();
+      return m_value.Bool;
     case SMStorageValue::E_Int:
-      return *(int*)m_value.data();
+      return m_value.Int;
     case SMStorageValue::E_Double:
-      return static_cast<int>(*(double*)m_value.data());
+      return static_cast<int>(m_value.Double);
     case SMStorageValue::E_String: {
-      std::istringstream sout(((SMString*)m_value.data())->AsString(ctx));
+      std::istringstream sout(m_value.String.AsString(ctx));
       int v = 0;
       sout >> v;
       if (sout.fail()) FailConversion(ctx, "int");
@@ -116,13 +144,13 @@ int SMStorageValue::AsInt(Context* ctx) const {
 double SMStorageValue::AsDouble(Context* ctx) const {
   switch (m_type) {
     case SMStorageValue::E_Bool:
-      return *(bool*)m_value.data();
+      return m_value.Bool;
     case SMStorageValue::E_Int:
-      return *(int*)m_value.data();
+      return m_value.Int;
     case SMStorageValue::E_Double:
-      return *(double*)m_value.data();
+      return m_value.Double;
     case SMStorageValue::E_String: {
-      std::istringstream sout(((SMString*)m_value.data())->AsString(ctx));
+      std::istringstream sout(m_value.String.AsString(ctx));
       double v = 0;
       sout >> v;
       if (sout.fail()) FailConversion(ctx, "double");
@@ -140,126 +168,146 @@ double SMStorageValue::AsDouble(Context* ctx) const {
 
 void SMStorage::Destruct(SharedMemory* mem) { m_map.Destruct(mem); }
 
-void SMStorage::InsertBool(Context* ctx, const SMString& key, bool value) {
+void SMStorage::InsertBool(Context* ctx, std::string_view key, bool value) {
   BIFROST_LOCK_GUARD(m_mutex);
-  m_map.Insert(ctx, key, {ctx, value});
+  m_keyBuffer.Assign(ctx, key);
+  m_map.Insert(ctx, m_keyBuffer, {ctx, value});
 }
 
-void SMStorage::InsertInt(Context* ctx, const SMString& key, int value) {
+void SMStorage::InsertInt(Context* ctx, std::string_view key, int value) {
   BIFROST_LOCK_GUARD(m_mutex);
-  m_map.Insert(ctx, key, {ctx, value});
+  m_keyBuffer.Assign(ctx, key);
+  m_map.Insert(ctx, m_keyBuffer, {ctx, value});
 }
 
-void SMStorage::InsertDouble(Context* ctx, const SMString& key, double value) {
+void SMStorage::InsertDouble(Context* ctx, std::string_view key, double value) {
   BIFROST_LOCK_GUARD(m_mutex);
-  m_map.Insert(ctx, key, {ctx, value});
+  m_keyBuffer.Assign(ctx, key);
+  m_map.Insert(ctx, m_keyBuffer, {ctx, value});
 }
 
-void SMStorage::InsertString(Context* ctx, const SMString& key, std::string_view value) { InsertString(ctx, key, {ctx, value}); }
+void SMStorage::InsertString(Context* ctx, std::string_view key, std::string_view value) { InsertString(ctx, key, {ctx, value}); }
 
-void SMStorage::InsertString(Context* ctx, const SMString& key, SMString value) {
+void SMStorage::InsertString(Context* ctx, std::string_view key, SMString value) {
   BIFROST_LOCK_GUARD(m_mutex);
-  m_map.Insert(ctx, key, {ctx, std::move(value)});
+  m_keyBuffer.Assign(ctx, key);
+  m_map.Insert(ctx, m_keyBuffer, {ctx, std::move(value)});
 }
 
-bool SMStorage::GetBool(Context* ctx, const SMString& key) {
+bool SMStorage::GetBool(Context* ctx, std::string_view key) {
   const SMStorageValue* value = nullptr;
   {
     BIFROST_LOCK_GUARD(m_mutex);
-    value = m_map.Get(ctx, key);
+    m_keyBuffer.Assign(ctx, key);
+    value = m_map.Get(ctx, m_keyBuffer);
   }
 
   if (!value) {
-    throw new std::runtime_error(StringFormat("Key \"%s\" does not exist", key.AsView(ctx).data()).c_str());
+    throw std::runtime_error(StringFormat("Key \"%s\" does not exist", key.data()).c_str());
   }
 
   try {
     return value->AsBool(ctx);
   } catch (std::domain_error& e) {
-    throw new std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.AsView(ctx).data(), e.what()).c_str());
+    throw std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.data(), e.what()).c_str());
   }
   __assume(0);
 }
 
-int SMStorage::GetInt(Context* ctx, const SMString& key) {
+int SMStorage::GetInt(Context* ctx, std::string_view key) {
   const SMStorageValue* value = nullptr;
   {
     BIFROST_LOCK_GUARD(m_mutex);
-    value = m_map.Get(ctx, key);
+    m_keyBuffer.Assign(ctx, key);
+    value = m_map.Get(ctx, m_keyBuffer);
   }
 
   if (!value) {
-    throw new std::runtime_error(StringFormat("Key \"%s\" does not exist", key.AsView(ctx).data()).c_str());
+    throw std::runtime_error(StringFormat("Key \"%s\" does not exist", key.data()).c_str());
   }
 
   try {
     return value->AsInt(ctx);
   } catch (std::domain_error& e) {
-    throw new std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.AsView(ctx).data(), e.what()).c_str());
+    throw std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.data(), e.what()).c_str());
   }
   __assume(0);
 }
 
-double SMStorage::GetDouble(Context* ctx, const SMString& key) {
+double SMStorage::GetDouble(Context* ctx, std::string_view key) {
   const SMStorageValue* value = nullptr;
   {
     BIFROST_LOCK_GUARD(m_mutex);
-    value = m_map.Get(ctx, key);
+    m_keyBuffer.Assign(ctx, key);
+    value = m_map.Get(ctx, m_keyBuffer);
   }
 
   if (!value) {
-    throw new std::runtime_error(StringFormat("Key \"%s\" does not exist", key.AsView(ctx).data()).c_str());
+    throw std::runtime_error(StringFormat("Key \"%s\" does not exist", key.data()).c_str());
   }
 
   try {
     return value->AsDouble(ctx);
   } catch (std::domain_error& e) {
-    throw new std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.AsView(ctx).data(), e.what()).c_str());
+    throw std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.data(), e.what()).c_str());
   }
   __assume(0);
 }
 
-std::string SMStorage::GetString(Context* ctx, const SMString& key) {
+std::string SMStorage::GetString(Context* ctx, std::string_view key) {
   const SMStorageValue* value = nullptr;
   {
     BIFROST_LOCK_GUARD(m_mutex);
-    value = m_map.Get(ctx, key);
+    m_keyBuffer.Assign(ctx, key);
+    value = m_map.Get(ctx, m_keyBuffer);
   }
 
   if (!value) {
-    throw new std::runtime_error(StringFormat("Key \"%s\" does not exist", key.AsView(ctx).data()).c_str());
+    throw std::runtime_error(StringFormat("Key \"%s\" does not exist", key.data()).c_str());
   }
 
   try {
     return value->AsString(ctx);
   } catch (std::domain_error& e) {
-    throw new std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.AsView(ctx).data(), e.what()).c_str());
+    throw std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.data(), e.what()).c_str());
   }
   __assume(0);
 }
 
-std::string_view SMStorage::GetStringView(Context* ctx, const SMString& key) {
+std::string_view SMStorage::GetStringView(Context* ctx, std::string_view key) {
   const SMStorageValue* value = nullptr;
   {
     BIFROST_LOCK_GUARD(m_mutex);
-    value = m_map.Get(ctx, key);
+    m_keyBuffer.Assign(ctx, key);
+    value = m_map.Get(ctx, m_keyBuffer);
   }
 
   if (!value) {
-    throw new std::runtime_error(StringFormat("Key \"%s\" does not exist", key.AsView(ctx).data()).c_str());
+    throw std::runtime_error(StringFormat("Key \"%s\" does not exist", key.data()).c_str());
   }
 
   try {
     return value->AsStringView(ctx);
   } catch (std::domain_error& e) {
-    throw new std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.AsView(ctx).data(), e.what()).c_str());
+    throw std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.data(), e.what()).c_str());
   }
   __assume(0);
+}
+
+bool SMStorage::Remove(Context* ctx, std::string_view key) {
+  BIFROST_LOCK_GUARD(m_mutex);
+  m_keyBuffer.Assign(ctx, key);
+  return m_map.Remove(ctx, m_keyBuffer);
 }
 
 bifrost::u32 SMStorage::Size() {
   BIFROST_LOCK_GUARD(m_mutex);
   return m_map.Size();
+}
+
+void SMStorage::Clear(Context* ctx) {
+  m_map.Clear(ctx);
+  m_keyBuffer.Clear(ctx);
 }
 
 }  // namespace bifrost

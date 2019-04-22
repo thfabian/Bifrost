@@ -11,6 +11,7 @@
 
 #include "bifrost/core/test.h"
 #include "bifrost/core/sm_hash_map.h"
+#include "bifrost/core/sm_string.h"
 
 namespace {
 
@@ -57,6 +58,30 @@ TEST_F(SMHashMapTest, InsertI32) {
       EXPECT_EQ(ptr, map.Insert(ctx, 1, 2));
     }
   }
+}
+
+TEST_F(SMHashMapTest, InsertString) {
+  auto ctx = GetContext();
+  auto initialMem = ctx->Memory().GetNumFreeBytes();
+
+  SMHashMap<SMString, SMString> map;
+
+  SMString key1{ctx, "foo1"};
+  SMString value1{ctx, "bar1"};
+  map.Insert(ctx, key1, std::move(value1));
+  key1.Clear(ctx);
+  EXPECT_EQ(1, map.Size());
+
+  SMString key2{ctx, "foo2"};
+  SMString value2{ctx, "bar2"};
+  map.Insert(ctx, key2, std::move(value2));
+  key2.Clear(ctx);
+  EXPECT_EQ(2, map.Size());
+
+  map.Clear(ctx);
+  EXPECT_EQ(0, map.Size());
+
+  EXPECT_EQ(initialMem, ctx->Memory().GetNumFreeBytes());
 }
 
 TEST_F(SMHashMapTest, RemoveI32) {
