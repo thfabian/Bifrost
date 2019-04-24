@@ -83,8 +83,20 @@ std::string TestEnviroment::TestName() const {
 }
 
 std::wstring TestEnviroment::GetMockExecutable() const {
-  auto p = std::filesystem::current_path();
-  return p.native();
+  auto curPath = std::filesystem::current_path();
+  std::vector<std::filesystem::path> paths;
+
+  for (auto str : {L"", L"bin\\Debug", L"bin\\Release"}) paths.emplace_back(curPath / std::filesystem::path(str) / L"test-bifrost-core-mock-executable.exe");
+
+  for (const auto& p : paths) {
+    if (std::filesystem::exists(p)) return p.native();
+  }
+
+  std::wstringstream ss;
+  ss << L"Mock executable not present, invalid paths:\n";
+  for (const auto& p : paths) ss << L" - " << p.native() << L"\n";
+
+  throw std::runtime_error(WStringToString(ss.str()));
 }
 
 }  // namespace bifrost

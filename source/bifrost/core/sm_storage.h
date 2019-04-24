@@ -87,6 +87,9 @@ class SMStorage : public SMObject {
   std::string GetString(Context* ctx, std::string_view key);
   std::string_view GetStringView(Context* ctx, std::string_view key);
 
+  /// Check if the key is available
+  bool Contains(Context* ctx, std::string_view key);
+
   /// Remove the given key
   bool Remove(Context* ctx, std::string_view key);
 

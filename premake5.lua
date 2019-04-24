@@ -67,6 +67,18 @@ workspace "bifrost"
       includedirs(spdlog_dir .. "/include")
     end
     
+  -- *** JSON *** 
+  project "external_json"
+    json_dir = bifrost_getenv("BIFROST_JSON_DIR")
+
+    kind "None"
+    files { json_dir .. "/**" }
+    includedirs(json_dir)
+
+    function bifrost_add_external_json()
+      includedirs(json_dir)
+    end
+    
   -- *** Args *** 
   project "external_args"
     args_dir = bifrost_getenv("BIFROST_ARGS_DIR")
@@ -105,12 +117,15 @@ workspace "bifrost"
     pchheader "bifrost/core/common.h"
     pchsource "source/bifrost/core/common.cpp"
     
-    files "source/bifrost/core/*"
+    files { "source/bifrost/core/*.cpp", "source/bifrost/core/*.h" }
     disablewarnings { "4267", "4146" }
+    
+    bifrost_add_external_json()
 
     function bifrost_add_bifrost_core()
       includedirs "source" 
       links "bifrost_core"
+      bifrost_add_external_json()
     end
 
 --  -- *** Shared ***

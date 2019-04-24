@@ -28,45 +28,37 @@ ModuleLoader::ModuleLoader(Context* ctx) : Object(ctx) {}
 ModuleLoader::~ModuleLoader() {
   for (const auto& m : m_modules) {
     if (m.second.Loaded) {
-      Logger().DebugFormat("Unloading library '%s'", m.first.c_str());
+      Logger().DebugFormat(L"Unloading library '%s'", m.first.c_str());
       BIFROST_CHECK_WIN_CALL(::FreeLibrary(m.second.Handle) != 0);
     }
   }
 }
 
-HMODULE ModuleLoader::GetModule(const std::string& moduleName) {
+HMODULE ModuleLoader::GetModule(const std::string moduleName, std::string dllDirectory) {
+  return GetModule(StringToWString(moduleName), dllDirectory.empty() ? std::wstring{} : StringToWString(dllDirectory));
+}
+
+HMODULE ModuleLoader::GetModule(const std::wstring moduleName, std::wstring dllDirectory) {
   BIFROST_LOCK_GUARD(m_mutex);
 
   auto it = m_modules.find(moduleName);
   if (it != m_modules.end()) return it->second.Handle;
 
   bool loaded = false;
-  HMODULE hmodule = ::GetModuleHandleA(moduleName.c_str());
-  if (hmodule == NULL) {
-    Logger().DebugFormat("Loading library '%s'", moduleName.c_str());
-    BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryA(moduleName.c_str())) != NULL, "Failed to load module: '" + moduleName + "'");
-    loaded = true;
-  }
-  m_modules.emplace(moduleName, Module{hmodule, loaded});
-  return hmodule;
-}
-
-HMODULE ModuleLoader::GetModule(const std::wstring& moduleName) {
-  BIFROST_LOCK_GUARD(m_mutex);
-
-  auto str = WStringToString(moduleName);
-
-  auto it = m_modules.find(str);
-  if (it != m_modules.end()) return it->second.Handle;
-
-  bool loaded = false;
   HMODULE hmodule = ::GetModuleHandleW(moduleName.c_str());
   if (hmodule == NULL) {
     Logger().DebugFormat(L"Loading library '%s'", moduleName.c_str());
-    BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryW(moduleName.c_str())) != NULL, "Failed to load module: '" + str + "'");
+
+    if (!dllDirectory.empty()) {
+      BIFROST_ASSERT_WIN_CALL_MSG(::SetDllDirectoryW(dllDirectory.c_str()) != 0, "Failed to add \"" + WStringToString(dllDirectory) + "\" to the DLL search paths");
+    } else {
+      BIFROST_ASSERT_WIN_CALL_MSG(::SetDllDirectoryW(NULL) != 0, "Failed to restore DLL search path");
+    }
+
+    BIFROST_ASSERT_WIN_CALL_MSG((hmodule = ::LoadLibraryW(moduleName.c_str())) != NULL, "Failed to load module: '" + WStringToString(moduleName) + "'");
     loaded = true;
   }
-  m_modules.emplace(str, Module{hmodule, loaded});
+  m_modules.emplace(std::move(moduleName), Module{hmodule, loaded});
   return hmodule;
 }
 
@@ -78,13 +70,13 @@ HMODULE ModuleLoader::GetCurrentModule() {
   return hmodule;
 }
 
-std::string ModuleLoader::GetModuleName(HMODULE module) {
+std::wstring ModuleLoader::GetModuleName(HMODULE module) {
   wchar_t path[2 * MAX_PATH];
   BIFROST_ASSERT_WIN_CALL_MSG(::GetModuleFileNameW(module, path, ArraySize(path)) != 0, StringFormat("Failed to get name of %p module", module));
   std::filesystem::path p(path);
-  return p.filename().string();
+  return p.filename().native();
 }
 
-std::string ModuleLoader::GetCurrentModuleName() { return GetModuleName(GetCurrentModule()); }
+std::wstring ModuleLoader::GetCurrentModuleName() { return GetModuleName(GetCurrentModule()); }
 
 }  // namespace bifrost

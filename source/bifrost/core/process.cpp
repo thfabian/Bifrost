@@ -19,17 +19,15 @@
 namespace bifrost {
 
 Process::Process(Context* ctx, LaunchArguments args) : Object(ctx), m_args(std::move(args)) {
-  ::STARTUPINFO si;
-  si.cb = sizeof(si);
-  ZeroMemory(&si, sizeof(si));
+  m_startupInfo.cb = sizeof(m_startupInfo);
+  ZeroMemory(&m_startupInfo, sizeof(m_startupInfo));
+  ZeroMemory(&m_procInfo, sizeof(m_procInfo));
 
-  ::PROCESS_INFORMATION pi;
-  ZeroMemory(&pi, sizeof(pi));
+  std::string arguments = "";
+  for (int i = 0; i < m_args.Arguments.size(); ++i) arguments += (i == 0 ? "\"" : " \"") + m_args.Arguments[i] + "\"";
 
-  auto cmdStr = m_args.Executable.wstring();
-  for (const auto& arg : m_args.Arguments) cmdStr += L" " + StringToWString(arg);
-
-  Logger().InfoFormat(L"Launching process: \"%s\"", cmdStr.c_str());
+  std::wstring cmdStr = m_args.Executable.wstring() + L" " + StringToWString(arguments);
+  Logger().InfoFormat(L"Launching process: %s", cmdStr.c_str());
 
   DWORD creationFlags = 0;
   if (m_args.Suspended) {
@@ -37,17 +35,17 @@ Process::Process(Context* ctx, LaunchArguments args) : Object(ctx), m_args(std::
   }
 
   auto cmd = StringCopy(cmdStr);
-  BIFROST_ASSERT_WIN_CALL_MSG(::CreateProcessW(NULL,           // No module name (use command line)
-                                               cmd.get(),      // Command line
-                                               NULL,           // Process handle not inheritable
-                                               NULL,           // Thread handle not inheritable
-                                               FALSE,          // Set handle inheritance to FALSE
-                                               creationFlags,  // Creation flags
-                                               NULL,           // Use parent's environment block
-                                               NULL,           // Use parent's starting directory
-                                               &si,            // Pointer to STARTUPINFO structure
-                                               &pi) != FALSE,
-                              StringFormat("Failed to launch process: \"%s\"", WStringToString(cmdStr)).c_str());
+  BIFROST_ASSERT_WIN_CALL_MSG(::CreateProcessW(NULL,            // No module name (use command line)
+                                               cmd.get(),       // Command line
+                                               NULL,            // Process handle not inheritable
+                                               NULL,            // Thread handle not inheritable
+                                               FALSE,           // Set handle inheritance to FALSE
+                                               creationFlags,   // Creation flags
+                                               NULL,            // Use parent's environment block
+                                               NULL,            // Use parent's starting directory
+                                               &m_startupInfo,  // Pointer to STARTUPINFO structure
+                                               &m_procInfo) != FALSE,
+                              StringFormat("Failed to launch process: %s", WStringToString(cmdStr)).c_str());
 }
 
 Process::~Process() {
@@ -67,6 +65,8 @@ const i32* Process::ExitCode() {
 }
 
 bool Process::TrySetExitCode() {
+  if (m_exitCode.has_value()) return true;
+
   DWORD exitCode = 0;
   bool success = false;
   BIFROST_CHECK_WIN_CALL((success = ::GetExitCodeProcess(m_procInfo.hProcess, &exitCode) != FALSE));

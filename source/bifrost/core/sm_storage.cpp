@@ -37,9 +37,9 @@ SMStorageValue::SMStorageValue(Context* ctx, bool v) : m_type(E_Bool) { m_value.
 
 SMStorageValue::SMStorageValue(Context* ctx, int v) : m_type(E_Int) { m_value.Int = v; }
 
-SMStorageValue::SMStorageValue(Context* ctx, double v) : m_type(E_Double) { m_value.Double = v;}
+SMStorageValue::SMStorageValue(Context* ctx, double v) : m_type(E_Double) { m_value.Double = v; }
 
-SMStorageValue::SMStorageValue(Context* ctx, SMString v) : m_type(E_String)  { m_value.String = std::move(v); }
+SMStorageValue::SMStorageValue(Context* ctx, SMString v) : m_type(E_String) { m_value.String = std::move(v); }
 
 void SMStorageValue::Move(SMStorageValue&& s) {
   m_type = s.m_type;
@@ -69,7 +69,7 @@ SMStorageValue& SMStorageValue::operator=(SMStorageValue&& s) {
   return *this;
 }
 
- void SMStorageValue::Destruct(SharedMemory* mem) {
+void SMStorageValue::Destruct(SharedMemory* mem) {
   if (m_type == E_String) {
     m_value.String.Destruct(mem);
   }
@@ -292,6 +292,12 @@ std::string_view SMStorage::GetStringView(Context* ctx, std::string_view key) {
     throw std::runtime_error(StringFormat("Failed to convert value of key \"%s\": %s", key.data(), e.what()).c_str());
   }
   __assume(0);
+}
+
+bool SMStorage::Contains(Context* ctx, std::string_view key) {
+  BIFROST_LOCK_GUARD(m_mutex);
+  m_keyBuffer.Assign(ctx, key);
+  return m_map.Get(ctx, m_keyBuffer) != nullptr;
 }
 
 bool SMStorage::Remove(Context* ctx, std::string_view key) {

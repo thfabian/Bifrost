@@ -58,7 +58,7 @@ class TestBase : public ::testing::Test {
   TestBase() { m_logger = std::make_unique<TestLogger>(); }
 
   /// Create shared memory (if `name` is NULL the current test case and test name is used
-  std::unique_ptr<SharedMemory> CreateSharedMemory(u64 size = 1 << 12, const char* name = nullptr) {
+  std::unique_ptr<SharedMemory> CreateSharedMemory(u64 size = 1 << 14, const char* name = nullptr) {
     auto smName = name == nullptr ? TestEnviroment::Get().TestCaseName() + "." + TestEnviroment::Get().TestName() : std::string(name);
     return std::make_unique<SharedMemory>(m_context.get(), std::move(smName), size);
   }

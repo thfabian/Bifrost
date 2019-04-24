@@ -24,18 +24,18 @@ class ModuleLoader : public Object {
   ModuleLoader(Context* ctx);
   ~ModuleLoader();
 
-  /// Get module given by ``moduleName`` or throw std::runtime_error on error
-  HMODULE GetModule(const std::string& moduleName);
-  HMODULE GetModule(const std::wstring& moduleName);
+  /// Get module given by `moduleName` or throw std::runtime_error on error
+  HMODULE GetModule(std::string moduleName, std::string dllDirectory = std::string{});
+  HMODULE GetModule(std::wstring moduleName, std::wstring dllDirectory = std::wstring{});
 
   /// Get the current module
   HMODULE GetCurrentModule();
 
-  /// Get the name of ``module``
-  std::string GetModuleName(HMODULE module);
+  /// Get the name of `module`
+  std::wstring GetModuleName(HMODULE module);
 
   /// Get the name of the current module
-  std::string GetCurrentModuleName();
+  std::wstring GetCurrentModuleName();
 
  private:
   struct Module {
@@ -44,7 +44,7 @@ class ModuleLoader : public Object {
   };
 
   std::mutex m_mutex;
-  std::unordered_map<std::string, Module> m_modules;
+  std::unordered_map<std::wstring, Module> m_modules;
 };
 
 }  // namespace bifrost

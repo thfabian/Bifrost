@@ -9,10 +9,14 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <Windows.h>
-#include <cstdlib>
+#pragma once
 
-int main(int argc, const char* argv[]) {
-  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 0);
-  return argc > 1 ? std::atoi(argv[1]) : 0;
-}
+#include "bifrost/core/common.h"
+#include <json.hpp>
+
+namespace bifrost {
+
+using Json = ::nlohmann::json;
+using JsonError = ::nlohmann::json::parse_error;
+
+}  // namespace bifrost
