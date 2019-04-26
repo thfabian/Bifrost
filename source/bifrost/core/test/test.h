@@ -43,10 +43,16 @@ class TestEnviroment final : public ::testing::Environment {
   /// Get the full path to the mock executable
   std::wstring GetMockExecutable() const;
 
+  /// Get the full path to the mock dll
+  std::wstring GetMockDll() const;
+
   static TestEnviroment& Get() { return *s_instance; }
 
   virtual void SetUp() override { s_instance = std::make_unique<TestEnviroment>(); }
   virtual void TearDown() override { s_instance.reset(); }
+
+ private:
+  std::wstring GetMockFile(std::wstring type, std::wstring filename) const;
 
  private:
   static std::unique_ptr<TestEnviroment> s_instance;

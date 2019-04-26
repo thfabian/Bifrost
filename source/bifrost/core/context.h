@@ -21,6 +21,9 @@ class SharedMemory;
 /// Context object holding all persistent data
 class Context {
  public:
+  /// Check if a logger has been attached
+  bool HasLogger() const { return m_logger != nullptr; }
+
   /// Get the logger
   inline ILogger& Logger() { return *m_logger; }
   inline const ILogger& Logger() const { return *m_logger; }
@@ -36,8 +39,8 @@ class Context {
   inline void SetMemory(SharedMemory* memory) { m_memory = memory; }
 
  private:
-  ILogger* m_logger;
-  SharedMemory* m_memory;
+  ILogger* m_logger = nullptr;
+  SharedMemory* m_memory = nullptr;
 };
 
 }  // namespace bifrost

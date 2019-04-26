@@ -28,10 +28,16 @@ class Process : public Object {
 
   /// Launch the process using `args` - throws std::runtime_error on failure
   Process(Context* ctx, LaunchArguments args);
-  ~Process();
+
+  /// Connect to the process given by PID
+  Process(Context* ctx, u32 pid);
+
+  /// Connect to the process `name`
+  Process(Context* ctx, std::wstring_view name);
 
   Process(Process&&) = default;
   Process& operator=(Process&&) = default;
+  ~Process();
 
   /// Resume the process after suspension - throws std::runtime_error on failure
   void Resume();
@@ -42,17 +48,41 @@ class Process : public Object {
   /// Poll the launched process and return true if the process has exited
   bool Poll();
 
+  /// Inject the DLL
+  void Inject(std::wstring dll);
+
   /// Return the exit code or NULL if the process has not yet exited
-  const i32* ExitCode();
+  const u32* GetExitCode();
+
+  /// Get the process identifier
+  u32 GetPid();
+
+  /// Get the main thread identifier
+  u32 GetTid();
+
+  /// Get the process handle
+  HANDLE GetProcessHandle();
+
+  /// Get the main thread handle
+  HANDLE GetThreadHandle();
 
  private:
   bool TrySetExitCode();
+  void OpenProcess(u32 pid);
+  void OpenThread();
 
  private:
-  LaunchArguments m_args;
-  ::STARTUPINFO m_startupInfo;
-  ::PROCESS_INFORMATION m_procInfo;
-  std::optional<i32> m_exitCode;
+  HANDLE m_hProcess = NULL;
+  HANDLE m_hThread = NULL;
+  std::optional<u32> m_pid;
+  std::optional<u32> m_tid;
+  std::optional<u32> m_exitCode;
 };
+
+/// Kill the process given by `pid`
+extern void KillProcess(Context* ctx, DWORD pid);
+
+/// Kill all processes given by `name`
+extern void KillProcess(Context* ctx, std::wstring_view name);
 
 }  // namespace bifrost

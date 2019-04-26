@@ -82,18 +82,22 @@ std::string TestEnviroment::TestName() const {
   return "";
 }
 
-std::wstring TestEnviroment::GetMockExecutable() const {
+std::wstring TestEnviroment::GetMockExecutable() const { return GetMockFile(L"executable", L"test-bifrost-core-mock-executable.exe"); }
+
+std::wstring TestEnviroment::GetMockDll() const { return GetMockFile(L"dll", L"test-bifrost-core-mock-dll.dll"); }
+
+std::wstring TestEnviroment::GetMockFile(std::wstring type, std::wstring filename) const {
   auto curPath = std::filesystem::current_path();
   std::vector<std::filesystem::path> paths;
 
-  for (auto str : {L"", L"bin\\Debug", L"bin\\Release"}) paths.emplace_back(curPath / std::filesystem::path(str) / L"test-bifrost-core-mock-executable.exe");
+  for (auto str : {L"", L"bin\\Debug", L"bin\\Release"}) paths.emplace_back(curPath / std::filesystem::path(str) / filename);
 
   for (const auto& p : paths) {
     if (std::filesystem::exists(p)) return p.native();
   }
 
   std::wstringstream ss;
-  ss << L"Mock executable not present, invalid paths:\n";
+  ss << L"Mock " << type << "\"" << filename << "\" not present, invalid paths:\n";
   for (const auto& p : paths) ss << L" - " << p.native() << L"\n";
 
   throw std::runtime_error(WStringToString(ss.str()));

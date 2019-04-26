@@ -240,7 +240,12 @@ workspace "bifrost"
     kind "ConsoleApp"
     targetname "test-bifrost-core-mock-executable"
     files { "source/bifrost/core/test/data/mock_executable.cpp" }
-
+    
+  -- *** Core Test (mock dll) ***
+  project "bifrost_core_test_mock_dll"
+    kind "SharedLib"
+    targetname "test-bifrost-core-mock-dll"
+    files { "source/bifrost/core/test/data/mock_dll.cpp" }
 
   -- *** Core Test ***
   project "bifrost_core_test"
