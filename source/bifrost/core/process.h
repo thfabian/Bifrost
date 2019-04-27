@@ -39,6 +39,9 @@ class Process : public Object {
   Process& operator=(Process&&) = default;
   ~Process();
 
+  /// Suspend the thread - throws std::runtime_error on failure
+  void Suspend();
+
   /// Resume the process after suspension - throws std::runtime_error on failure
   void Resume();
 
@@ -48,8 +51,10 @@ class Process : public Object {
   /// Poll the launched process and return true if the process has exited
   bool Poll();
 
-  /// Inject the DLL
-  void Inject(std::wstring dll);
+  /// Inject the DLL given by the full path `dllPath`
+  ///
+  /// Throws an exception if the injection failed
+  void Inject(std::wstring dllPath);
 
   /// Return the exit code or NULL if the process has not yet exited
   const u32* GetExitCode();
@@ -60,9 +65,6 @@ class Process : public Object {
   /// Get the main thread identifier
   u32 GetTid();
 
-  /// Get the process handle
-  HANDLE GetProcessHandle();
-
   /// Get the main thread handle
   HANDLE GetThreadHandle();
 
@@ -70,6 +72,7 @@ class Process : public Object {
   bool TrySetExitCode();
   void OpenProcess(u32 pid);
   void OpenThread();
+  DWORD RunRemoteThread(const char* functionName, const void* argData, u32 argSizeInBytes);
 
  private:
   HANDLE m_hProcess = NULL;

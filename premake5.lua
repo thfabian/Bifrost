@@ -127,113 +127,6 @@ workspace "bifrost"
       links "bifrost_core"
       bifrost_add_external_json()
     end
-
---  -- *** Shared ***
---  project "bifrost_shared"
---    kind "SharedLib"
---    defines { "BIFROST_SHARED_EXPORTS" }
---    includedirs { "source" }
---    disablewarnings { "4251", "4146", "4244" }
-    
---    files "source/bifrost/shared/**" 
---    removefiles { "**_test.cpp", "**_test.h" }
-    
---    pchheader "bifrost/shared/common.h"
---    pchsource "source/bifrost/shared/common.cpp"
-    
---    bifrost_add_bifrost_core()
-    
---    function bifrost_add_bifrost_shared()
---      includedirs "source"
---      links "bifrost_shared"
---    end
-    
---  -- *** Loader ***
---  project "bifrost_loader"
---    kind "SharedLib"
---    defines { "BIFROST_LOADER_EXPORTS" }
---    includedirs { "source" }
-    
---    files "source/bifrost/loader/**" 
---    removefiles { "**_test.cpp", "**_test.h" }
-    
---    pchheader "bifrost/loader/common.h"
---    pchsource "source/bifrost/loader/common.cpp"
-    
---    bifrost_add_bifrost_core()
-    
---    function bifrost_add_bifrost_loader()
---      includedirs "source" 
---      links "bifrost_loader"
---    end
-    
---  -- *** Injector ***
---  project "bifrost_injector"
---    kind "SharedLib"
---    defines { "BIFROST_INJECTOR_EXPORTS" }
---    includedirs { "source" }
-    
---    files "source/bifrost/injector/**"
---    removefiles { "**_test.cpp", "**_test.h", "*/cli/*" }
-
---    pchheader "bifrost/injector/common.h"
---    pchsource "source/bifrost/injector/common.cpp"
-    
---    bifrost_add_bifrost_core()
---    bifrost_add_external_spdlog()
-    
---    dependson { "bifrost_shared", "bifrost_loader" }
-    
---    function bifrost_add_bifrost_injector()
---      includedirs "source" 
---      links "bifrost_injector"
---      bifrost_add_external_spdlog()
---    end
-    
---  project "bifrost_injector_cli"
---    kind "ConsoleApp"
---    files "source/bifrost/injector/cli/main.cpp"
---    targetname "bifrost-injector"
-    
---    bifrost_add_bifrost_injector()
---    bifrost_add_external_args()
-	
-  -- *****
-  -- *** Test ***
-  -- *****
-  
-  -- *** Test Util ***
---  project "bifrost_test_util"
---    kind "StaticLib"
---    includedirs { "source" }
-    
---    pchheader "bifrost/test_util/common.h"
---    pchsource "source/bifrost/test_util/common.cpp"
-    
---    files "source/bifrost/test_util/**" 
-    
---    bifrost_add_bifrost_core()
---    bifrost_add_external_gtest()
-    
---    function bifrost_add_bifrost_test_util()
---      includedirs "source"
---      links "bifrost_test_util"
-      
---      bifrost_add_bifrost_core()
---      bifrost_add_external_gtest()
---    end
-  
-  -- *** Shared Test ***
---  project "bifrost_shared_test"
---    kind "ConsoleApp"
---    includedirs { "source" }
---    targetname "test-bifrost-shared"
---    disablewarnings { "4251", "4146" }
-    
---    files "source/bifrost/shared/*_test.*"
-	
---    bifrost_add_bifrost_test_util()
---    bifrost_add_bifrost_shared()
     
   -- *** Core Test (mock executable) ***
   project "bifrost_core_test_mock_executable"
@@ -246,6 +139,8 @@ workspace "bifrost"
     kind "SharedLib"
     targetname "test-bifrost-core-mock-dll"
     files { "source/bifrost/core/test/data/mock_dll.cpp" }
+    
+    bifrost_add_bifrost_core()
 
   -- *** Core Test ***
   project "bifrost_core_test"
@@ -260,7 +155,7 @@ workspace "bifrost"
 	
     bifrost_add_external_gtest()
     bifrost_add_bifrost_core()
-    dependson { "bifrost_core_test_mock_executable" } 
+    dependson { "bifrost_core_test_mock_executable", "bifrost_core_test_mock_dll" } 
     
   -- *****
   -- *** Example ***

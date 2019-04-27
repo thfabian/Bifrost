@@ -55,15 +55,16 @@ Process::Process(Context* ctx, LaunchArguments args) : Object(ctx) {
   m_hThread = procInfo.hThread;
   m_pid = procInfo.dwProcessId;
   m_tid = procInfo.dwThreadId;
+  Logger().InfoFormat("Launched process with pid: %u", GetPid());
 }
 
 Process::Process(Context* ctx, u32 pid) : Object(ctx) {
-  Logger().InfoFormat("Opening process with pid: %i", pid);
+  Logger().InfoFormat("Opening process with pid: %u", pid);
   OpenProcess(pid);
 }
 
 Process::Process(Context* ctx, std::wstring_view name) : Object(ctx) {
-  Logger().InfoFormat(L"Opening process with name: %s", name.data());
+  Logger().InfoFormat(L"Opening process with name: \"%s\"", name.data());
 
   HANDLE snapshot;
   BIFROST_ASSERT_WIN_CALL((snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)) != NULL);
@@ -94,6 +95,7 @@ Process::Process(Context* ctx, std::wstring_view name) : Object(ctx) {
   if (m_hProcess == NULL) {
     throw std::runtime_error(WStringToString(StringFormat(L"Failed to open process given by name: %s", std::wstring(name).c_str())).c_str());
   }
+  Logger().InfoFormat("Opened process with pid: %u", GetPid());
 }
 
 Process::~Process() {
@@ -101,13 +103,93 @@ Process::~Process() {
   if (m_hThread) BIFROST_CHECK_WIN_CALL(::CloseHandle(m_hThread) != FALSE);
 }
 
-void Process::Resume() { BIFROST_ASSERT_WIN_CALL(::ResumeThread(GetThreadHandle()) != ((DWORD)-1)); }
+void Process::Suspend() {
+  Logger().DebugFormat("Suspending thread %u ...", GetTid());
+  DWORD suspendCount = 0;
+  BIFROST_ASSERT_WIN_CALL((suspendCount = ::SuspendThread(GetThreadHandle())) != ((DWORD)-1));
+  Logger().DebugFormat("Successfully suspended thread %u, thread %s (previous suspend count %u)", GetTid(),
+                       suspendCount == 0 ? "was running" : "was already suspended", suspendCount);
+}
 
-void Process::Wait() { BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(GetProcessHandle(), INFINITE) != WAIT_FAILED); }
+void Process::Resume() {
+  Logger().DebugFormat("Resuming thread %u ...", GetTid());
+  DWORD suspendCount = 0;
+  BIFROST_ASSERT_WIN_CALL((suspendCount = ::ResumeThread(GetThreadHandle())) != ((DWORD)-1));
+  Logger().DebugFormat("Successfully resumed thread %u, thread is %s (previous suspend count %u)", GetTid(),
+                       suspendCount == 1 ? "now running" : "still suspended", suspendCount);
+}
+
+void Process::Wait() { BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(m_hProcess, INFINITE) != WAIT_FAILED); }
 
 bool Process::Poll() { return GetExitCode() != nullptr; }
 
-void Process::Inject(std::wstring dll) {}
+DWORD Process::RunRemoteThread(const char* functionName, const void* argData, u32 argSizeInBytes) {
+  Logger().DebugFormat("Running %s in a remote thread for process %u", functionName, GetPid());
+  std::shared_ptr<void> remoteThreadParameter = nullptr;
+
+  if (argData) {
+    // Allocate remote memory for parameter
+    Logger().DebugFormat("Allocating %u bytes in remote process memory for thread parameter", argSizeInBytes);
+    auto allocateRemoteMemory = [this](u32 size) {
+      void* ptr;
+      BIFROST_ASSERT_WIN_CALL((ptr = ::VirtualAllocEx(m_hProcess, NULL, size, MEM_COMMIT, PAGE_READWRITE)) != NULL);
+      return std::shared_ptr<void>(ptr, [this](void* ptr) { BIFROST_CHECK_WIN_CALL(::VirtualFreeEx(m_hProcess, ptr, 0, MEM_RELEASE) != NULL); });
+    };
+    remoteThreadParameter = allocateRemoteMemory(argSizeInBytes);
+
+    // Copy parameter to remote memory
+    Logger().Debug("Copying thread parameter to remote process memory");
+    SIZE_T numBytesWritten = 0;
+    BIFROST_ASSERT_WIN_CALL_MSG(::WriteProcessMemory(m_hProcess, remoteThreadParameter.get(), argData, argSizeInBytes, &numBytesWritten) != FALSE,
+                                "Failed to write remote process memory");
+    if (numBytesWritten != argSizeInBytes) {
+      throw std::runtime_error(
+          StringFormat("Failed to write remote process memory: Requested to write %lu bytes, wrote %lu bytes.", argSizeInBytes, numBytesWritten).c_str());
+    }
+  }
+
+  // Launch the remote thread
+  Logger().Debug("Launching remote thread ...");
+  HMODULE hKernel32 = NULL;
+  BIFROST_ASSERT_WIN_CALL((hKernel32 = ::GetModuleHandleW(L"kernel32")) != NULL);
+
+  LPTHREAD_START_ROUTINE remoteThreadFunc = NULL;
+  BIFROST_ASSERT_WIN_CALL((remoteThreadFunc = (LPTHREAD_START_ROUTINE)::GetProcAddress(hKernel32, functionName)) != NULL);
+
+  HANDLE hRemoteThread = NULL;
+  BIFROST_ASSERT_WIN_CALL((hRemoteThread = ::CreateRemoteThread(m_hProcess, NULL, 0, remoteThreadFunc, remoteThreadParameter.get(), 0, NULL)) != NULL);
+
+  // Wait for the LoadLibrary to return
+  Logger().DebugFormat("Waiting for %s to return ...", functionName);
+  BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(hRemoteThread, INFINITE) != WAIT_FAILED);
+
+  DWORD remoteThreadExitCode = NULL;
+  BIFROST_ASSERT_WIN_CALL(::GetExitCodeThread(hRemoteThread, &remoteThreadExitCode) != FALSE);
+  BIFROST_ASSERT_WIN_CALL(::CloseHandle(hRemoteThread) != FALSE);
+  return remoteThreadExitCode;
+}
+
+void Process::Inject(std::wstring dllPath) {
+  Suspend();
+  try {
+    Logger().InfoFormat(L"Injecting Dll \"%s\" into remote process %u ...", dllPath.c_str(), GetPid());
+    if (!std::filesystem::exists(std::filesystem::path(dllPath))) {
+      throw std::runtime_error(WStringToString(StringFormat(L"Dll \"%s\" does not exists", dllPath.c_str())).c_str());
+    }
+
+    const void* hostDllPath = dllPath.c_str();
+    u32 hostDllPathSize = sizeof(wchar_t) * (dllPath.size() + 1);
+    if (RunRemoteThread("LoadLibraryW", hostDllPath, hostDllPathSize) == NULL) {
+      throw std::runtime_error(WStringToString(StringFormat(L"Failed to inject \"%s\": LoadLibraryW in remote process failed.", dllPath.c_str())).c_str());
+    }
+    Logger().Info(L"Injection successful");
+    Resume();
+  } catch (...) {
+    Logger().Error(L"Injection failed");
+    Resume();
+    throw;
+  }
+}
 
 const u32* Process::GetExitCode() {
   if (m_exitCode.has_value() || TrySetExitCode()) return &m_exitCode.value();
@@ -115,7 +197,7 @@ const u32* Process::GetExitCode() {
 }
 
 u32 Process::GetPid() {
-  if (!m_pid.has_value()) m_pid = ::GetProcessId(GetProcessHandle());
+  if (!m_pid.has_value()) m_pid = ::GetProcessId(m_hProcess);
   return m_pid.value();
 }
 
@@ -145,8 +227,6 @@ u32 Process::GetTid() {
   return m_tid.value();
 }
 
-HANDLE Process::GetProcessHandle() { return m_hProcess; }
-
 HANDLE Process::GetThreadHandle() {
   if (m_hThread == NULL) OpenThread();
   return m_hThread;
@@ -157,7 +237,7 @@ bool Process::TrySetExitCode() {
 
   DWORD exitCode = 0;
   bool success = false;
-  BIFROST_CHECK_WIN_CALL((success = ::GetExitCodeProcess(GetProcessHandle(), &exitCode) != FALSE));
+  BIFROST_CHECK_WIN_CALL((success = ::GetExitCodeProcess(m_hProcess, &exitCode) != FALSE));
   if (success && exitCode != STILL_ACTIVE) {
     m_exitCode = exitCode;
     return true;
@@ -180,6 +260,7 @@ void KillProcess(Context* ctx, DWORD pid) {
   HANDLE hProcess = INVALID_HANDLE_VALUE;
   BIFROST_CHECK_WIN_CALL_CTX(ctx, (hProcess = ::OpenProcess(PROCESS_TERMINATE, FALSE, pid)) != NULL);
   if (hProcess != NULL) {
+    ctx->Logger().InfoFormat("Terminating process: %i", pid);
     BIFROST_CHECK_WIN_CALL_CTX(ctx, ::TerminateProcess(hProcess, 9) != FALSE);
     BIFROST_CHECK_WIN_CALL_CTX(ctx, ::CloseHandle(hProcess) != FALSE);
   }

@@ -1,3 +1,2 @@
-#define BIFROST_SHARED_API
-#define BIFROST_LOADER_API
 #define NULL
+#define WINAPI
