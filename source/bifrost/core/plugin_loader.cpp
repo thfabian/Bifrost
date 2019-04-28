@@ -10,6 +10,7 @@
 // See LICENSE.txt for details.
 
 #include "bifrost/core/common.h"
+#include "bifrost/core/exception.h"
 #include "bifrost/core/plugin_loader.h"
 #include "bifrost/core/json.h"
 #include "bifrost/core/context.h"
@@ -31,7 +32,6 @@ void PluginLoader::Serialize(const std::vector<Plugin>& plugins) {
     j.push_back(std::move(jPlugin));
   }
 
-
   GetContext().Memory().GetSMStorage()->InsertString(&GetContext(), PluginKey, j.dump());
   Logger().DebugFormat("Serialized %lu plugin(s) to shared memory", plugins.size());
 }
@@ -49,10 +49,10 @@ std::vector<Plugin> PluginLoader::Deserialize() {
   try {
     j = Json::parse(GetContext().Memory().GetSMStorage()->GetString(&GetContext(), PluginKey));
   } catch (JsonError& e) {
-    throw std::runtime_error(std::string{"Failed to parse plugins: "} + e.what());
+    throw Exception("Failed to parse plugins: %s", e.what());
   }
 
-  auto throwInvalidFormat = [&](std::string msg) { throw std::runtime_error("Invalid format of plugins: " + msg + "\n\n" + j.dump(2)); };
+  auto throwInvalidFormat = [&](std::string msg) { throw Exception("Invalid format of plugins: " + msg + "\n\n" + j.dump(2)); };
 
   if (!j.is_array()) throwInvalidFormat("expected array");
   for (i32 i = 0; i < j.size(); ++i) {

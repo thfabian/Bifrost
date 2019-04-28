@@ -14,6 +14,7 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/macros.h"
 #include "bifrost/core/object.h"
+#include "bifrost/core/exception.h"
 
 namespace bifrost {
 
@@ -82,7 +83,7 @@ inline void CheckCall(Context* ctx, bool cond, MessageFuncT&& msgFunc, const cha
       ::OutputDebugStringA(fmtMsg.c_str());
       if (::IsDebuggerPresent()) ::__debugbreak();
 #endif
-      throw std::runtime_error(fmtMsg.c_str());
+      throw Exception(fmtMsg);
     }
   }
 }

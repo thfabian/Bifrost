@@ -100,6 +100,7 @@ TEST_F(ProcessTest, ResumeAndSuspend) {
   ASSERT_FALSE(proc.Poll());
 
   ASSERT_NO_THROW(proc.Resume());
+  ASSERT_NO_THROW(proc.Resume());  // thread is already running, should be nop
   ASSERT_NO_THROW(proc.Wait());
 
   ASSERT_NE(nullptr, proc.GetExitCode());
@@ -166,6 +167,21 @@ TEST_F(ProcessTest, InjectSuccess) {
   EXPECT_EQ(0, *proc.GetExitCode());
 }
 
+TEST_F(ProcessTest, InjectDirectSuccess) {
+  auto exe = TestEnviroment::Get().GetMockExecutable();
+  auto dll = TestEnviroment::Get().GetMockDll();
+
+  Process proc(GetContext(), {exe, {"0", "200"}, true});
+
+  ASSERT_NO_THROW(proc.Inject(dll, Process::E_LoadLibraryW));
+
+  ASSERT_NO_THROW(proc.Resume());
+  ASSERT_NO_THROW(proc.Wait());
+
+  ASSERT_NE(nullptr, proc.GetExitCode());
+  EXPECT_EQ(0, *proc.GetExitCode());
+}
+
 TEST_F(ProcessTest, InjectFail) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
   auto dll = TestEnviroment::Get().GetMockDll();
@@ -188,8 +204,6 @@ TEST_F(ProcessTest, InjectUnsuspended) {
   Process proc(GetContext(), {exe, {"0", "200"}, false});
 
   ASSERT_NO_THROW(proc.Inject(dll));
-
-  ASSERT_NO_THROW(proc.Resume());
   ASSERT_NO_THROW(proc.Wait());
 
   ASSERT_NE(nullptr, proc.GetExitCode());

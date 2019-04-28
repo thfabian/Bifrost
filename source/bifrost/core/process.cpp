@@ -15,9 +15,35 @@
 #include "bifrost/core/process.h"
 #include "bifrost/core/error.h"
 #include "bifrost/core/util.h"
+#include "bifrost/core/exception.h"
 #include <tlhelp32.h>
 
 namespace bifrost {
+
+#pragma optimize("", off)
+
+#pragma pack(push)
+#pragma pack(1)
+struct ThreadParameter {
+  u64 LoadLibraryWAddr;
+  u64 GetLastErrorAddr;
+  u32 DllSize;
+  u64 DllData;
+};
+#pragma pack(pop)
+
+#pragma code_seg(push, ".bf$a")
+__declspec(noinline) [[nodiscard]] static DWORD WINAPI LoadLibraryWithErrorHandling(LPVOID lpThreadParameter) {
+  using LoadLibraryW_fn = decltype(&::LoadLibraryW);
+  using GetLastError_fn = decltype(&::GetLastError);
+
+  ThreadParameter* param = (ThreadParameter*)lpThreadParameter;
+  if (((LoadLibraryW_fn)param->LoadLibraryWAddr)((LPCWSTR)param->DllData) == NULL) return ((GetLastError_fn)param->GetLastErrorAddr)();
+  return NO_ERROR;
+}
+__declspec(noinline) [[nodiscard]] static DWORD WINAPI LoadLibraryWithErrorHandlingSectionEnd() { return 0; }
+#pragma code_seg()
+#pragma optimize("", on)
 
 Process::Process(Context* ctx, LaunchArguments args) : Object(ctx) {
   ::STARTUPINFOW startupInfo;
@@ -87,13 +113,13 @@ Process::Process(Context* ctx, std::wstring_view name) : Object(ctx) {
     std::stringstream ss;
     ss << "Multiple processes found with name \"" << WStringToString(std::wstring(name)) << "\"";
     for (auto pid : pids) ss << "\n - " << pid;
-    throw std::runtime_error(ss.str().c_str());
+    throw Exception(ss.str());
   } else if (pids.size() == 1) {
     OpenProcess(pids[0]);
   }
 
   if (m_hProcess == NULL) {
-    throw std::runtime_error(WStringToString(StringFormat(L"Failed to open process given by name: %s", std::wstring(name).c_str())).c_str());
+    throw Exception(L"Failed to open process given by name: %s", std::wstring(name).c_str());
   }
   Logger().InfoFormat("Opened process with pid: %u", GetPid());
 }
@@ -104,6 +130,8 @@ Process::~Process() {
 }
 
 void Process::Suspend() {
+  if (Poll()) return;
+
   Logger().DebugFormat("Suspending thread %u ...", GetTid());
   DWORD suspendCount = 0;
   BIFROST_ASSERT_WIN_CALL((suspendCount = ::SuspendThread(GetThreadHandle())) != ((DWORD)-1));
@@ -112,84 +140,122 @@ void Process::Suspend() {
 }
 
 void Process::Resume() {
+  if (Poll()) return;
+
   Logger().DebugFormat("Resuming thread %u ...", GetTid());
   DWORD suspendCount = 0;
   BIFROST_ASSERT_WIN_CALL((suspendCount = ::ResumeThread(GetThreadHandle())) != ((DWORD)-1));
   Logger().DebugFormat("Successfully resumed thread %u, thread is %s (previous suspend count %u)", GetTid(),
-                       suspendCount == 1 ? "now running" : "still suspended", suspendCount);
+                       suspendCount <= 1 ? "now running" : "still suspended", suspendCount);
 }
 
 void Process::Wait() { BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(m_hProcess, INFINITE) != WAIT_FAILED); }
 
 bool Process::Poll() { return GetExitCode() != nullptr; }
 
-DWORD Process::RunRemoteThread(const char* functionName, const void* argData, u32 argSizeInBytes) {
-  Logger().DebugFormat("Running %s in a remote thread for process %u", functionName, GetPid());
-  std::shared_ptr<void> remoteThreadParameter = nullptr;
+std::shared_ptr<void> Process::AllocateRemoteMemory(const void* data, u32 sizeInBytes, DWORD protectionFlag, const char* reason) {
+  Logger().DebugFormat("Allocating %u bytes in remote process memory for %s", sizeInBytes, reason);
 
-  if (argData) {
-    // Allocate remote memory for parameter
-    Logger().DebugFormat("Allocating %u bytes in remote process memory for thread parameter", argSizeInBytes);
-    auto allocateRemoteMemory = [this](u32 size) {
-      void* ptr;
-      BIFROST_ASSERT_WIN_CALL((ptr = ::VirtualAllocEx(m_hProcess, NULL, size, MEM_COMMIT, PAGE_READWRITE)) != NULL);
-      return std::shared_ptr<void>(ptr, [this](void* ptr) { BIFROST_CHECK_WIN_CALL(::VirtualFreeEx(m_hProcess, ptr, 0, MEM_RELEASE) != NULL); });
-    };
-    remoteThreadParameter = allocateRemoteMemory(argSizeInBytes);
+  void* ptr = nullptr;
+  BIFROST_ASSERT_WIN_CALL((ptr = ::VirtualAllocEx(m_hProcess, NULL, sizeInBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) != NULL);
+  std::shared_ptr<void> remoteMem(ptr, [this](void* p) { BIFROST_CHECK_WIN_CALL(::VirtualFreeEx(m_hProcess, p, 0, MEM_RELEASE) != NULL); });
 
-    // Copy parameter to remote memory
-    Logger().Debug("Copying thread parameter to remote process memory");
-    SIZE_T numBytesWritten = 0;
-    BIFROST_ASSERT_WIN_CALL_MSG(::WriteProcessMemory(m_hProcess, remoteThreadParameter.get(), argData, argSizeInBytes, &numBytesWritten) != FALSE,
-                                "Failed to write remote process memory");
-    if (numBytesWritten != argSizeInBytes) {
-      throw std::runtime_error(
-          StringFormat("Failed to write remote process memory: Requested to write %lu bytes, wrote %lu bytes.", argSizeInBytes, numBytesWritten).c_str());
-    }
+  Logger().DebugFormat("Copying %s to remote process memory", reason);
+  SIZE_T numBytesWritten = 0;
+  BIFROST_ASSERT_WIN_CALL_MSG(::WriteProcessMemory(m_hProcess, remoteMem.get(), data, sizeInBytes, &numBytesWritten) != FALSE,
+                              "Failed to write remote process memory");
+  if (numBytesWritten != sizeInBytes) {
+    throw Exception("Failed to write remote process memory for %s: Requested to write %lu bytes, wrote %lu bytes.", reason, sizeInBytes, numBytesWritten);
+  }
+  return remoteMem;
+}
+
+DWORD Process::RunRemoteThread(const char* functionName, LPTHREAD_START_ROUTINE threadFunc, void* threadParam, u32 timeoutInMs) {
+  // Launch the remote thread
+  Logger().DebugFormat("Launching remote thread for %s ...", functionName);
+  HANDLE hRemoteThread = NULL;
+  BIFROST_ASSERT_WIN_CALL((hRemoteThread = ::CreateRemoteThread(m_hProcess, NULL, 0, threadFunc, threadParam, 0, NULL)) != NULL);
+
+  // Wait for thread to return
+  Logger().DebugFormat("Waiting %u s for %s to return ...", timeoutInMs / 1000, functionName);
+  DWORD reason = 0;
+  BIFROST_ASSERT_WIN_CALL((reason = ::WaitForSingleObject(hRemoteThread, timeoutInMs)) != WAIT_FAILED);
+  if (reason == WAIT_TIMEOUT) {
+    throw Exception("Waiting for %s timed out after %u s", functionName, timeoutInMs / 1000);
+  } else if (reason == WAIT_ABANDONED) {
+    throw Exception("Waiting for %s was abandoned", functionName);
   }
 
-  // Launch the remote thread
-  Logger().Debug("Launching remote thread ...");
-  HMODULE hKernel32 = NULL;
-  BIFROST_ASSERT_WIN_CALL((hKernel32 = ::GetModuleHandleW(L"kernel32")) != NULL);
-
-  LPTHREAD_START_ROUTINE remoteThreadFunc = NULL;
-  BIFROST_ASSERT_WIN_CALL((remoteThreadFunc = (LPTHREAD_START_ROUTINE)::GetProcAddress(hKernel32, functionName)) != NULL);
-
-  HANDLE hRemoteThread = NULL;
-  BIFROST_ASSERT_WIN_CALL((hRemoteThread = ::CreateRemoteThread(m_hProcess, NULL, 0, remoteThreadFunc, remoteThreadParameter.get(), 0, NULL)) != NULL);
-
-  // Wait for the LoadLibrary to return
-  Logger().DebugFormat("Waiting for %s to return ...", functionName);
-  BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(hRemoteThread, INFINITE) != WAIT_FAILED);
-
-  DWORD remoteThreadExitCode = NULL;
+  DWORD remoteThreadExitCode = 0;
   BIFROST_ASSERT_WIN_CALL(::GetExitCodeThread(hRemoteThread, &remoteThreadExitCode) != FALSE);
+  Logger().DebugFormat("%s returned - exit code %u", functionName, remoteThreadExitCode);
+
   BIFROST_ASSERT_WIN_CALL(::CloseHandle(hRemoteThread) != FALSE);
   return remoteThreadExitCode;
 }
 
-void Process::Inject(std::wstring dllPath) {
-  Suspend();
+void Process::Inject(std::wstring dllPath, InjectionStrategy startegy) {
   try {
     Logger().InfoFormat(L"Injecting Dll \"%s\" into remote process %u ...", dllPath.c_str(), GetPid());
     if (!std::filesystem::exists(std::filesystem::path(dllPath))) {
-      throw std::runtime_error(WStringToString(StringFormat(L"Dll \"%s\" does not exists", dllPath.c_str())).c_str());
+      throw Exception(L"Dll \"%s\" does not exists", dllPath.c_str());
     }
 
-    const void* hostDllPath = dllPath.c_str();
-    u32 hostDllPathSize = sizeof(wchar_t) * (dllPath.size() + 1);
-    if (RunRemoteThread("LoadLibraryW", hostDllPath, hostDllPathSize) == NULL) {
-      throw std::runtime_error(WStringToString(StringFormat(L"Failed to inject \"%s\": LoadLibraryW in remote process failed.", dllPath.c_str())).c_str());
+    // Allocate memory for the dll path (used in all strategies)
+    const void* hostDllPtr = dllPath.c_str();
+    u32 hostDllSize = sizeof(wchar_t) * (dllPath.size() + 1);
+    auto threadDllPath = AllocateRemoteMemory(hostDllPtr, hostDllSize, PAGE_READWRITE, "dll path");
+
+    // Get the kernel32 module
+    HMODULE hKernel32 = NULL;
+    BIFROST_ASSERT_WIN_CALL((hKernel32 = ::GetModuleHandleW(L"kernel32")) != NULL);
+
+    switch (startegy) {
+      case E_LoadLibraryW: {
+        const char* functionName = "LoadLibraryW";
+
+        LPTHREAD_START_ROUTINE threadFunc;
+        BIFROST_ASSERT_WIN_CALL((threadFunc = (LPTHREAD_START_ROUTINE)::GetProcAddress(hKernel32, "LoadLibraryW")) != NULL);
+
+        if (DWORD errorCode; (errorCode = RunRemoteThread(functionName, threadFunc, threadDllPath.get(), 15000)) == NULL) {
+          throw Exception(L"Failed to inject \"%s\": %s in remote process failed.", functionName, dllPath.c_str());
+        }
+        break;
+      }
+      case E_LoadLibraryWithErrorHandling: {
+        const char* functionName = "LoadLibraryWithErrorHandling";
+
+        // Allocate memory for the thread parameter containing the address of the function which are going to be called (LoadLibrary + GetLastError)
+        ThreadParameter param = {0};
+        BIFROST_ASSERT_WIN_CALL((param.LoadLibraryWAddr = (u64)::GetProcAddress(hKernel32, "LoadLibraryW")) != NULL);
+        BIFROST_ASSERT_WIN_CALL((param.GetLastErrorAddr = (u64)::GetProcAddress(hKernel32, "GetLastError")) != NULL);
+        param.DllSize = hostDllSize;
+        param.DllData = (u64)threadDllPath.get();
+        auto threadParam = AllocateRemoteMemory(&param, sizeof(ThreadParameter), PAGE_READWRITE, "thread parameter");
+
+        // Allocate memory for the thread function => LoadLibraryWithErrorHandling
+        const void* loadLibraryWPtr = &LoadLibraryWithErrorHandling;
+        u32 loadLibraryWSize = static_cast<u32>((u64)&LoadLibraryWithErrorHandlingSectionEnd - (u64)&LoadLibraryWithErrorHandling);
+        auto threadFunc = AllocateRemoteMemory(loadLibraryWPtr, loadLibraryWSize, PAGE_EXECUTE_READWRITE, "thread function");
+
+        if (DWORD errorCode; (errorCode = RunRemoteThread(functionName, (LPTHREAD_START_ROUTINE)threadFunc.get(), threadParam.get(), 15000)) != NO_ERROR) {
+          throw Exception(L"Failed to inject \"%s\": %s in remote process failed: %s", dllPath.c_str(), functionName,
+                          StringToWString(GetLastWin32Error(errorCode)).c_str());
+        }
+        break;
+      }
+      default:
+        BIFROST_ASSERT(0 && "invalid injection strategy");
     }
+
     Logger().Info(L"Injection successful");
-    Resume();
   } catch (...) {
     Logger().Error(L"Injection failed");
-    Resume();
     throw;
   }
 }
+
+void Process::AttachDebugger() {}
 
 const u32* Process::GetExitCode() {
   if (m_exitCode.has_value() || TrySetExitCode()) return &m_exitCode.value();
@@ -221,7 +287,7 @@ u32 Process::GetTid() {
     BIFROST_CHECK_WIN_CALL(::CloseHandle(snapshot) != FALSE);
 
     if (!m_tid.has_value()) {
-      throw std::runtime_error(StringFormat("Failed to get main thread-id of process: %i", GetPid()).c_str());
+      throw Exception("Failed to get main thread-id of process: %i", GetPid());
     }
   }
   return m_tid.value();

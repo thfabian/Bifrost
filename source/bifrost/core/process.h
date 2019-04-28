@@ -51,10 +51,17 @@ class Process : public Object {
   /// Poll the launched process and return true if the process has exited
   bool Poll();
 
+  /// Strategy used for injection
+  enum InjectionStrategy {
+    E_LoadLibraryW,                  ///< Directly call LoadLibraryW
+    E_LoadLibraryWithErrorHandling,  ///< Call a custom function which checks the error code of LoadLibraryW (potentially unsafe?)
+  };
+
   /// Inject the DLL given by the full path `dllPath`
-  ///
-  /// Throws an exception if the injection failed
-  void Inject(std::wstring dllPath);
+  void Inject(std::wstring dllPath, InjectionStrategy startegy = E_LoadLibraryWithErrorHandling);
+
+  /// Attach a debugger
+  void AttachDebugger();
 
   /// Return the exit code or NULL if the process has not yet exited
   const u32* GetExitCode();
@@ -72,7 +79,8 @@ class Process : public Object {
   bool TrySetExitCode();
   void OpenProcess(u32 pid);
   void OpenThread();
-  DWORD RunRemoteThread(const char* functionName, const void* argData, u32 argSizeInBytes);
+  DWORD RunRemoteThread(const char* functionName, LPTHREAD_START_ROUTINE threadFunc, void* threadParam, u32 timeoutInMs);
+  std::shared_ptr<void> AllocateRemoteMemory(const void* data, u32 sizeInBytes, DWORD protectionFlag, const char* reason);
 
  private:
   HANDLE m_hProcess = NULL;
