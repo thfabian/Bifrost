@@ -20,8 +20,8 @@ class ModuleLoader;
 
 /// Plugin description
 struct Plugin {
-  std::wstring Path;                   ///< Path to the DLL
-  std::vector<std::string> Arguments;  ///< Plugin arguments
+  std::wstring Path;      ///< Path to the DLL
+  std::string Arguments;  ///< Plugin arguments
 };
 
 /// Load plugins (modules)
@@ -38,7 +38,7 @@ class PluginLoader : public Object {
   /// Load plugins
   void Load(ModuleLoader* loader, const std::vector<Plugin>& plugins);
 
-  /// Pluign key
+  /// Plugin key
   static const char* PluginKey;
 };
 

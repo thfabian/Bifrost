@@ -139,6 +139,9 @@ const char* bfi_GetVersionString() {
 bfi_InjectorArguments* bfi_InjectorArgumentsInit(bfi_Context* ctx) {
   BIFROST_INJECTOR_CATCH_ALL_PTR({
     bfi_InjectorArguments* args = new bfi_InjectorArguments;
+    ZeroMemory(args, sizeof(bfi_InjectorArguments));
+    args->InjectorTimeoutInMs = 5000;
+
     return args;
   });
 }

@@ -25,7 +25,7 @@ class PluginLoaderTest : public TestBaseSharedMemory {};
 TEST_F(PluginLoaderTest, Serialize) {
   PluginLoader loader(GetContext());
 
-  std::vector<Plugin> plugins{{L"foo", {"1"}}, {L"bar", {"1", "2", "3"}}};
+  std::vector<Plugin> plugins{{L"foo", "1"}, {L"bar", "1 2 3"}};
   ASSERT_NO_THROW(loader.Serialize(plugins));
   ASSERT_TRUE(GetContext()->Memory().GetSMStorage()->Contains(GetContext(), PluginLoader::PluginKey));
 
@@ -36,13 +36,8 @@ TEST_F(PluginLoaderTest, Serialize) {
   EXPECT_EQ(plugins[0].Path, desPlugin[0].Path);
   EXPECT_EQ(plugins[1].Path, desPlugin[1].Path);
 
-  ASSERT_EQ(plugins[0].Arguments.size(), desPlugin[0].Arguments.size());
-  EXPECT_EQ(plugins[0].Arguments[0], desPlugin[0].Arguments[0]);
-
-  ASSERT_EQ(plugins[1].Arguments.size(), desPlugin[1].Arguments.size());
-  EXPECT_EQ(plugins[1].Arguments[0], desPlugin[1].Arguments[0]);
-  EXPECT_EQ(plugins[1].Arguments[1], desPlugin[1].Arguments[1]);
-  EXPECT_EQ(plugins[1].Arguments[2], desPlugin[1].Arguments[2]);
+  ASSERT_STREQ(plugins[0].Arguments.c_str(), desPlugin[0].Arguments.c_str());
+  ASSERT_STREQ(plugins[1].Arguments.c_str(), desPlugin[1].Arguments.c_str());
 
   GetContext()->Memory().GetSMStorage()->InsertString(GetContext(), PluginLoader::PluginKey, "{}");
   ASSERT_THROW(loader.Deserialize(), std::runtime_error);  // root is not an array
@@ -52,9 +47,6 @@ TEST_F(PluginLoaderTest, Serialize) {
 
   GetContext()->Memory().GetSMStorage()->InsertString(GetContext(), PluginLoader::PluginKey, "[{\"path\":\"bar\"}]");
   ASSERT_THROW(loader.Deserialize(), std::runtime_error);  // missing "arguments" key"
-
-  GetContext()->Memory().GetSMStorage()->InsertString(GetContext(), PluginLoader::PluginKey, "[{\"path\":\"bar\", \"arguments\": \"b\"}]");
-  ASSERT_THROW(loader.Deserialize(), std::runtime_error);  // "arguments" is not a list
 
   plugins.clear();
   ASSERT_NO_THROW(loader.Serialize(plugins));

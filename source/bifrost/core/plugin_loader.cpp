@@ -59,13 +59,12 @@ std::vector<Plugin> PluginLoader::Deserialize() {
     auto jPlugin = j[i];
 
     if (!jPlugin.count("path")) throwInvalidFormat(StringFormat("Plugin %i: missing key \"path\"", i));
-    if (!jPlugin.count("arguments")) throwInvalidFormat(StringFormat("Plugin %i: missing key \"argument\"", i));
-    if (!jPlugin["arguments"].is_array()) throwInvalidFormat(StringFormat("Plugin %i: \"argument\" is not an array", i));
+    if (!jPlugin.count("arguments")) throwInvalidFormat(StringFormat("Plugin %i: missing key \"arguments\"", i));
 
     Plugin plugin;
 
     plugin.Path = jPlugin["path"].get<std::wstring>();
-    for (const auto& arg : jPlugin["arguments"]) plugin.Arguments.emplace_back(arg);
+    plugin.Arguments = jPlugin["arguments"];
     plugins.emplace_back(std::move(plugin));
   }
 

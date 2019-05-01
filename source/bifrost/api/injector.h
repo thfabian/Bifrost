@@ -13,8 +13,7 @@
 
 /// @file Injector routines - all functions are thread-safe within a context.
 
-#include <stddef.h>  // size_t
-#include <stdint.h>  // uint8_t, uint32_t, uint64_t
+#include <stdint.h>  // uint32_t
 
 #ifdef BIFROST_INJECTOR_EXPORTS
 #define BIFROST_INJECTOR_API __declspec(dllexport)
@@ -75,11 +74,41 @@ BIFROST_INJECTOR_API const char* bfi_GetVersionString();
 
 #pragma endregion
 
+#pragma region Plugins
+
+/// @brief Plugin description
+struct bfi_Plugin_t {
+  const wchar_t* Path;    ///< Absolute path to the DLL to load
+  const char* Arguments;  ///< Arguments passed to the plugin
+};
+typedef bfi_Plugin_t bfi_Plugin;
+
+#pragma endregion
+
 #pragma region Injector
+
+enum bfi_ExecutableMode {
+  BFI_UNKNOWN = 0,
+  BFI_LAUNCH,            ///< Launch executable
+  BFI_CONNECT_VIA_PID,   ///< Connect to process via process identifier (pid)
+  BFI_CONNECT_VIA_NAME,  ///< Connect to process via name
+};
 
 /// @brief Injector Arguments
 struct bfi_InjectorArguments_t {
-  uint32_t Dummy;
+  /* Executable Process */
+  bfi_ExecutableMode Mode;  ///< Launch or connect to the executable?
+  const char* Executable;   ///< Executable to launch (requires `Mode == BFI_LAUNCH`)
+  const char* Arguments;    ///< Arguments to pass to the launched executable  (requires `Mode == BFI_LAUNCH`)
+  uint32_t Pid;             ///< Process identifier to connect to (requires `Mode == BFI_CONNECT_VIA_PID`)
+  const char* Name;         ///< Name of the process to connect to (requires `Mode == BFI_CONNECT_VIA_NAME`)
+
+  /* Injector */
+  uint32_t InjectorTimeoutInMs;  ///< Time allocated for the injecting process (in milliseconds)
+
+  /* Plugins */
+  bfi_Plugin* Plugins;  ///< Plugins to inject
+  uint32_t NumPlugins;  ///< Number of plugins
 };
 typedef bfi_InjectorArguments_t bfi_InjectorArguments;
 

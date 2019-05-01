@@ -111,7 +111,6 @@ TEST_F(ProcessTest, ConnectPid) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
   Process mproc(GetContext(), {exe, {"1", "100"}, true});
   Process cproc(GetContext(), mproc.GetPid());
-  ASSERT_THROW(Process(GetContext(), -1), std::runtime_error);
 
   ASSERT_EQ(mproc.GetPid(), cproc.GetPid());
   ASSERT_EQ(mproc.GetTid(), cproc.GetTid());
