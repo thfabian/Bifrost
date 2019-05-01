@@ -25,23 +25,71 @@ namespace bifrost {
 #pragma pack(push)
 #pragma pack(1)
 struct ThreadParameter {
-  u64 LoadLibraryWAddr;
-  u64 GetLastErrorAddr;
-  u32 DllSize;
-  u64 DllData;
+  // Procedures
+  u64 LoadLibraryW_A;
+  u64 GetLastError_A;
+  u64 GetProcAddress_A;
+  u64 CreateThread_A;
+  u64 WaitForSingleObject_A;
+  u64 GetExitCodeThread_A;
+  u64 CloseHandle_A;
+
+  // Data
+  u32 DllNameSize;
+  u64 DllNamePtr;
+  u32 InitProcNameSize;
+  u64 InitProcNamePtr;
+  u32 InitProcArgSize;
+  u64 InitProcArgPtr;
+  u32 Timeout;
 };
 #pragma pack(pop)
 
+enum StageEnum { E_LoadLibraryW = 1, E_GetProcAddress, E_CreateThread, E_WaitForSingleObject, E_Timeout, E_Abandoned, E_GetExitCodeThread, E_Done };
+
 #pragma code_seg(push, ".bf$a")
-__declspec(noinline) [[nodiscard]] static DWORD WINAPI LoadLibraryWithErrorHandling(LPVOID lpThreadParameter) {
+__declspec(noinline) [[nodiscard]] static DWORD WINAPI Injector(LPVOID lpThreadParameter) {
   using LoadLibraryW_fn = decltype(&::LoadLibraryW);
   using GetLastError_fn = decltype(&::GetLastError);
+  using GetProcAddress_fn = decltype(&::GetProcAddress);
+  using CreateThread_fn = decltype(&::CreateThread);
+  using WaitForSingleObject_fn = decltype(&::WaitForSingleObject);
+  using GetExitCodeThread_fn = decltype(&::GetExitCodeThread);
+  using CloseHandle_fn = decltype(&::CloseHandle);
 
   ThreadParameter* param = (ThreadParameter*)lpThreadParameter;
-  if (((LoadLibraryW_fn)param->LoadLibraryWAddr)((LPCWSTR)param->DllData) == NULL) return ((GetLastError_fn)param->GetLastErrorAddr)();
-  return NO_ERROR;
+
+  // Load the library
+  HMODULE hModule = ((LoadLibraryW_fn)param->LoadLibraryW_A)((LPCWSTR)param->DllNamePtr);
+  if (hModule == NULL) return (E_LoadLibraryW << 16) + ((GetLastError_fn)param->GetLastError_A)();
+
+  // Create a thread which calls `InitProcName` with `InitProcData` and return the thread id if everything goes as planned
+  DWORD threadId = 0;
+  if (param->InitProcNameSize == 0) return (E_Done << 16) + NO_ERROR;
+
+  // Get InitProcName
+  auto initProc = (DWORD(*)(LPVOID))((GetProcAddress_fn)param->GetProcAddress_A)(hModule, (LPCSTR)param->InitProcNamePtr);
+  if (initProc == NULL) return (E_GetProcAddress << 16) + ((GetLastError_fn)param->GetLastError_A)();
+
+  // Launch thread
+  HANDLE hThread = ((CreateThread_fn)param->CreateThread_A)(0, 0, initProc, (void*)param->InitProcArgPtr, 0, &threadId);
+  if (hThread == NULL) return (E_CreateThread << 16) + ((GetLastError_fn)param->GetLastError_A)();
+
+  // Wait for completion
+  DWORD reason = ((WaitForSingleObject_fn)param->WaitForSingleObject_A)(hThread, param->Timeout);
+  if (reason == WAIT_FAILED) return (E_WaitForSingleObject << 16) + ((GetLastError_fn)param->GetLastError_A)();
+  if (reason == WAIT_TIMEOUT) return (E_Timeout << 16);
+  if (reason == WAIT_ABANDONED) return (E_Abandoned << 16);
+
+  // Get the remote thread exit code
+  DWORD exitCode;
+  if (((GetExitCodeThread_fn)param->GetExitCodeThread_A)(hThread, &exitCode) == FALSE)
+    return (E_GetExitCodeThread << 16) + ((GetLastError_fn)param->GetLastError_A)();
+
+  ((CloseHandle_fn)param->CloseHandle_A)(hThread);
+  return (E_Done << 16) + exitCode;
 }
-__declspec(noinline) [[nodiscard]] static DWORD WINAPI LoadLibraryWithErrorHandlingSectionEnd() { return 0; }
+__declspec(noinline) [[nodiscard]] static DWORD WINAPI InjectorSectionEnd() { return 0; }
 #pragma code_seg()
 #pragma optimize("", on)
 
@@ -188,64 +236,109 @@ DWORD Process::RunRemoteThread(const char* functionName, LPTHREAD_START_ROUTINE 
 
   DWORD remoteThreadExitCode = 0;
   BIFROST_ASSERT_WIN_CALL(::GetExitCodeThread(hRemoteThread, &remoteThreadExitCode) != FALSE);
-  Logger().DebugFormat("%s returned - exit code %u", functionName, remoteThreadExitCode);
+  Logger().DebugFormat("%s returned - exit code %u", functionName, remoteThreadExitCode & ((~0u) >> 16));
 
   BIFROST_ASSERT_WIN_CALL(::CloseHandle(hRemoteThread) != FALSE);
   return remoteThreadExitCode;
 }
 
-void Process::Inject(std::wstring dllPath, InjectionStrategy startegy) {
+void Process::Inject(InjectArguments args) {
+  
   try {
-    Logger().InfoFormat(L"Injecting Dll \"%s\" into remote process %u ...", dllPath.c_str(), GetPid());
-    if (!std::filesystem::exists(std::filesystem::path(dllPath))) {
-      throw Exception(L"Dll \"%s\" does not exists", dllPath.c_str());
+    Logger().InfoFormat(L"Injecting Dll \"%s\" into remote process %u ...", args.DllPath.c_str(), GetPid());
+    if (!std::filesystem::exists(std::filesystem::path(args.DllPath))) {
+      throw Exception(L"Dll \"%s\" does not exists", args.DllPath.c_str());
     }
-
-    // Allocate memory for the dll path (used in all strategies)
-    const void* hostDllPtr = dllPath.c_str();
-    u32 hostDllSize = sizeof(wchar_t) * (dllPath.size() + 1);
-    auto threadDllPath = AllocateRemoteMemory(hostDllPtr, hostDllSize, PAGE_READWRITE, "dll path");
 
     // Get the kernel32 module
     HMODULE hKernel32 = NULL;
     BIFROST_ASSERT_WIN_CALL((hKernel32 = ::GetModuleHandleW(L"kernel32")) != NULL);
 
-    switch (startegy) {
-      case E_LoadLibraryW: {
-        const char* functionName = "LoadLibraryW";
+    // Allocate memory for the dll path 
+    const void* hostDllPtr = args.DllPath.c_str();
+    u32 hostDllNameSize = sizeof(wchar_t) * (args.DllPath.size() + 1);
+    auto threadDllNamePtr = AllocateRemoteMemory(hostDllPtr, hostDllNameSize, PAGE_READWRITE, "dll path");
 
-        LPTHREAD_START_ROUTINE threadFunc;
-        BIFROST_ASSERT_WIN_CALL((threadFunc = (LPTHREAD_START_ROUTINE)::GetProcAddress(hKernel32, "LoadLibraryW")) != NULL);
+    // Allocate memory for init procedure
+    std::shared_ptr<void> threadInitProcName;
+    u32 hostInitProcNameSize = 0;
+    if (!args.InitProcName.empty()) {
+      const void* hostInitProcNamePtr = args.InitProcName.c_str();
+      hostInitProcNameSize = sizeof(char) * (args.InitProcName.size() + 1);
+      threadInitProcName = AllocateRemoteMemory(hostInitProcNamePtr, hostInitProcNameSize, PAGE_READWRITE, "init procedure name");
+    } 
 
-        if (DWORD errorCode; (errorCode = RunRemoteThread(functionName, threadFunc, threadDllPath.get(), 15000)) == NULL) {
-          throw Exception(L"Failed to inject \"%s\": %s in remote process failed.", functionName, dllPath.c_str());
+    // Allocate memory for init procedure
+    std::shared_ptr<void> threadInitProcArg;
+    u32 hostInitProcArgSize = 0;
+    if (!args.InitProcArg.empty()) {
+      const void* hostInitProcArgPtr = args.InitProcArg.c_str();
+      hostInitProcArgSize = sizeof(char) * (args.InitProcArg.size() + 1);
+      threadInitProcArg = AllocateRemoteMemory(hostInitProcArgPtr, hostInitProcArgSize, PAGE_READWRITE, "init procedure argument");
+    } 
+
+    // Allocate memory for the thread parameter containing the address of the function which are going to be called (LoadLibrary + GetLastError)
+    ThreadParameter param = {0};
+    BIFROST_ASSERT_WIN_CALL((param.LoadLibraryW_A = (u64)::GetProcAddress(hKernel32, "LoadLibraryW")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((param.GetLastError_A = (u64)::GetProcAddress(hKernel32, "GetLastError")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((param.GetProcAddress_A = (u64)::GetProcAddress(hKernel32, "GetProcAddress")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((param.CreateThread_A = (u64)::GetProcAddress(hKernel32, "CreateThread")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((param.WaitForSingleObject_A = (u64)::GetProcAddress(hKernel32, "WaitForSingleObject")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((param.GetExitCodeThread_A = (u64)::GetProcAddress(hKernel32, "GetExitCodeThread")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((param.CloseHandle_A = (u64)::GetProcAddress(hKernel32, "CloseHandle")) != NULL);
+
+    param.DllNameSize = hostDllNameSize;
+    param.DllNamePtr = (u64)threadDllNamePtr.get();
+    param.InitProcNameSize = hostInitProcNameSize;
+    param.InitProcNamePtr = (u64)threadInitProcName.get();
+    param.InitProcArgSize = hostInitProcArgSize;
+    param.InitProcArgPtr = (u64)threadInitProcArg.get();
+    param.Timeout = args.TimeoutInMs;
+
+    auto threadParam = AllocateRemoteMemory(&param, sizeof(ThreadParameter), PAGE_READWRITE, "thread parameter");
+
+    // Allocate memory for the thread function
+    const void* InjectorPtr = &Injector;
+    u32 InjectorSize = static_cast<u32>((u64)&InjectorSectionEnd - (u64)&Injector);
+    auto threadFunc = AllocateRemoteMemory(InjectorPtr, InjectorSize, PAGE_EXECUTE_READWRITE, "thread function");
+
+    // Run the thread and wait on it
+    const char* functionName = "Injector";
+    DWORD retCode =  RunRemoteThread(functionName, (LPTHREAD_START_ROUTINE)threadFunc.get(), threadParam.get(), args.TimeoutInMs);
+    
+    // Extract error code [upper 16 bits -> stage, lower 16 bits -> error code]
+    StageEnum stage = static_cast<StageEnum>(retCode >> 16);
+    DWORD errorCode = retCode & ((~0u) >> 16);
+
+    auto error = [&](const wchar_t* where, const wchar_t* msg, const wchar_t* newLine = L"\n") {
+      auto formattedMsg = StringFormat(L"Failed to inject \"%s\": %s in remote process %s: %s%s  Init Procedure: %s\n  Init Arguments: %s",
+                                       args.DllPath.c_str(), StringToWString(functionName).c_str(), where, msg, newLine,
+                                       StringToWString(args.InitProcName).c_str(), StringToWString(args.InitProcArg).c_str());
+      Logger().Error(formattedMsg.c_str());
+      throw Exception(formattedMsg);
+    };
+    auto winError = [&](const wchar_t* where, DWORD ec) { error(where, StringToWString(GetLastWin32Error(ec)).c_str(), L""); };
+
+    switch (stage) {
+      case bifrost::E_LoadLibraryW:
+        winError(L"failed in LoadLibraryW", errorCode);
+      case bifrost::E_GetProcAddress:
+        winError(L"failed in GetProcAddress", errorCode);
+      case bifrost::E_CreateThread:
+        winError(L"failed in CreateThread", errorCode);
+      case bifrost::E_WaitForSingleObject:
+        winError(L"failed in WaitForSingleObject", errorCode);
+      case bifrost::E_Timeout:
+        error(L"timed out", StringFormat(L"thread timed out after %u", args.TimeoutInMs).c_str());
+      case bifrost::E_Abandoned:
+        error(L"timed out", L"wait was abandoned");
+      case bifrost::E_GetExitCodeThread:
+        winError(L"failed in GetExitCodeThread", errorCode);
+      case bifrost::E_Done:
+        if (errorCode != 0) {
+          error(StringFormat(L"failed, init procedure '%s' returned", StringToWString(args.InitProcName).c_str()).c_str(), std::to_wstring(errorCode).c_str());
         }
         break;
-      }
-      case E_LoadLibraryWithErrorHandling: {
-        const char* functionName = "LoadLibraryWithErrorHandling";
-
-        // Allocate memory for the thread parameter containing the address of the function which are going to be called (LoadLibrary + GetLastError)
-        ThreadParameter param = {0};
-        BIFROST_ASSERT_WIN_CALL((param.LoadLibraryWAddr = (u64)::GetProcAddress(hKernel32, "LoadLibraryW")) != NULL);
-        BIFROST_ASSERT_WIN_CALL((param.GetLastErrorAddr = (u64)::GetProcAddress(hKernel32, "GetLastError")) != NULL);
-        param.DllSize = hostDllSize;
-        param.DllData = (u64)threadDllPath.get();
-        auto threadParam = AllocateRemoteMemory(&param, sizeof(ThreadParameter), PAGE_READWRITE, "thread parameter");
-
-        // Allocate memory for the thread function => LoadLibraryWithErrorHandling
-        const void* loadLibraryWPtr = &LoadLibraryWithErrorHandling;
-        u32 loadLibraryWSize = static_cast<u32>((u64)&LoadLibraryWithErrorHandlingSectionEnd - (u64)&LoadLibraryWithErrorHandling);
-        auto threadFunc = AllocateRemoteMemory(loadLibraryWPtr, loadLibraryWSize, PAGE_EXECUTE_READWRITE, "thread function");
-
-        if (DWORD errorCode; (errorCode = RunRemoteThread(functionName, (LPTHREAD_START_ROUTINE)threadFunc.get(), threadParam.get(), 15000)) != NO_ERROR) {
-          throw Exception(L"Failed to inject \"%s\": %s in remote process failed: %s", dllPath.c_str(), functionName,
-                          StringToWString(GetLastWin32Error(errorCode)).c_str());
-        }
-        break;
-      }
-      default:
-        BIFROST_ASSERT(0 && "invalid injection strategy");
     }
 
     Logger().Info(L"Injection successful");
@@ -253,6 +346,7 @@ void Process::Inject(std::wstring dllPath, InjectionStrategy startegy) {
     Logger().Error(L"Injection failed");
     throw;
   }
+
 }
 
 void Process::AttachDebugger() {}

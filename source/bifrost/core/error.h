@@ -18,21 +18,6 @@
 
 namespace bifrost {
 
-/// Storage of last error message
-class ErrorStash {
- public:
-  ErrorStash();
-
-  /// Get the explanation string of the last error (or NULL if no error occurred)
-  const char* GetLastError() const noexcept;
-
-  /// Set the last error message
-  void SetLastError(std::string msg);
-
- private:
-  std::string m_buffer;
-};
-
 /// Query the last WinAPI error
 extern std::string GetLastWin32Error();
 extern std::string GetLastWin32Error(DWORD errorCode);

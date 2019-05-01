@@ -14,12 +14,6 @@
 
 namespace bifrost {
 
-ErrorStash::ErrorStash() {}
-
-const char* ErrorStash::GetLastError() const noexcept { return m_buffer.empty() ? nullptr : m_buffer.c_str(); }
-
-void ErrorStash::SetLastError(std::string msg) { m_buffer = std::move(msg); }
-
 std::string GetLastWin32Error() { return GetLastWin32Error(::GetLastError()); }
 
 std::string GetLastWin32Error(DWORD errorCode) {

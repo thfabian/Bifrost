@@ -9,12 +9,15 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <Windows.h>
+#include "bifrost/core/test/test.h"
+#include "bifrost/core/injector_param.h"
 
-extern "C" {
-__declspec(dllexport) DWORD WINAPI MockDllInit(LPVOID lpThreadParameter);
-}
+namespace {
 
-DWORD WINAPI MockDllInit(LPVOID lpThreadParameter) { return 0; }
+using namespace bifrost;
 
-BOOL WINAPI DllMain(_In_ HINSTANCE hinstDLL, _In_ DWORD fdwReason, _In_ LPVOID lpvReserved) { return TRUE; }
+class BufferedLoggerTest : public TestBaseNoSharedMemory {};
+
+TEST_F(BufferedLoggerTest, Flush) {}
+
+}  // namespace

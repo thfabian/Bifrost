@@ -41,12 +41,6 @@ class Context {
   /// Set the logger
   inline void SetMemory(SharedMemory* memory) { m_memory = memory; }
 
-  /// Export the context by writing the necessary settings to the clipboard - returns the exported data
-  std::string Export();
-
-  /// Import the context by opening the shared memory - throws std::runtime_error on failure
-  std::string Import(bool dryRun = false);
-
  private:
   ILogger* m_logger = nullptr;
   SharedMemory* m_memory = nullptr;

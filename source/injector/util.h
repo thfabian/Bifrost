@@ -9,12 +9,16 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <Windows.h>
+#pragma once
 
-extern "C" {
-__declspec(dllexport) DWORD WINAPI MockDllInit(LPVOID lpThreadParameter);
-}
+namespace injector {
 
-DWORD WINAPI MockDllInit(LPVOID lpThreadParameter) { return 0; }
+struct TerminalInfo {
+  int Columns;
+  int Rows;
+};
 
-BOOL WINAPI DllMain(_In_ HINSTANCE hinstDLL, _In_ DWORD fdwReason, _In_ LPVOID lpvReserved) { return TRUE; }
+/// Get the size of the terminal
+extern TerminalInfo GetTerminalInfo();
+
+}  // namespace injector

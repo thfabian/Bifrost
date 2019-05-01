@@ -51,14 +51,15 @@ class Process : public Object {
   /// Poll the launched process and return true if the process has exited
   bool Poll();
 
-  /// Strategy used for injection
-  enum InjectionStrategy {
-    E_LoadLibraryW,                  ///< Directly call LoadLibraryW
-    E_LoadLibraryWithErrorHandling,  ///< Call a custom function which checks the error code of LoadLibraryW (potentially unsafe?)
+  struct InjectArguments {
+    std::wstring DllPath;      ///< Full path to the DLL which is going to be injected
+    std::string InitProcName;  ///< Name of the procedure to call in the injected DLL (used as argument to GetProcAddress)
+    std::string InitProcArg;   ///< Argument to `InitProcName` procedure
+    u32 TimeoutInMs = 5000;    ///< Max time allocated for the injection process
   };
 
-  /// Inject the DLL given by the full path `dllPath`
-  void Inject(std::wstring dllPath, InjectionStrategy startegy = E_LoadLibraryWithErrorHandling);
+  /// Inject the DLL - throws std::runtime_error on failure
+  void Inject(InjectArguments args);
 
   /// Attach a debugger
   void AttachDebugger();

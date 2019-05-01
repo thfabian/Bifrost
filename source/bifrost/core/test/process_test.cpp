@@ -158,22 +158,7 @@ TEST_F(ProcessTest, InjectSuccess) {
 
   Process proc(GetContext(), {exe, {"0", "200"}, true});
 
-  ASSERT_NO_THROW(proc.Inject(dll));
-
-  ASSERT_NO_THROW(proc.Resume());
-  ASSERT_NO_THROW(proc.Wait());
-
-  ASSERT_NE(nullptr, proc.GetExitCode());
-  EXPECT_EQ(0, *proc.GetExitCode());
-}
-
-TEST_F(ProcessTest, InjectDirectSuccess) {
-  auto exe = TestEnviroment::Get().GetMockExecutable();
-  auto dll = TestEnviroment::Get().GetMockDll();
-
-  Process proc(GetContext(), {exe, {"0", "200"}, true});
-
-  ASSERT_NO_THROW(proc.Inject(dll, Process::E_LoadLibraryW));
+  ASSERT_NO_THROW(proc.Inject({dll}));
 
   ASSERT_NO_THROW(proc.Resume());
   ASSERT_NO_THROW(proc.Wait());
@@ -188,7 +173,7 @@ TEST_F(ProcessTest, InjectFail) {
 
   Process proc(GetContext(), {exe, {"0", "200"}, true});
 
-  ASSERT_THROW(proc.Inject(L"invalid"), std::runtime_error);
+  ASSERT_THROW(proc.Inject({L"invalid"}), std::runtime_error);
 
   ASSERT_NO_THROW(proc.Resume());
   ASSERT_NO_THROW(proc.Wait());
@@ -203,7 +188,26 @@ TEST_F(ProcessTest, InjectUnsuspended) {
 
   Process proc(GetContext(), {exe, {"0", "200"}, false});
 
-  ASSERT_NO_THROW(proc.Inject(dll));
+  ASSERT_NO_THROW(proc.Inject({dll}));
+  ASSERT_NO_THROW(proc.Wait());
+
+  ASSERT_NE(nullptr, proc.GetExitCode());
+  EXPECT_EQ(0, *proc.GetExitCode());
+}
+
+TEST_F(ProcessTest, InjectInit) {
+  auto exe = TestEnviroment::Get().GetMockExecutable();
+  auto dll = TestEnviroment::Get().GetMockDll();
+
+  auto ctx = GetContext();
+  auto mem = CreateSharedMemory();
+  ctx->SetMemory(mem.get());
+
+  Process proc(ctx, {exe, {"0", "200"}, true});
+
+  ASSERT_NO_THROW(proc.Inject({dll, "MockDllInit", "foo"}));
+
+  ASSERT_NO_THROW(proc.Resume());
   ASSERT_NO_THROW(proc.Wait());
 
   ASSERT_NE(nullptr, proc.GetExitCode());

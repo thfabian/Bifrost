@@ -9,12 +9,4 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <Windows.h>
-
-extern "C" {
-__declspec(dllexport) DWORD WINAPI MockDllInit(LPVOID lpThreadParameter);
-}
-
-DWORD WINAPI MockDllInit(LPVOID lpThreadParameter) { return 0; }
-
-BOOL WINAPI DllMain(_In_ HINSTANCE hinstDLL, _In_ DWORD fdwReason, _In_ LPVOID lpvReserved) { return TRUE; }
+#include "injector/common.h"
