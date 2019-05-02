@@ -15,25 +15,27 @@
 #include "injector/error.h"
 #include "injector/util.h"
 #include "bifrost/core/util.h"
+#include "bifrost/core/ilogger.h"
 #include <iostream>
 
 using namespace bifrost;
 using namespace injector;
 
 #define INJECTOR_LOG_FILE "injector.log.txt"
-#define INJECTOR_CHECK_PTR(expr)                           \
-  if ((expr) == nullptr) {                                 \
-    throw std::runtime_error(bfi_GetLastError(ctx.get())); \
+#define INJECTOR_CHECK_PTR(expr)                                  \
+  if ((expr) == nullptr) {                                        \
+    throw std::runtime_error(bfi_ContextGetLastError(ctx.get())); \
   }
-#define INJECTOR_CHECK(expr)                               \
-  if ((expr) != BFI_OK) {                                  \
-    throw std::runtime_error(bfi_GetLastError(ctx.get())); \
+#define INJECTOR_CHECK(expr)                                      \
+  if ((expr) != BFI_OK) {                                         \
+    throw std::runtime_error(bfi_ContextGetLastError(ctx.get())); \
   }
 
 int main(int argc, const char* argv[]) {
+  auto program = argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "injector";
+
   try {
     // Extract the program name
-    auto program = argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "injector";
     Error::Get().SetProgram(program);
 
     // Parse args
@@ -50,7 +52,8 @@ int main(int argc, const char* argv[]) {
     parser.helpParams.descriptionindent = 2;
     parser.helpParams.flagindent = 4;
     parser.Prog(argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "injector");
-    parser.Epilog(StringFormat("\nEXAMPLES:\n  %s --exe=foo.exe --plugin=bar.dll\n  %s --pid=19252 --plugin=\"bar.dll:--foo\" --plugin=foo.dll\n", program.c_str(), program.c_str()));
+    parser.Epilog(StringFormat("\nEXAMPLES:\n  %s --exe=foo.exe --plugin=bar.dll\n  %s --pid=19252 --plugin=\"bar.dll:--foo\" --plugin=foo.dll\n",
+                               program.c_str(), program.c_str()));
 
     args::Group generalGroup(parser, "GENERAL:");
     args::HelpFlag help(generalGroup, "help", "Display this help menu and exit.", {'h', "help"}, args::Options::HiddenFromUsage);
@@ -61,19 +64,23 @@ int main(int argc, const char* argv[]) {
 
     args::Group exeGroup(parser, "EXECUTABLE:");
     args::ValueFlag<std::string> exe(exeGroup, "exe", "Launch executable <exe> given by the full path.", {"exe"});
+    args::ValueFlag<u32> exeTimeout(exeGroup, "t", "Time out the executable after <t> seconds (default: infinite).", {"exe-timeout"},
+                                    args::Options::HiddenFromUsage);
     args::ValueFlag<std::string> arg(exeGroup, "arg", "Pass arguments <arg> to the executable <exe>.", {"arg"});
     args::ValueFlag<i32> pid(exeGroup, "pid", "Connect to the process given by <pid>.", {"pid"});
     args::ValueFlag<std::string> name(exeGroup, "name", "Connect to the process <name>.", {"name"});
 
     args::Group pluginGroup(parser, "PLUGINS:");
-    args::ValueFlag<std::string> plugins(
+    args::ValueFlagList<std::string> plugins(
         pluginGroup, "dll:arg",
-        "Load plugin given by <dll> and optionally pass the arguments <arg> to it (separated by ':'). For example --plugin=\"foo.dll:--foo --bar\". This "
-        "option can be repeated - the plugins are loaded in the provided order, meaning from left to right.",
+        "Load plugin given by <dll> and optionally pass the arguments <arg> to it (separated by ':'). Example: --plugin=\"foo.dll:--foo --bar\". If the plugin "
+        "is located in a different path, <dll> has to be a full path. This option can be repeated - the plugins are loaded in the provided order, meaning from "
+        "left to right.",
         {"plugin"});
 
     args::Group injectorGroup(parser, "INJECTOR:");
-    args::ValueFlag<u32> timeout(injectorGroup, "t", "Time allocated for the injection process (in ms).", {"injector-timeout"}, args::Options::HiddenFromUsage);
+    args::ValueFlag<u32> injectorTimeout(injectorGroup, "t", "Time out the injection process after <t> seconds (default: 5).", {"injector-timeout"},
+                                         args::Options::HiddenFromUsage);
 
     try {
       parser.ParseCLI(argc, argv);
@@ -112,22 +119,71 @@ int main(int argc, const char* argv[]) {
     if (!quiet) Logger::Get().AddSink("stderr", Logger::MakeStderrSink());
 
     // Initialize Bifrost Injector
-    std::shared_ptr<bfi_Context> ctx(bfi_Init(), [](bfi_Context* c) { bfi_Free(c); });
+    std::shared_ptr<bfi_Context> ctx(bfi_ContextInit(), [](bfi_Context* c) { bfi_ContextFree(c); });
     if (ctx == nullptr) throw std::runtime_error("Failed to initialize bifrost injector context");
-    INJECTOR_CHECK(bfi_SetCallback(ctx.get(), LogCallback));
+    INJECTOR_CHECK(bfi_ContextSetLoggingCallback(ctx.get(), LogCallback));
 
     // Initialize injector arguments
     bfi_InjectorArguments* p = nullptr;
     INJECTOR_CHECK_PTR((p = bfi_InjectorArgumentsInit(ctx.get())));
     std::shared_ptr<bfi_InjectorArguments> args(p, [&](bfi_InjectorArguments* p) { INJECTOR_CHECK(bfi_InjectorArgumentsFree(ctx.get(), p)); });
 
+    std::vector<std::unique_ptr<char>> strMem;
+    std::vector<std::unique_ptr<wchar_t>> wstrMem;
+    auto copyString = [&strMem](const std::string& str) -> const char* { return strMem.emplace_back(StringCopy(str)).get(); };
+    auto copyWString = [&wstrMem](const std::wstring& str) -> const wchar_t* { return wstrMem.emplace_back(StringCopy(str)).get(); };
+
+    if (exe) {
+      args->Mode = BFI_LAUNCH;
+      args->Executable = copyWString(StringToWString(exe.Get()));
+      if (arg) args->Arguments = copyString(arg.Get());
+    }
+    if (pid) {
+      args->Mode = BFI_CONNECT_VIA_PID;
+      args->Pid = pid;
+    }
+    if (name) {
+      args->Mode = BFI_CONNECT_VIA_NAME;
+      args->Name = copyWString(StringToWString(name.Get()));
+    }
+
+    if (injectorTimeout) args->InjectorTimeoutInS = injectorTimeout;
+
+    // Construct the plugins
     std::vector<bfi_Plugin> bfiPlugins;
+    for (const auto& p : plugins) {
+      auto idx = p.find_first_of(':');
+      bfi_Plugin plugin = {0};
+      if (idx != -1) {
+        plugin.Path = copyWString(StringToWString(p.substr(0, idx)));
+        plugin.Arguments = copyString(p.substr(idx + 1));
+      } else {
+        plugin.Path = copyWString(StringToWString(p));
+        plugin.Arguments = NULL;
+      }
+      bfiPlugins.emplace_back(plugin);
+    }
+    args->Plugins = bfiPlugins.data();
+    args->NumPlugins = (u32)bfiPlugins.size();
+
+    // Launch/connect to the executable and inject the plugins
+    bfi_Process* bfiProcess = nullptr;
+    INJECTOR_CHECK(bfi_ProcessInject(ctx.get(), args.get(), &bfiProcess));
+    std::shared_ptr<bfi_Process> process(bfiProcess, [&](bfi_Process* p) { INJECTOR_CHECK(bfi_ProcessFree(ctx.get(), p)); });
+
+    // Wait for the process to complete
+    int32_t exitCode = 0;
+    //INJECTOR_CHECK(bfi_ProcessWait(ctx.get(), process.get(), exeTimeout ? exeTimeout.Get() : 0, &exitCode));
+
+    LogCallback((u32)ILogger::LogLevel::Debug, program.c_str(), StringFormat("Setting exit code to process exit code: %i", exitCode).c_str());
+    return exitCode;
 
   } catch (std::runtime_error& e) {
+    LogCallback((u32)ILogger::LogLevel::Error, program.c_str(), e.what());
     Error::Get().Critical(e.what());
   } catch (std::exception& e) {
+    LogCallback((u32)ILogger::LogLevel::Error, program.c_str(), StringFormat("Unexpected error: %s", e.what()).c_str());
     Error::Get().Critical("Unexpected error: %s", e.what());
   }
-
   return 0;
 }

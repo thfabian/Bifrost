@@ -20,7 +20,7 @@ class ILogger {
  public:
   virtual ~ILogger() {}
 
-  enum class LogLevel : i32 { Debug = 0, Info, Warn, Error, Disable };
+  enum class LogLevel : u32 { Debug = 0, Info, Warn, Error, Disable };
 
   /// Log message at debug level
   void Debug(const char* msg) { Sink(LogLevel::Debug, msg); }

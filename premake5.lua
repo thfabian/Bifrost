@@ -223,14 +223,13 @@ workspace "bifrost"
   -- *****
   -- *** Example ***
   -- *
-    
+
   -- *** Hello World ***
   project "01-hello-world"
     kind "ConsoleApp"
     files { "example/01-hello-world/hello_world.h", "example/01-hello-world/hello_world.cpp" }
   
-  --project "01-hello-world-plugin"
-    --kind "SharedLib"
-    --files "example/01-hello-world/hello-world-plugin.cpp" 
-    
+  project "01-hello-world-plugin"
+    kind "SharedLib"
+    files "example/01-hello-world/hello_world_plugin.cpp" 
     
