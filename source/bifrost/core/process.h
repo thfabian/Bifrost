@@ -21,9 +21,9 @@ namespace bifrost {
 class Process : public Object {
  public:
   struct LaunchArguments {
-    std::filesystem::path Executable;    ///< Path to the executable
-    std::vector<std::string> Arguments;  ///< Arguments passed to the executable;
-    bool Suspended = false;              ///< Launch suspended?
+    std::wstring Executable;  ///< Path to the executable
+    std::string Arguments;    ///< Arguments passed to the executable;
+    bool Suspended = false;   ///< Launch suspended?
   };
 
   /// Launch the process using `args` - throws std::runtime_error on failure
@@ -46,7 +46,7 @@ class Process : public Object {
   void Resume();
 
   /// Wait for the process to return (blocks the calling thread) and return it's exit code
-  void Wait();
+  void Wait(u32 timeout = INFINITE);
 
   /// Poll the launched process and return true if the process has exited
   bool Poll();

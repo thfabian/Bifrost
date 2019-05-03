@@ -11,6 +11,11 @@
 
 #include "bifrost/core/common.h"
 #include "bifrost/core/util.h"
+#include "bifrost/core/context.h"
+#include "bifrost/core/error.h"
+#include <rpc.h>
+
+#pragma comment(lib, "RpcRT4.lib")
 
 namespace bifrost {
 
@@ -30,6 +35,18 @@ extern std::string WStringToString(const std::wstring& s) {
   std::string r(len, '\0');
   ::WideCharToMultiByte(CP_ACP, 0, s.c_str(), slength, &r[0], len, 0, 0);
   return r;
+}
+
+std::string UUID(Context* ctx) {
+  GUID uuid;
+  BIFROST_ASSERT_CALL_CTX(ctx, ::UuidCreate(&uuid) == RPC_S_OK);
+
+  RPC_CSTR szUuid = NULL;
+  BIFROST_ASSERT_CALL_CTX(ctx, ::UuidToStringA(&uuid, &szUuid) == RPC_S_OK);
+
+  auto uuidStr = std::string((const char*)szUuid);
+  BIFROST_CHECK_CALL_CTX(ctx, ::RpcStringFreeA(&szUuid) == RPC_S_OK);
+  return uuidStr;
 }
 
 }  // namespace bifrost

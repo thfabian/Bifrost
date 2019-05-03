@@ -28,7 +28,7 @@ TEST_F(ProcessTest, Wait) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
 
   {
-    Process proc(GetContext(), {exe, {"0"}, false});
+    Process proc(GetContext(), {exe, "0", false});
     ASSERT_NO_THROW(proc.Wait());
 
     ASSERT_NE(nullptr, proc.GetExitCode());
@@ -36,7 +36,7 @@ TEST_F(ProcessTest, Wait) {
   }
 
   {
-    Process proc(GetContext(), {exe, {"0", "200"}, false});
+    Process proc(GetContext(), {exe, "0 200", false});
     ASSERT_NO_THROW(proc.Wait());
 
     ASSERT_NE(nullptr, proc.GetExitCode());
@@ -48,7 +48,7 @@ TEST_F(ProcessTest, ExitCode) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
 
   {
-    Process proc(GetContext(), {exe, {"0"}, false});
+    Process proc(GetContext(), {exe, "0", false});
     ASSERT_NO_THROW(proc.Wait());
 
     ASSERT_NE(nullptr, proc.GetExitCode());
@@ -56,7 +56,7 @@ TEST_F(ProcessTest, ExitCode) {
   }
 
   {
-    Process proc(GetContext(), {exe, {"5"}, false});
+    Process proc(GetContext(), {exe, "5", false});
     ASSERT_NO_THROW(proc.Wait());
 
     ASSERT_NE(nullptr, proc.GetExitCode());
@@ -67,7 +67,7 @@ TEST_F(ProcessTest, ExitCode) {
 TEST_F(ProcessTest, Poll) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
 
-  Process proc(GetContext(), {exe, {"0", "200"}, false});
+  Process proc(GetContext(), {exe, "0 200", false});
   ASSERT_FALSE(proc.Poll());  // This could in theory fail but it's incredibly unlikely
   while (!proc.Poll()) {
     ::Sleep(50);
@@ -83,7 +83,7 @@ TEST_F(ProcessTest, Poll) {
 TEST_F(ProcessTest, ResumeAndSuspend) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
 
-  Process proc(GetContext(), {exe, {"1", "200"}, true});
+  Process proc(GetContext(), {exe, "1 200", true});
   ASSERT_FALSE(proc.Poll());
 
   ASSERT_NO_THROW(proc.Suspend());  // thread should already be suspended -> count = 2
@@ -109,7 +109,7 @@ TEST_F(ProcessTest, ResumeAndSuspend) {
 
 TEST_F(ProcessTest, ConnectPid) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
-  Process mproc(GetContext(), {exe, {"1", "100"}, true});
+  Process mproc(GetContext(), {exe, "1 100", true});
   Process cproc(GetContext(), mproc.GetPid());
 
   ASSERT_EQ(mproc.GetPid(), cproc.GetPid());
@@ -131,7 +131,7 @@ TEST_F(ProcessTest, ConnectPid) {
 
 TEST_F(ProcessTest, ConnectName) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
-  Process mproc(GetContext(), {exe, {"1", "100"}, true});
+  Process mproc(GetContext(), {exe, "1 100", true});
   Process cproc(GetContext(), std::filesystem::path(TestEnviroment::Get().GetMockExecutable()).filename().native());
 
   ASSERT_EQ(mproc.GetPid(), cproc.GetPid());
@@ -155,7 +155,7 @@ TEST_F(ProcessTest, InjectSuccess) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
   auto dll = TestEnviroment::Get().GetMockDll();
 
-  Process proc(GetContext(), {exe, {"0", "200"}, true});
+  Process proc(GetContext(), {exe, "0 200", true});
 
   ASSERT_NO_THROW(proc.Inject({dll}));
 
@@ -170,7 +170,7 @@ TEST_F(ProcessTest, InjectFail) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
   auto dll = TestEnviroment::Get().GetMockDll();
 
-  Process proc(GetContext(), {exe, {"0", "200"}, true});
+  Process proc(GetContext(), {exe, "0 200", true});
 
   ASSERT_THROW(proc.Inject({L"invalid"}), std::runtime_error);
 
@@ -185,7 +185,7 @@ TEST_F(ProcessTest, InjectUnsuspended) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
   auto dll = TestEnviroment::Get().GetMockDll();
 
-  Process proc(GetContext(), {exe, {"0", "200"}, false});
+  Process proc(GetContext(), {exe, "0 200", false});
 
   ASSERT_NO_THROW(proc.Inject({dll}));
   ASSERT_NO_THROW(proc.Wait());
@@ -202,7 +202,7 @@ TEST_F(ProcessTest, InjectInit) {
   auto mem = CreateSharedMemory();
   ctx->SetMemory(mem.get());
 
-  Process proc(ctx, {exe, {"0", "200"}, true});
+  Process proc(ctx, {exe, "0 200", true});
 
   ASSERT_NO_THROW(proc.Inject({dll, "MockDllInit", "foo"}));
 

@@ -17,6 +17,8 @@
 
 namespace bifrost {
 
+class Context;
+
 /// Copy the given string
 template <class CharT, class TraitsT, class AllocT>
 inline std::unique_ptr<CharT> StringCopy(const std::basic_string<CharT, TraitsT, AllocT>& str) {
@@ -87,5 +89,8 @@ template <typename U, typename T>
 std::unique_ptr<U> StaticUniquePointerCast(std::unique_ptr<T>&& old) {
   return std::unique_ptr<U>{static_cast<U*>(old.release())};
 }
+
+/// Get a UUID string
+std::string UUID(Context* ctx);
 
 }  // namespace bifrost

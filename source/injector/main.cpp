@@ -79,8 +79,14 @@ int main(int argc, const char* argv[]) {
         {"plugin"});
 
     args::Group injectorGroup(parser, "INJECTOR:");
-    args::ValueFlag<u32> injectorTimeout(injectorGroup, "t", "Time out the injection process after <t> seconds (default: 5).", {"injector-timeout"},
-                                         args::Options::HiddenFromUsage);
+    args::ValueFlag<u32> injectorTimeout(
+        injectorGroup, "t",
+        StringFormat("Time out the injection process after <t> seconds (default: %u).", BIFROST_INJECTOR_DEFAULT_InjectorArguments_InjectorTimeoutInS),
+        {"injector-timeout"}, args::Options::HiddenFromUsage);
+    args::ValueFlag<u32> sharedMemorySize(
+        injectorGroup, "n",
+        StringFormat("Set the shared memory size in bytes to <n> (default: %u).", BIFROST_INJECTOR_DEFAULT_InjectorArguments_SharedMemorySizeInBytes),
+        {"shared-memory-size"}, args::Options::HiddenFromUsage);
 
     try {
       parser.ParseCLI(argc, argv);
@@ -148,6 +154,7 @@ int main(int argc, const char* argv[]) {
     }
 
     if (injectorTimeout) args->InjectorTimeoutInS = injectorTimeout;
+    if (sharedMemorySize) args->SharedMemorySizeInBytes = sharedMemorySize;
 
     // Construct the plugins
     std::vector<bfi_Plugin> bfiPlugins;
@@ -173,9 +180,11 @@ int main(int argc, const char* argv[]) {
 
     // Wait for the process to complete
     int32_t exitCode = 0;
-    //INJECTOR_CHECK(bfi_ProcessWait(ctx.get(), process.get(), exeTimeout ? exeTimeout.Get() : 0, &exitCode));
+    // INJECTOR_CHECK(bfi_ProcessWait(ctx.get(), process.get(), exeTimeout ? exeTimeout.Get() : 0, &exitCode));
 
     LogCallback((u32)ILogger::LogLevel::Debug, program.c_str(), StringFormat("Setting exit code to process exit code: %i", exitCode).c_str());
+    
+    
     return exitCode;
 
   } catch (std::runtime_error& e) {

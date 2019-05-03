@@ -48,7 +48,7 @@ struct ThreadParameter {
 enum StageEnum { E_LoadLibraryW = 1, E_GetProcAddress, E_CreateThread, E_WaitForSingleObject, E_Timeout, E_Abandoned, E_GetExitCodeThread, E_Done };
 
 #pragma code_seg(push, ".bf$a")
-__declspec(noinline) [[nodiscard]] static DWORD WINAPI Injector(LPVOID lpThreadParameter) {
+__declspec(noinline) static DWORD WINAPI Injector(LPVOID lpThreadParameter) {
   using LoadLibraryW_fn = decltype(&::LoadLibraryW);
   using GetLastError_fn = decltype(&::GetLastError);
   using GetProcAddress_fn = decltype(&::GetProcAddress);
@@ -89,7 +89,7 @@ __declspec(noinline) [[nodiscard]] static DWORD WINAPI Injector(LPVOID lpThreadP
   ((CloseHandle_fn)param->CloseHandle_A)(hThread);
   return (E_Done << 16) + exitCode;
 }
-__declspec(noinline) [[nodiscard]] static DWORD WINAPI InjectorSectionEnd() { return 0; }
+__declspec(noinline) static DWORD WINAPI InjectorSectionEnd() { return 0; }
 #pragma code_seg()
 #pragma optimize("", on)
 
@@ -101,10 +101,7 @@ Process::Process(Context* ctx, LaunchArguments args) : Object(ctx) {
   ::PROCESS_INFORMATION procInfo;
   ZeroMemory(&procInfo, sizeof(procInfo));
 
-  std::string arguments = "";
-  for (int i = 0; i < args.Arguments.size(); ++i) arguments += (i == 0 ? "\"" : " \"") + args.Arguments[i] + "\"";
-
-  std::wstring cmdStr = args.Executable.wstring() + L" " + StringToWString(arguments);
+  std::wstring cmdStr = args.Executable + L" " + StringToWString(args.Arguments);
   Logger().InfoFormat(L"Launching process: %s", cmdStr.c_str());
 
   DWORD creationFlags = 0;
@@ -197,7 +194,7 @@ void Process::Resume() {
                        suspendCount <= 1 ? "now running" : "still suspended", suspendCount);
 }
 
-void Process::Wait() { BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(m_hProcess, INFINITE) != WAIT_FAILED); }
+void Process::Wait(u32 timeout) { BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(m_hProcess, timeout) != WAIT_FAILED); }
 
 bool Process::Poll() { return GetExitCode() != nullptr; }
 

@@ -93,4 +93,9 @@ bool BufferedLogger::FlushToErr() {
   return true;
 }
 
+const char* BufferedLogger::GetModule() {
+  BIFROST_LOCK_GUARD(m_mutex);
+  return m_module.c_str();
+}
+
 }  // namespace bifrost

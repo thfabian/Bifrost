@@ -39,6 +39,9 @@ class BufferedLogger final : public ILogger {
   /// Flush the message to stderr
   bool FlushToErr();
 
+  /// Access the module
+  const char* GetModule();
+
  private:
   SpinMutex m_mutex;
   std::string m_module;

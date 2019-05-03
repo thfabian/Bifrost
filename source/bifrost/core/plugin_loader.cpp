@@ -29,6 +29,7 @@ void PluginLoader::Serialize(const std::vector<Plugin>& plugins) {
     Json jPlugin;
     jPlugin["path"] = plugin.Path;
     jPlugin["arguments"] = plugin.Arguments;
+    Logger().DebugFormat(L" %s : \"%s\"", plugin.Path.c_str(), StringToWString(plugin.Arguments).c_str());
     j.push_back(std::move(jPlugin));
   }
 

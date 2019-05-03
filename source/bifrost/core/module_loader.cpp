@@ -71,10 +71,14 @@ HMODULE ModuleLoader::GetCurrentModule() {
 }
 
 std::wstring ModuleLoader::GetModuleName(HMODULE module) {
-  wchar_t path[2 * MAX_PATH];
-  BIFROST_ASSERT_WIN_CALL_MSG(::GetModuleFileNameW(module, path, ArraySize(path)) != 0, StringFormat("Failed to get name of %p module", module));
-  std::filesystem::path p(path);
+  std::filesystem::path p(GetModulePath(module));
   return p.filename().native();
+}
+
+std::wstring ModuleLoader::GetModulePath(HMODULE module) {
+  wchar_t path[2 * MAX_PATH];
+  BIFROST_ASSERT_WIN_CALL_MSG(::GetModuleFileNameW(module, path, ArraySize(path)) != 0, StringFormat("Failed to get name of module %p", module));
+  return path;
 }
 
 std::wstring ModuleLoader::GetCurrentModuleName() { return GetModuleName(GetCurrentModule()); }

@@ -121,6 +121,9 @@ BIFROST_INJECTOR_API bfi_Status bfi_ProcessKill(bfi_Context* ctx, bfi_Process* p
 
 #pragma region Injector
 
+#define BIFROST_INJECTOR_DEFAULT_InjectorArguments_SharedMemorySizeInBytes (1 << 22)
+#define BIFROST_INJECTOR_DEFAULT_InjectorArguments_InjectorTimeoutInS (5)
+
 /// @brief Plugin description
 typedef struct bfi_Plugin_t {
   const wchar_t* Path;    ///< Absolute path to the DLL to load
@@ -143,9 +146,10 @@ typedef struct bfi_InjectorArguments_t {
   uint32_t Pid;               ///< Process identifier to connect to (requires `Mode == BFI_CONNECT_VIA_PID`)
   const wchar_t* Name;        ///< Name of the process to connect to (requires `Mode == BFI_CONNECT_VIA_NAME`)
 
-  uint32_t InjectorTimeoutInS;  ///< Time allocated for the injecting process (in milliseconds)
-  uint32_t Debugger;            ///< Attach a debugger?
-  const char* VSSolutionName;   ///< Use an existing Visual Studio instance
+  uint32_t InjectorTimeoutInS;       ///< Time allocated for the injecting process (in milliseconds)
+  uint32_t SharedMemorySizeInBytes;  ///< Size of shared memory
+  uint32_t Debugger;                 ///< Attach a debugger?
+  const char* VSSolutionName;        ///< Use an existing Visual Studio instance
 
   bfi_Plugin* Plugins;  ///< Plugins to inject
   uint32_t NumPlugins;  ///< Number of plugins

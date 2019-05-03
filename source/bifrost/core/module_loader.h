@@ -34,6 +34,9 @@ class ModuleLoader : public Object {
   /// Get the name of `module`
   std::wstring GetModuleName(HMODULE module);
 
+  /// Get the path of `module`
+  std::wstring GetModulePath(HMODULE module);
+
   /// Get the name of the current module
   std::wstring GetCurrentModuleName();
 

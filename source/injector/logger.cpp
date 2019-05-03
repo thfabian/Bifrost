@@ -40,6 +40,8 @@ std::shared_ptr<Logger::FileSinkT> Logger::MakeFileSink(const std::filesystem::p
 std::shared_ptr<Logger::MsvcSinkT> Logger::MakeMsvcSink() { return std::make_shared<MsvcSinkT>(); }
 
 void Logger::Log(u32 level, const char* module, const char* msg) {
+  if(!m_logger) return;
+
   auto logLevel = (ILogger::LogLevel)level;
   auto spdLevel = spdlog::level::off;
 
