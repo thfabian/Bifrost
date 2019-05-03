@@ -144,6 +144,8 @@ typedef struct bfi_InjectorArguments_t {
   const wchar_t* Name;        ///< Name of the process to connect to (requires `Mode == BFI_CONNECT_VIA_NAME`)
 
   uint32_t InjectorTimeoutInS;  ///< Time allocated for the injecting process (in milliseconds)
+  uint32_t Debugger;            ///< Attach a debugger?
+  const char* VSSolutionName;   ///< Use an existing Visual Studio instance
 
   bfi_Plugin* Plugins;  ///< Plugins to inject
   uint32_t NumPlugins;  ///< Number of plugins

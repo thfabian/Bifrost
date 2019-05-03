@@ -15,6 +15,7 @@
 #include "bifrost/core/error.h"
 #include "bifrost/core/macros.h"
 #include "bifrost/core/process.h"
+#include "bifrost/core/exception.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/injector_param.h"
 #include "bifrost/core/shared_memory.h"
@@ -87,7 +88,20 @@ class InjectorContext {
   }
 
   // Inject the plugins
-  bfi_Status ProcessInject(const bfi_InjectorArguments* args, bfi_Process_t** process) { return BFI_OK; }
+  bfi_Status ProcessInject(const bfi_InjectorArguments* args, bfi_Process_t** process) {
+    
+    // Generate UUID string for memory
+    //RPC_STATUS errorCode = 0;
+    UUID uuid;
+
+    //if ((ec = ::UuidCreate(&uuid)) != RPC_S_OK) {
+    //  throw Exception("Failed to get UUID - UuidCreate failed: %u", ec);
+    //}
+
+    
+    return BFI_OK; 
+  
+  }
 
   // Wait for the process to complete, kill it if we time out
   bfi_Status ProcessWait(Process* process, uint32_t timeout, int32_t* exitCode) { return BFI_OK; }
