@@ -45,8 +45,8 @@ class Process : public Object {
   /// Resume the process after suspension - throws std::runtime_error on failure
   void Resume();
 
-  /// Wait for the process to return (blocks the calling thread) and return it's exit code
-  void Wait(u32 timeout = INFINITE);
+  /// Wait for the process to return (blocks the calling thread) returns the return value of `WaitForSingleObject`
+  u32 Wait(u32 timeout = INFINITE);
 
   /// Poll the launched process and return true if the process has exited
   bool Poll();
@@ -92,7 +92,7 @@ class Process : public Object {
 };
 
 /// Kill the process given by `pid`
-extern void KillProcess(Context* ctx, DWORD pid);
+extern void KillProcess(Context* ctx, u32 pid);
 
 /// Kill all processes given by `name`
 extern void KillProcess(Context* ctx, std::wstring_view name);

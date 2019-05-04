@@ -11,6 +11,4 @@
 
 #pragma once
 
-#include <iostream>
-
 int hello_world(int bar);

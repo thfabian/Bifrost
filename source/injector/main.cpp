@@ -61,6 +61,7 @@ int main(int argc, const char* argv[]) {
     args::Flag quiet(generalGroup, "quiet", "Disable verbose logging.", {'q', "quiet"}, args::Options::HiddenFromUsage);
     args::ValueFlag<std::string> logFile(generalGroup, "file", "Log to <file> (default: " INJECTOR_LOG_FILE ")", {"log-file"}, INJECTOR_LOG_FILE,
                                          args::Options::HiddenFromUsage);
+    args::ValueFlag<std::string> kill(generalGroup, "<name>", "Kill all processes identified by <name> and exit.", {"kill"}, args::Options::HiddenFromUsage);
 
     args::Group exeGroup(parser, "EXECUTABLE:");
     args::ValueFlag<std::string> exe(exeGroup, "exe", "Launch executable <exe> given by the full path.", {"exe"});
@@ -106,6 +107,15 @@ int main(int argc, const char* argv[]) {
     // Print version and exit
     if (version) {
       std::cout << INJECTOR_VERSION_STRING << std::endl;
+      return 0;
+    }
+
+    // Try to kill process and exit
+    if (kill) {
+      if (!quiet) Logger::Get().AddSink("stderr", Logger::MakeStderrSink());
+      std::shared_ptr<bfi_Context> ctx(bfi_ContextInit(), [](bfi_Context* c) { bfi_ContextFree(c); });
+      INJECTOR_CHECK(bfi_ContextSetLoggingCallback(ctx.get(), LogCallback));
+      INJECTOR_CHECK(bfi_ProcessKillByName(ctx.get(), StringToWString(kill.Get()).c_str()));
       return 0;
     }
 
@@ -180,11 +190,9 @@ int main(int argc, const char* argv[]) {
 
     // Wait for the process to complete
     int32_t exitCode = 0;
-    // INJECTOR_CHECK(bfi_ProcessWait(ctx.get(), process.get(), exeTimeout ? exeTimeout.Get() : 0, &exitCode));
+    INJECTOR_CHECK(bfi_ProcessWait(ctx.get(), process.get(), exeTimeout ? exeTimeout.Get() : 0, &exitCode));
 
     LogCallback((u32)ILogger::LogLevel::Debug, program.c_str(), StringFormat("Setting exit code to process exit code: %i", exitCode).c_str());
-    
-    
     return exitCode;
 
   } catch (std::runtime_error& e) {

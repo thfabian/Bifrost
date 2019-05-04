@@ -10,11 +10,14 @@
 // See LICENSE.txt for details.
 
 #include "bifrost/core/common.h"
-#include "bifrost/core/context.h"
+
 #include "bifrost/core/buffered_logger.h"
+#include "bifrost/core/context.h"
 #include "bifrost/core/injector_param.h"
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
+
+using namespace bifrost;
 
 extern "C" {
 __declspec(dllexport) DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter);
@@ -22,15 +25,11 @@ __declspec(dllexport) DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter);
 
 namespace {
 
-using namespace bifrost;
-
 class SharedLogger : public ILogger {
  public:
   SharedLogger(Context* ctx) : m_ctx(ctx) {}
 
-  virtual void SetModule(const char* module) override {
-    m_module = module;
-  }
+  virtual void SetModule(const char* module) override { m_module = module; }
   virtual void Sink(LogLevel level, const char* module, const char* msg) override {
     m_ctx->Memory().GetSMLogStash()->Push(m_ctx, static_cast<u32>(level), module, msg);
   }

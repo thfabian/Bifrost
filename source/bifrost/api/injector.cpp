@@ -106,9 +106,8 @@ class InjectorContext {
   bfi_Status ProcessInject(const bfi_InjectorArguments* args, bfi_Process_t** process) {
     m_ctx->Logger().Info("Injecting plugins ...");
 
+    std::unique_ptr<Process> proc = nullptr;
     try {
-      *process = new bfi_Process;
-
       // Create shared memory
       auto uuid = UUID(m_ctx.get());
       m_memory = std::make_unique<SharedMemory>(m_ctx.get(), uuid, args->SharedMemorySizeInBytes);
@@ -144,7 +143,6 @@ class InjectorContext {
       injectArguments.TimeoutInMs = args->InjectorTimeoutInS * 1000;
 
       // Launch the process and perform injection
-      std::unique_ptr<Process> proc = nullptr;
       switch (args->Mode) {
         case BFI_LAUNCH: {
           Process::LaunchArguments arguments{args->Executable ? args->Executable : L"", args->Arguments ? args->Arguments : "", true};
@@ -166,13 +164,16 @@ class InjectorContext {
       proc->Inject(std::move(injectArguments));
       if (args->Mode == BFI_LAUNCH) proc->Resume();
 
-      (*process)->_Internal = proc.release();
-
     } catch (...) {
-      (*process)->_Internal = nullptr;
+      if (proc) {
+        KillProcess(m_ctx.get(), proc->GetPid());
+      }
       m_ctx->Logger().Error("Failed to injector plugins");
       throw;
     }
+
+    *process = new bfi_Process;
+    (*process)->_Internal = proc.release();
 
     m_ctx->Logger().Info("Successfully injected plugins");
     return BFI_OK;
@@ -180,12 +181,19 @@ class InjectorContext {
 
   // Wait for the process to complete, kill it if we time out
   bfi_Status ProcessWait(Process* process, uint32_t timeout, int32_t* exitCode) {
-    process->Wait(timeout);
-    if(exitCode) {
+    m_ctx->Logger().InfoFormat("Wating for %s seconds for process to complete ...", timeout == 0 ? "infinite" : std::to_string(timeout).c_str());
+    u32 reason = process->Wait(timeout);
+
+    if (reason == WAIT_TIMEOUT || reason == WAIT_ABANDONED) {
+      m_ctx->Logger().Warn("Process timed out or wait was abandoned. Killing process ...");
+      KillProcess(m_ctx.get(), process->GetPid());
+    }
+
+    if (exitCode) {
       const u32* ec = process->GetExitCode();
       *exitCode = ec ? *ec : STILL_ACTIVE;
     }
-    return BFI_OK; 
+    return BFI_OK;
   }
 
   // Poll the process and set the error code if it completed
@@ -222,6 +230,8 @@ class InjectorContext {
       m_logStashConsumer = std::make_unique<LogStashConsumer>(m_ctx.get(), m_memory->GetSMLogStash(), &m_ctx->Logger());
     }
   }
+
+  Context* GetContext() { return m_ctx.get(); }
 
  private:
   std::string m_error;
@@ -282,6 +292,13 @@ BIFROST_INJECTOR_API bfi_Status bfi_ProcessPoll(bfi_Context* ctx, bfi_Process* p
 
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessKill(bfi_Context* ctx, bfi_Process* process) {
   BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->ProcessKill(Get(process)); });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_ProcessKillByName(bfi_Context* ctx, const wchar_t* name) {
+  BIFROST_INJECTOR_CATCH_ALL({
+    KillProcess(Get(ctx)->GetContext(), name);
+    return BFI_OK;
+  })
 }
 
 #pragma endregion

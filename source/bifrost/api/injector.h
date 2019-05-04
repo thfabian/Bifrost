@@ -117,6 +117,11 @@ BIFROST_INJECTOR_API bfi_Status bfi_ProcessPoll(bfi_Context* ctx, bfi_Process* p
 /// @param[in] process   Process description
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessKill(bfi_Context* ctx, bfi_Process* process);
 
+/// @brief Kill all process identified by `name`
+/// @param[in] ctx    Context description
+/// @param[in] name   Name of the process
+BIFROST_INJECTOR_API bfi_Status bfi_ProcessKillByName(bfi_Context* ctx, const wchar_t* name);
+
 #pragma endregion
 
 #pragma region Injector

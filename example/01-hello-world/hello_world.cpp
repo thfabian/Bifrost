@@ -11,17 +11,16 @@
 
 #include "hello_world.h"
 
-#define NOMINMAX
-#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <iostream>
 
 int hello_world(int bar) { return bar + 1; }
 
 int main(int argc, const char* argv) {
-  Sleep(500);
+  ::Sleep(500);
   int bar = 5;
   std::cout << "bar = " << bar << std::endl;
   bar = hello_world(bar);
-  Sleep(500);
+  ::Sleep(500);
   std::cout << "bar = " << bar << std::endl;
 }

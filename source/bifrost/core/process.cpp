@@ -194,7 +194,11 @@ void Process::Resume() {
                        suspendCount <= 1 ? "now running" : "still suspended", suspendCount);
 }
 
-void Process::Wait(u32 timeout) { BIFROST_ASSERT_WIN_CALL(::WaitForSingleObject(m_hProcess, timeout) != WAIT_FAILED); }
+u32 Process::Wait(u32 timeout) {
+  u32 reason = 0;
+  BIFROST_ASSERT_WIN_CALL((reason = ::WaitForSingleObject(m_hProcess, timeout == 0 ? INFINITE : timeout)) != WAIT_FAILED);
+  return reason;
+}
 
 bool Process::Poll() { return GetExitCode() != nullptr; }
 
@@ -413,7 +417,7 @@ void Process::OpenThread() {
                               StringFormat("Failed to open main thread of process with pid: %i", GetPid()).c_str());
 }
 
-void KillProcess(Context* ctx, DWORD pid) {
+void KillProcess(Context* ctx, u32 pid) {
   HANDLE hProcess = INVALID_HANDLE_VALUE;
   BIFROST_CHECK_WIN_CALL_CTX(ctx, (hProcess = ::OpenProcess(PROCESS_TERMINATE, FALSE, pid)) != NULL);
   if (hProcess != NULL) {

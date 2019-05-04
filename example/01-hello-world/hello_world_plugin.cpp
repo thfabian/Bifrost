@@ -25,7 +25,9 @@ extern "C" {
 __declspec(dllexport) DWORD WINAPI __BifrostPluginInit__(LPVOID lpThreadParameter);
 }
 
-DWORD WINAPI __BifrostPluginInit__(LPVOID lpThreadParameter) { return 0; }
+DWORD WINAPI __BifrostPluginInit__(LPVOID lpThreadParameter) {   
+  return 0; 
+}
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
 
