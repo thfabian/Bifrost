@@ -12,6 +12,7 @@
 #include "bifrost/core/common.h"
 
 #include "bifrost/api/injector.h"
+#include "bifrost/api/helper.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
 #include "bifrost/core/error.h"
@@ -25,50 +26,12 @@
 #include "bifrost/core/sm_log_stash.h"
 
 using namespace bifrost;
-
-#ifdef NDEBUG
-#define BIFROST_INJECTOR_UNCAUGHT_EXCEPTION "Uncaught exception.\n  Function:" __FUNCTION__
-#else
-#define BIFROST_INJECTOR_UNCAUGHT_EXCEPTION "Uncaught exception.\n  Function: " __FUNCTION__ "\n  File: " __FILE__ ":" BIFROST_STRINGIFY(__LINE__)
-#endif
-
-#define BIFROST_INJECTOR_CATCH_ALL_IMPL(stmts, error)            \
-  try {                                                          \
-    stmts;                                                       \
-  } catch (std::exception & e) {                                 \
-    Get(ctx)->SetLastError(e.what());                            \
-    return error;                                                \
-  } catch (...) {                                                \
-    Get(ctx)->SetLastError(BIFROST_INJECTOR_UNCAUGHT_EXCEPTION); \
-    return error;                                                \
-  }
-
-#define BIFROST_INJECTOR_CATCH_ALL(stmts) BIFROST_INJECTOR_CATCH_ALL_IMPL(stmts, BFI_ERROR)
-#define BIFROST_INJECTOR_CATCH_ALL_PTR(stmts) BIFROST_INJECTOR_CATCH_ALL_IMPL(stmts, nullptr)
+using namespace bifrost::api;
 
 namespace {
 
-// Generic construction of a struct with an _Internal pointer
-template <class StructT, class ClassT, class... ArgsT>
-StructT* Init(ArgsT... args) {
-  StructT* s = nullptr;
-  try {
-    s = new StructT;
-    s->_Internal = new ClassT(std::forward<ArgsT>(args)...);
-  } catch (...) {
-  }
-  return s;
-}
-
-// Generic destruction of a struct with an _Internal pointer
-template <class StructT, class ClassT>
-void Free(StructT* s) {
-  if (s) {
-    if (s->_Internal) delete (ClassT*)s->_Internal;
-    s->_Internal = nullptr;
-    delete s;
-  }
-}
+#define BIFROST_INJECTOR_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(stmts, BFI_ERROR)
+#define BIFROST_INJECTOR_CATCH_ALL_PTR(stmts) BIFROST_API_CATCH_ALL_IMPL(stmts, nullptr)
 
 class ForwardLogger : public ILogger {
  public:
@@ -124,7 +87,6 @@ class InjectorContext {
 
       // Setup the injector arguments for bifrost_loader.dll
       InjectorParam param;
-
       param.Pid = ::GetCurrentProcessId();
       param.SharedMemoryName = m_ctx->Memory().GetName();
       param.SharedMemorySize = (u32)m_ctx->Memory().GetSizeInBytes();
@@ -168,7 +130,7 @@ class InjectorContext {
       if (proc) {
         KillProcess(m_ctx.get(), proc->GetPid());
       }
-      m_ctx->Logger().Error("Failed to injector plugins");
+      m_ctx->Logger().Error("Failed to inject plugins");
       throw;
     }
 
@@ -181,7 +143,7 @@ class InjectorContext {
 
   // Wait for the process to complete, kill it if we time out
   bfi_Status ProcessWait(Process* process, uint32_t timeout, int32_t* exitCode) {
-    m_ctx->Logger().InfoFormat("Wating for %s seconds for process to complete ...", timeout == 0 ? "infinite" : std::to_string(timeout).c_str());
+    m_ctx->Logger().InfoFormat("Waiting for %s seconds for process to complete ...", timeout == 0 ? "infinite" : std::to_string(timeout).c_str());
     u32 reason = process->Wait(timeout);
 
     if (reason == WAIT_TIMEOUT || reason == WAIT_ABANDONED) {

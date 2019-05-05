@@ -11,6 +11,7 @@
 
 #include "bifrost/core/common.h"
 
+#include "bifrost/api/helper.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
 #include "bifrost/core/injector_param.h"
@@ -36,41 +37,65 @@ class SharedLogger : public ILogger {
   virtual void Sink(LogLevel level, const char* msg) override { Sink(level, m_module.c_str(), msg); }
 
  private:
-  SpinMutex m_mutex;
   Context* m_ctx;
   std::string m_module;
 };
 
+/// Try very hard to get a logging message to the user
+void HandleException(BufferedLogger* bufferedLogger, SharedLogger* sharedLogger, std::exception* ep) {
+  auto log = [&](ILogger* logger) {
+    if (ep) {
+      logger->ErrorFormat("Plugin loading failed: %s", ep->what());
+    } else {
+      logger->Error(BIFROST_API_UNCAUGHT_EXCEPTION);
+    }
+  };
+
+  if (sharedLogger) {
+    log(sharedLogger);
+  } else if (bufferedLogger) {
+    log(bufferedLogger);
+    if (!bufferedLogger->FlushToDisk("bifrost_loader.log.txt")) bufferedLogger->FlushToErr();
+  }
+}
+
 }  // namespace
 
 DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter) {
-  // using namespace bifrost;
-  //
-  // auto ctx = std::make_unique<Context>();
-  // std::unique_ptr<LoggerBuffered> bufferedLogger = nullptr;
+  std::unique_ptr<Context> ctx;
+  std::unique_ptr<SharedMemory> memory;
 
-  // try {
-  //  InjectorParams param((const char*)lpThreadParameter);
+  std::unique_ptr<BufferedLogger> bufferedLogger;
+  std::unique_ptr<SharedLogger> sharedLogger;
 
-  //  // Create buffered logger
-  //  bufferedLogger = std::make_unique<LoggerBuffered>(ctx.get(), param.LogFile());
-  //  ctx->SetLogger(bufferedLogger.get());
+  try {
+    bufferedLogger = std::make_unique<BufferedLogger>();
 
-  //  // Create shared memory
-  //  auto mem = std::make_unique<SharedMemory>(ctx.get(), param.SmName(), param.SmSize());
+    // Set up a buffered logger
+    ctx = std::make_unique<Context>();
+    ctx->SetLogger(bufferedLogger.get());
 
-  //  // Create shared logger
-  //  auto sharedLogger = std::make_unique<LoggerShared>(ctx.get(), mem->GetSMLogStash());
-  //  ctx->SetLogger(sharedLogger.get());
-  //  bufferedLogger->Flush(sharedLogger.get());
+    // Try to unpack the injector params
+    auto param = InjectorParam::Deserialize(ctx.get(), (const char*)lpThreadParameter);
 
-  //} catch (std::exception& e) {
-  //  if(bufferedLogger) {
-  //    ctx->Logger().ErrorFormat("Uncaught exception: %s", e.what());
-  //    bufferedLogger.FlushToDisk();
-  //  }
-  //  return 1;
-  //}
+    // Connect to the shared memory
+    //memory = std::make_unique<SharedMemory>(ctx.get(), param.SharedMemoryName, param.SharedMemorySize);
+    //ctx->SetMemory(memory.get());
+
+    //// Flush the buffered logger and start logging to shared memory
+    //sharedLogger = std::make_unique<SharedLogger>(ctx.get());
+    //ctx->SetLogger(sharedLogger.get());
+    //bufferedLogger->Flush(sharedLogger.get());
+
+    //ctx->Logger().Info("hello world!");
+
+  } catch (std::exception& e) {
+    HandleException(bufferedLogger.get(), sharedLogger.get(), &e);
+    return 1;
+  } catch (...) {
+    HandleException(bufferedLogger.get(), sharedLogger.get(), nullptr);
+    return 1;
+  }
   return 0;
 }
 

@@ -13,6 +13,7 @@
 #include "bifrost/core/injector_param.h"
 #include "bifrost/core/json.h"
 #include "bifrost/core/ilogger.h"
+#include "bifrost/core/error.h"
 
 namespace bifrost {
 
@@ -27,17 +28,23 @@ std::string InjectorParam::Serialize() const {
 
 InjectorParam InjectorParam::Deserialize(Context* ctx, const char* jStr) {
   InjectorParam param;
+
+  if (!jStr) {
+    throw Exception("Failed to parse JSON string for InjectorParam: JSON string is NULL");
+    return param;
+  }
+
   try {
-    Json j;
-    j.parse(jStr);
+    Json j = Json::parse(jStr);
     param.Pid = j["Pid"];
-    param.WorkingDirectory = j["WorkingDirectory"].get<std::wstring>();
     param.SharedMemoryName = j["SharedMemoryName"];
     param.SharedMemorySize = j["SharedMemorySize"];
+    param.WorkingDirectory = j["WorkingDirectory"].get<std::wstring>();
 
   } catch (std::exception& e) {
-    ctx->Logger().ErrorFormat("Failed to parse JSON string for InjectorParam: %s\n  JSON: %s", e.what(), jStr);
+    throw Exception("Failed to parse JSON string for InjectorParam: %s\n  JSON: %s", e.what(), jStr);
   }
+
   return param;
 }
 

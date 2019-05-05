@@ -19,15 +19,15 @@ namespace bifrost {
 
 /// Parameters passed to injector DLL
 struct InjectorParam {
-  std::string SharedMemoryName;  ///< Name of the shared memory
-  u32 SharedMemorySize;          ///< Size of the shared memory
-  u32 Pid;                       ///< Identifier of the injector
+  std::string SharedMemoryName;   ///< Name of the shared memory
+  u32 SharedMemorySize;           ///< Size of the shared memory
+  u32 Pid;                        ///< Identifier of the injector
   std::wstring WorkingDirectory;  ///< Working directory of the injector
 
   /// Serialize the parameters to a JSON string
   std::string Serialize() const;
 
-  /// Deserialize the parameters from a JSON string
+  /// Deserialize the parameters from a JSON string - throws on error
   static InjectorParam Deserialize(Context* ctx, const char* jStr);
 };
 
