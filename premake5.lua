@@ -128,6 +128,22 @@ workspace "bifrost"
       bifrost_add_external_json()
     end
     
+  -- *** Bifrost Debugger ***
+  project "bifrost_debugger"
+    kind "StaticLib"
+    includedirs { "source" }
+    
+    files { "source/bifrost/debugger/*.cpp", "source/bifrost/debugger/*.h" }
+    disablewarnings { "4267", "4146" }
+    
+    pchheader "bifrost/debugger/common.h"
+    pchsource "source/bifrost/debugger/common.cpp"
+    
+    function bifrost_add_bifrost_debugger()
+      includedirs "source" 
+      links "bifrost_debugger"
+    end
+    
   -- *** Bifrost Loader ***
   project "bifrost_loader"
     kind "SharedLib"

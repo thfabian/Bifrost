@@ -19,7 +19,6 @@
 #include <tlhelp32.h>
 
 namespace bifrost {
-
 #pragma optimize("", off)
 
 #pragma pack(push)

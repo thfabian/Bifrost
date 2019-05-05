@@ -24,19 +24,16 @@ extern std::string GetLastWin32Error(DWORD errorCode);
 
 namespace internal {
 
-template <bool ThrowOnError, bool HasCustomMsg, bool IsWinApi, class MessageFuncT>
-inline void CheckCall(Context& ctx, bool cond, MessageFuncT&& msgFunc, const char* condStr, const char* fileStr, int line) {
-  CheckCall<ThrowOnError, HasCustomMsg, IsWinApi>(&ctx, cond, std::forward<MessageFuncT>(msgFunc), condStr, fileStr, line);
+template <bool ThrowOnError, bool HasCustomMsg, class MessageFuncT, class LastErrMessageFuncT>
+inline void CheckCall(Context& ctx, bool cond, MessageFuncT&& msgFunc, LastErrMessageFuncT&& lastErrMsg, const char* condStr, const char* fileStr, int line) {
+  CheckCall<ThrowOnError, HasCustomMsg>(&ctx, cond, std::forward<MessageFuncT>(msgFunc), std::forward<LastErrMessageFuncT>(lastErrMsg), condStr, fileStr, line);
 }
 
-template <bool ThrowOnError, bool HasCustomMsg, bool IsWinApi, class MessageFuncT>
-inline void CheckCall(Context* ctx, bool cond, MessageFuncT&& msgFunc, const char* condStr, const char* fileStr, int line) {
+template <bool ThrowOnError, bool HasCustomMsg, class MessageFuncT, class LastErrMessageFuncT>
+inline void CheckCall(Context* ctx, bool cond, MessageFuncT&& msgFunc, LastErrMessageFuncT&& lastErrMsg, const char* condStr, const char* fileStr, int line) {
   if (cond == false) {
-    std::string errMsg;
+    std::string errMsg = lastErrMsg();
 
-    if (IsWinApi) {
-      errMsg = GetLastWin32Error();
-    }
     if (HasCustomMsg) {
       // Use lambda function to delay evaluation of msg
       errMsg = msgFunc() + (errMsg.empty() ? "" : ": ") + errMsg;
@@ -78,13 +75,13 @@ inline void CheckCall(Context* ctx, bool cond, MessageFuncT&& msgFunc, const cha
 }  // namespace bifrost
 
 #ifdef NDEBUG
-#define BIFROST_CALL_IMPL(obj, cond, throwOnError, hasCustomMsg, isWinApi, msg) \
-  ::bifrost::internal::CheckCall<throwOnError, hasCustomMsg, isWinApi>(         \
-      obj, cond, [&]() -> std::string { return msg; }, BIFROST_STRINGIFY(cond), nullptr, 0)
+#define BIFROST_CALL_IMPL(ctx, cond, throwOnError, hasCustomMsg, msg, lastErrMsg) \
+  ::bifrost::internal::CheckCall<throwOnError, hasCustomMsg>(                     \
+      ctx, cond, [&]() -> std::string { return msg; }, lastErrMsg, BIFROST_STRINGIFY(cond), nullptr, 0)
 #else
-#define BIFROST_CALL_IMPL(obj, cond, throwOnError, hasCustomMsg, isWinApi, msg) \
-  ::bifrost::internal::CheckCall<throwOnError, hasCustomMsg, isWinApi>(         \
-      obj, cond, [&]() -> std::string { return msg; }, BIFROST_STRINGIFY(cond), __FILE__, __LINE__)
+#define BIFROST_CALL_IMPL(ctx, cond, throwOnError, hasCustomMsg, msg, lastErrMsg) \
+  ::bifrost::internal::CheckCall<throwOnError, hasCustomMsg>(                     \
+      ctx, cond, [&]() -> std::string { return msg; }, lastErrMsg, BIFROST_STRINGIFY(cond), __FILE__, __LINE__)
 #endif
 
 /// Check that the condition is true and throw an exception on error (this function needs to be called inside an bifrost::Object or any other function which
@@ -95,10 +92,10 @@ inline void CheckCall(Context* ctx, bool cond, MessageFuncT&& msgFunc, const cha
 #define BIFROST_ASSERT_WIN_CALL_MSG(cond, msg) BIFROST_ASSERT_WIN_CALL_MSG_CTX(GetContext(), cond, msg)
 
 /// Check that the condition is true and throw an exception on error
-#define BIFROST_ASSERT_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, true, false, false, {})
-#define BIFROST_ASSERT_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, true, true, false, msg)
-#define BIFROST_ASSERT_WIN_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, true, false, true, {})
-#define BIFROST_ASSERT_WIN_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, true, true, true, msg)
+#define BIFROST_ASSERT_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, true, false, {}, []() { return std::string{}; })
+#define BIFROST_ASSERT_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, true, true, msg, []() { return std::string{}; })
+#define BIFROST_ASSERT_WIN_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, true, false, {}, []() { return GetLastWin32Error(); })
+#define BIFROST_ASSERT_WIN_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, true, true, msg, []() { return GetLastWin32Error(); })
 
 /// Check that the condition is true and issue a warning in case of an error (this function needs to be called inside an bifrost::Object or any other function
 /// which provides a GetContext() method)
@@ -108,7 +105,7 @@ inline void CheckCall(Context* ctx, bool cond, MessageFuncT&& msgFunc, const cha
 #define BIFROST_CHECK_WIN_CALL_MSG(cond, msg) BIFROST_CHECK_WIN_CALL_MSG_CTX(GetContext(), cond, msg)
 
 /// Check that the condition is true and issue a warning in case of an error
-#define BIFROST_CHECK_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, false, false, false, {})
-#define BIFROST_CHECK_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, false, true, false, msg)
-#define BIFROST_CHECK_WIN_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, false, false, true, {})
-#define BIFROST_CHECK_WIN_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, false, true, true, msg)
+#define BIFROST_CHECK_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, false, false, {}, []() { return std::string{}; })
+#define BIFROST_CHECK_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, false, true,  msg, []() { return std::string{}; }))
+#define BIFROST_CHECK_WIN_CALL_CTX(ctx, cond) BIFROST_CALL_IMPL(ctx, cond, false, false, {}, []() { return GetLastWin32Error(); })
+#define BIFROST_CHECK_WIN_CALL_MSG_CTX(ctx, cond, msg) BIFROST_CALL_IMPL(ctx, cond, false, true,  msg, []() { return GetLastWin32Error(); })))

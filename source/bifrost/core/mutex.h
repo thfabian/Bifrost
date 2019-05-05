@@ -13,6 +13,7 @@
 
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
+#include "bifrost/core/macros.h"
 
 namespace bifrost {
 
@@ -56,4 +57,4 @@ class NullMutex {
 }  // namespace bifrost
 
 /// RAII construct to lock/unlock the `mutex`
-#define BIFROST_LOCK_GUARD(mutex) std::lock_guard<std::decay<decltype(mutex)>::type> bifrost_lock_guard_##__LINE__(mutex)
+#define BIFROST_LOCK_GUARD(mutex) std::lock_guard<std::decay<decltype(mutex)>::type> BIFROST_CONCAT(__lock_guard_, __LINE__)(mutex)
