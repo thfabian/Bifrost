@@ -63,6 +63,7 @@ inline void CheckCall(Context* ctx, bool cond, MessageFuncT&& msgFunc, LastErrMe
     if (ThrowOnError) {
 #ifndef NDEBUG
       ::OutputDebugStringA(fmtMsg.c_str());
+      ::OutputDebugStringA("\n");
       if (::IsDebuggerPresent()) ::__debugbreak();
 #endif
       throw Exception(fmtMsg);

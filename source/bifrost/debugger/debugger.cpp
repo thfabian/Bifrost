@@ -13,25 +13,87 @@
 #include "bifrost/debugger/debugger.h"
 #include "bifrost/debugger/error.h"
 
+// Adapted from:
 // https://handmade.network/forums/wip/t/1479-sample_code_to_programmatically_attach_visual_studio_to_a_process
 
 namespace bifrost {
 
+// RAII construction of COM
+struct ComInit : public Object {
+  ComInit(Context* ctx) : Object(ctx) { BIFROST_ASSERT_COM_CALL(::CoInitialize(NULL)); }
+  ~ComInit() { ::CoUninitialize(); }
+};
+
 class Debugger::DebuggerImpl : public Object {
  public:
-  DebuggerImpl(Context* ctx) : Object(ctx) {
-    BIFROST_ASSERT_COM_CALL(::CoInitialize(NULL));
+  DebuggerImpl(Context* ctx) : Object(ctx) {}
 
-    CLSID Clsid;
-    BIFROST_ASSERT_COM_CALL(::CLSIDFromProgID(L"VisualStudio.DTE", &Clsid));
+  void Attach(u32 pid) {
+    Logger().InfoFormat("Attaching Visual Studio Debugger to %u ...", pid);
+    try {
+      ComInit com(&GetContext());
+
+      // Look up CLSID in the registry (VisualStudio.DTE maps to any Visual Studio)
+      CLSID clsid;
+      BIFROST_ASSERT_COM_CALL(::CLSIDFromProgID(L"VisualStudio.DTE", &clsid));
+
+      // Get the running object which has been registered with OLE
+      IUnknown* unknown;
+      BIFROST_ASSERT_COM_CALL(::GetActiveObject(clsid, 0, &unknown));
+
+      // Get pointer to the _DTE interface
+      CComPtr<EnvDTE::_DTE> dte;
+      BIFROST_ASSERT_COM_CALL(unknown->QueryInterface(&dte));
+
+      EnvDTE::Debugger* debugger;
+      BIFROST_ASSERT_COM_CALL(dte->get_Debugger(&debugger));
+
+      // Get a list of all processes
+      EnvDTE::Processes* procs;
+      BIFROST_ASSERT_COM_CALL(debugger->get_LocalProcesses(&procs));
+
+      long numProcs = 0;
+      BIFROST_ASSERT_COM_CALL(procs->get_Count(&numProcs));
+
+      EnvDTE::Process* targetProcess = nullptr;
+
+      // Find the target process
+      for (long i = 1; i < numProcs; i++) {
+        HRESULT hr;
+
+        EnvDTE::Process* proc;
+        if (FAILED(procs->Item(variant_t(i), &proc))) 
+          continue;
+
+        long procID;
+        if (FAILED(proc->get_ProcessID(&procID))) 
+          continue;
+
+        if (procID == pid) {
+          targetProcess = proc;
+          break;
+        }
+      }
+
+      if (targetProcess) {
+        BIFROST_ASSERT_COM_CALL(targetProcess->Attach());
+      } else {
+        throw Exception("Failed to attach Visual Studio Debugger to %u: No process found with given pid", pid);
+      }
+
+      Logger().InfoFormat("Successfully attached Visual Studio Debugger", pid);
+
+    } catch (...) {
+      Logger().ErrorFormat("Failed to attach Visual Studio Debugger to %u", pid);
+      throw;
+    }
   }
-
- private:
-  bool m_attached;
 };
 
 Debugger::Debugger(Context* ctx) : Object(ctx) { m_impl = std::make_unique<DebuggerImpl>(ctx); }
 
-bool Debugger::Attach(u32 pid) { return true; }
+Debugger::~Debugger() = default;
+
+void Debugger::Attach(u32 pid) { m_impl->Attach(pid); }
 
 }  // namespace bifrost

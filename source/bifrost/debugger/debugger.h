@@ -20,9 +20,10 @@ namespace bifrost {
 class Debugger : public Object {
  public:
   Debugger(Context* ctx);
+  ~Debugger();
 
-  /// Attach the given process to Visual Studio
-  bool Attach(u32 pid);
+  /// Attach the given process to Visual Studio - throws on error
+  void Attach(u32 pid);
 
  private:
   class DebuggerImpl;

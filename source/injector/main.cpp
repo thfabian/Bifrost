@@ -88,6 +88,7 @@ int main(int argc, const char* argv[]) {
         injectorGroup, "n",
         StringFormat("Set the shared memory size in bytes to <n> (default: %u).", BIFROST_INJECTOR_DEFAULT_InjectorArguments_SharedMemorySizeInBytes),
         {"shared-memory-size"}, args::Options::HiddenFromUsage);
+    args::Flag debugger(injectorGroup, "debugger",  "Attach a debugger to the injected process.", {"debugger"}, args::Options::HiddenFromUsage);
 
     try {
       parser.ParseCLI(argc, argv);
@@ -165,6 +166,7 @@ int main(int argc, const char* argv[]) {
 
     if (injectorTimeout) args->InjectorTimeoutInS = injectorTimeout;
     if (sharedMemorySize) args->SharedMemorySizeInBytes = sharedMemorySize;
+    if (debugger) args->Debugger = 1;
 
     // Construct the plugins
     std::vector<bfi_Plugin> bfiPlugins;

@@ -17,7 +17,7 @@
 int hello_world(int bar) { return bar + 1; }
 
 int main(int argc, const char* argv) {
-  ::Sleep(500);
+  ::Sleep(5000000);
   int bar = 5;
   std::cout << "bar = " << bar << std::endl;
   bar = hello_world(bar);

@@ -169,6 +169,7 @@ workspace "bifrost"
     defines { "BIFROST_INJECTOR_EXPORTS" }
     
     bifrost_add_bifrost_core()
+    bifrost_add_bifrost_debugger()
     bifrost_add_bifrost_loader()
 
     function bifrost_add_bifrost_injector()

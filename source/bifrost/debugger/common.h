@@ -15,6 +15,7 @@
 #include "bifrost/core/common.h"
 #include <comdef.h>
 #include <Wbemidl.h>
+#include <atlbase.h>
 
 #pragma warning(disable : 4278)
 

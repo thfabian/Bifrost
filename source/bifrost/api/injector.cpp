@@ -24,6 +24,7 @@
 #include "bifrost/core/process.h"
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
+#include "bifrost/debugger/debugger.h"
 
 using namespace bifrost;
 using namespace bifrost::api;
@@ -123,7 +124,17 @@ class InjectorContext {
         default:
           throw Exception("Failed to inject executabled: Unknown executable mode (bfi_InjectorArguments_t::Mode is set to BFI_UNKNOWN)");
       }
+
+      // Attach a debugger?
+      if (args->Debugger) {
+        m_debugger = std::make_unique<Debugger>(m_ctx.get());
+        m_debugger->Attach(proc->GetPid());
+      }
+
+      // Inject the plugins
       proc->Inject(std::move(injectArguments));
+
+      // Resume execution..
       if (args->Mode == BFI_LAUNCH) proc->Resume();
 
     } catch (...) {
@@ -202,6 +213,7 @@ class InjectorContext {
   std::unique_ptr<SharedMemory> m_memory;
   std::unique_ptr<LogStashConsumer> m_logStashConsumer;
   std::unique_ptr<ModuleLoader> m_loader;
+  std::unique_ptr<Debugger> m_debugger;
 
   std::unique_ptr<BufferedLogger> m_bufferedLogger;
   std::unique_ptr<ForwardLogger> m_forwardLogger;
