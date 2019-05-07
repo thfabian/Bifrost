@@ -225,11 +225,12 @@ DWORD Process::RunRemoteThread(const char* functionName, LPTHREAD_START_ROUTINE 
   BIFROST_ASSERT_WIN_CALL((hRemoteThread = ::CreateRemoteThread(m_hProcess, NULL, 0, threadFunc, threadParam, 0, NULL)) != NULL);
 
   // Wait for thread to return
-  Logger().DebugFormat("Waiting %u s for %s to return ...", timeoutInMs / 1000, functionName);
+  auto timeoutStrInS = timeoutInMs == INFINITE ? std::string("infinitely") : std::to_string(timeoutInMs / 1000);
+  Logger().DebugFormat("Waiting %s for %s seconds to return ...", timeoutStrInS.c_str(), functionName);
   DWORD reason = 0;
   BIFROST_ASSERT_WIN_CALL((reason = ::WaitForSingleObject(hRemoteThread, timeoutInMs)) != WAIT_FAILED);
   if (reason == WAIT_TIMEOUT) {
-    throw Exception("Waiting for %s timed out after %u s", functionName, timeoutInMs / 1000);
+    throw Exception("Waiting for %s timed out after %s seconds", functionName, timeoutStrInS.c_str());
   } else if (reason == WAIT_ABANDONED) {
     throw Exception("Waiting for %s was abandoned", functionName);
   }
@@ -329,7 +330,7 @@ void Process::Inject(InjectArguments args) {
       case bifrost::E_WaitForSingleObject:
         winError(L"failed in WaitForSingleObject", errorCode);
       case bifrost::E_Timeout:
-        error(L"timed out", StringFormat(L"thread timed out after %u", args.TimeoutInMs).c_str());
+        error(L"timed out", StringFormat(L"thread timed out after %u ms", args.TimeoutInMs == INFINITE ? L"infinite" : std::to_wstring(args.TimeoutInMs).c_str()).c_str());
       case bifrost::E_Abandoned:
         error(L"timed out", L"wait was abandoned");
       case bifrost::E_GetExitCodeThread:
@@ -346,7 +347,6 @@ void Process::Inject(InjectArguments args) {
     Logger().Error(L"Injection failed");
     throw;
   }
-
 }
 
 void Process::AttachDebugger() {}

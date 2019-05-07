@@ -13,9 +13,6 @@
 #include "bifrost/debugger/debugger.h"
 #include "bifrost/debugger/error.h"
 
-// Adapted from:
-// https://handmade.network/forums/wip/t/1479-sample_code_to_programmatically_attach_visual_studio_to_a_process
-
 namespace bifrost {
 
 // RAII construction of COM
@@ -58,16 +55,12 @@ class Debugger::DebuggerImpl : public Object {
       EnvDTE::Process* targetProcess = nullptr;
 
       // Find the target process
-      for (long i = 1; i < numProcs; i++) {
-        HRESULT hr;
-
+      for (long i = 1; i <= numProcs; i++) {
         EnvDTE::Process* proc;
-        if (FAILED(procs->Item(variant_t(i), &proc))) 
-          continue;
+        if (FAILED(procs->Item(variant_t(i), &proc))) continue;
 
         long procID;
-        if (FAILED(proc->get_ProcessID(&procID))) 
-          continue;
+        if (FAILED(proc->get_ProcessID(&procID))) continue;
 
         if (procID == pid) {
           targetProcess = proc;
@@ -77,14 +70,13 @@ class Debugger::DebuggerImpl : public Object {
 
       if (targetProcess) {
         BIFROST_ASSERT_COM_CALL(targetProcess->Attach());
+        Logger().Info("Successfully attached Visual Studio Debugger");
       } else {
         throw Exception("Failed to attach Visual Studio Debugger to %u: No process found with given pid", pid);
       }
 
-      Logger().InfoFormat("Successfully attached Visual Studio Debugger", pid);
-
     } catch (...) {
-      Logger().ErrorFormat("Failed to attach Visual Studio Debugger to %u", pid);
+      Logger().Error("Failed to attach Visual Studio Debugger");
       throw;
     }
   }

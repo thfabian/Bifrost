@@ -129,6 +129,9 @@ class InjectorContext {
       if (args->Debugger) {
         m_debugger = std::make_unique<Debugger>(m_ctx.get());
         m_debugger->Attach(proc->GetPid());
+
+        // Wait forever
+        injectArguments.TimeoutInMs = INFINITE;
       }
 
       // Inject the plugins
@@ -138,7 +141,7 @@ class InjectorContext {
       if (args->Mode == BFI_LAUNCH) proc->Resume();
 
     } catch (...) {
-      if (proc) {
+      if (proc && args->Mode == BFI_LAUNCH) {
         KillProcess(m_ctx.get(), proc->GetPid());
       }
       m_ctx->Logger().Error("Failed to inject plugins");

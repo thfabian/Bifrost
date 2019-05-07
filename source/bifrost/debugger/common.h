@@ -20,7 +20,7 @@
 #pragma warning(disable : 4278)
 
 // The following #import imports EnvDTE based on its LIBID.
-#import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" version("8.0") lcid("0") raw_interfaces_only named_guids
+#import "libid:80cc9f66-e7d8-4ddd-85b6-d9e6cd0e93e2" raw_interfaces_only named_guids
 
 #pragma warning(default : 4278)
 

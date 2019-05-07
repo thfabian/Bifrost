@@ -17,7 +17,14 @@
 int hello_world(int bar) { return bar + 1; }
 
 int main(int argc, const char* argv) {
-  ::Sleep(5000000);
+  int i = 0;
+  while (i > 3000)
+  {
+    i += 10;
+    std::cout << i << std::endl;
+    ::Sleep(10);
+  }
+
   int bar = 5;
   std::cout << "bar = " << bar << std::endl;
   bar = hello_world(bar);
