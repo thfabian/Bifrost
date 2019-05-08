@@ -40,12 +40,16 @@ class SMString : public SMObject {
 
   /// Get a view of the data
   std::string_view AsView(Context* ctx) const {
+    if (m_size == 0) return std::string_view{};
+
     char* data = Resolve(ctx, m_data);
     return std::string_view{data, m_size};
   }
 
   /// Get a copy of the data
   std::string AsString(Context* ctx) const {
+    if (m_size == 0) return std::string{};
+
     char* data = Resolve(ctx, m_data);
     return std::string{data, m_size};
   }
@@ -74,8 +78,10 @@ class SMString : public SMObject {
 
   void Copy(Context* ctx, std::string_view s) {
     BIFROST_ASSERT(m_size >= s.size());
-    char* data = Resolve(ctx, m_data);
-    std::memcpy(data, s.data(), s.size());
+    if (s.size() > 0) {
+      char* data = Resolve(ctx, m_data);
+      std::memcpy(data, s.data(), s.size());
+    }
     m_size = static_cast<u32>(s.size());
   }
 

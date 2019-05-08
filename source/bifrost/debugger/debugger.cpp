@@ -70,6 +70,7 @@ class Debugger::DebuggerImpl : public Object {
 
       if (targetProcess) {
         BIFROST_ASSERT_COM_CALL(targetProcess->Attach());
+        //BIFROST_ASSERT_COM_CALL(targetProcess->Break(true));
         Logger().Info("Successfully attached Visual Studio Debugger");
       } else {
         throw Exception("Failed to attach Visual Studio Debugger to %u: No process found with given pid", pid);

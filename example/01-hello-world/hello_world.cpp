@@ -16,18 +16,8 @@
 
 int hello_world(int bar) { return bar + 1; }
 
-int main(int argc, const char* argv) {
-  int i = 0;
-  while (i > 3000)
-  {
-    i += 10;
-    std::cout << i << std::endl;
-    ::Sleep(10);
-  }
-
-  int bar = 5;
-  std::cout << "bar = " << bar << std::endl;
-  bar = hello_world(bar);
+int main(int argc, const char* argv[]) {
+  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
   ::Sleep(500);
-  std::cout << "bar = " << bar << std::endl;
+  return bar;
 }

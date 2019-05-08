@@ -85,9 +85,6 @@ SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) 
 }
 
 SharedMemory::~SharedMemory() {
-  ModuleLoader moduleLoader(m_ctx);
-  auto moduleName = moduleLoader.GetCurrentModuleName();
-
   SMContext::Destruct(this, m_sharedCtx);
 
   m_ctx->Logger().DebugFormat("Deallocating shared memory \"%s\" ...", GetName());

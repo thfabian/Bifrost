@@ -17,6 +17,7 @@
 #include "bifrost/core/injector_param.h"
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
+#include "bifrost/core/module_loader.h"
 
 using namespace bifrost;
 
@@ -75,19 +76,30 @@ DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter) {
     ctx = std::make_unique<Context>();
     ctx->SetLogger(bufferedLogger.get());
 
+    ModuleLoader moduleLoader(ctx.get());
+    auto curModule = WStringToString(moduleLoader.GetCurrentModuleName());
+    bufferedLogger->SetModule(curModule.c_str());
+
     // Try to unpack the injector params
     auto param = InjectorParam::Deserialize(ctx.get(), (const char*)lpThreadParameter);
 
     // Connect to the shared memory
-    //memory = std::make_unique<SharedMemory>(ctx.get(), param.SharedMemoryName, param.SharedMemorySize);
-    //ctx->SetMemory(memory.get());
+    memory = std::make_unique<SharedMemory>(ctx.get(), param.SharedMemoryName, param.SharedMemorySize);
+    ctx->SetMemory(memory.get());
 
-    //// Flush the buffered logger and start logging to shared memory
-    //sharedLogger = std::make_unique<SharedLogger>(ctx.get());
-    //ctx->SetLogger(sharedLogger.get());
-    //bufferedLogger->Flush(sharedLogger.get());
+    // Flush the buffered logger and start logging to shared memory
+    sharedLogger = std::make_unique<SharedLogger>(ctx.get());
+    sharedLogger->SetModule(curModule.c_str());
+    ctx->SetLogger(sharedLogger.get());
+    bufferedLogger->Flush(sharedLogger.get());
 
-    //ctx->Logger().Info("hello world!");
+    // Remove shared memory logger
+    ctx->SetLogger(bufferedLogger.get());
+    sharedLogger = nullptr;
+
+    // Disconnect memory
+    memory.reset();
+    ctx.reset();
 
   } catch (std::exception& e) {
     HandleException(bufferedLogger.get(), sharedLogger.get(), &e);

@@ -166,7 +166,7 @@ int main(int argc, const char* argv[]) {
 
     if (injectorTimeout) args->InjectorTimeoutInS = injectorTimeout;
     if (sharedMemorySize) args->SharedMemorySizeInBytes = sharedMemorySize;
-    if (debugger) args->Debugger = 1;
+    if (debugger || ::IsDebuggerPresent()) args->Debugger = 1;
 
     // Construct the plugins
     std::vector<bfi_Plugin> bfiPlugins;
