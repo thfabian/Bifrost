@@ -67,21 +67,33 @@ class InjectorContext {
   }
 
   // Inject the plugins
-  bfi_Status ProcessInject(const bfi_InjectorArguments* args, bfi_Process_t** process) {
-    m_ctx->Logger().Info("Injecting plugins ...");
+  bfi_Status PluginLoad(const bfi_PluginLoadArguments* args, bfi_Process_t** process, bfi_PluginLoadResult** result) {
+    m_ctx->Logger().Info("Loading plugins into remote process ...");
+
+    if (!args->Executable) throw Exception("bfi_PluginLoadArguments.Executable is NULL");
+    if (!args->InjectorArguments) throw Exception("bfi_PluginLoadArguments.InjectorArguments is NULL");
+
+    *process = NULL;
+    *result = NULL;
+
+    std::string smName;
+    u32 smSize = 0, rpPid = 0;
 
     std::unique_ptr<Process> proc = nullptr;
     try {
+      smName = args->InjectorArguments->SharedMemoryName ? args->InjectorArguments->SharedMemoryName : UUID(m_ctx.get());
+      smSize = args->InjectorArguments->SharedMemorySizeInBytes;
+
       // Create shared memory
-      auto uuid = UUID(m_ctx.get());
-      m_memory = std::make_unique<SharedMemory>(m_ctx.get(), uuid, args->SharedMemorySizeInBytes);
+      m_memory = std::make_unique<SharedMemory>(m_ctx.get(), smName, smSize);
       m_ctx->SetMemory(m_memory.get());
       SetUpLogConsumer();
 
       // Write plugins to shared memory
       std::vector<Plugin> plugins;
       for (u32 i = 0; i < args->NumPlugins; ++i) {
-        plugins.emplace_back(Plugin{args->Plugins[i].Path, args->Plugins[i].Arguments ? args->Plugins[i].Arguments : ""});
+        plugins.emplace_back(Plugin{args->Plugins[i].Name ? args->Plugins[i].Name : "", args->Plugins[i].Path ? args->Plugins[i].Path : L"",
+                                    args->Plugins[i].Arguments ? args->Plugins[i].Arguments : "" });
       }
       PluginLoader loader(m_ctx.get());
       loader.Serialize(plugins);
@@ -103,30 +115,32 @@ class InjectorContext {
       injectArguments.DllPath = m_loader->GetModulePath(m_loader->GetModule(L"bifrost_loader.dll"));
       injectArguments.InitProcArg = param.Serialize();
       injectArguments.InitProcName = "bfl_LoadPlugins";
-      injectArguments.TimeoutInMs = args->InjectorTimeoutInS * 1000;
+      injectArguments.TimeoutInMs = args->InjectorArguments->TimeoutInS * 1000;
 
       // Launch the process and perform injection
-      switch (args->Mode) {
+      switch (args->Executable->Mode) {
         case BFI_LAUNCH: {
-          Process::LaunchArguments arguments{args->Executable ? args->Executable : L"", args->Arguments ? args->Arguments : "", true};
+          Process::LaunchArguments arguments{args->Executable->ExecutablePath ? args->Executable->ExecutablePath : L"",
+                                             args->Executable->ExecutableArguments ? args->Executable->ExecutableArguments : "", true};
           proc = std::make_unique<Process>(m_ctx.get(), std::move(arguments));
           break;
         }
         case BFI_CONNECT_VIA_PID: {
-          proc = std::make_unique<Process>(m_ctx.get(), args->Pid);
+          proc = std::make_unique<Process>(m_ctx.get(), args->Executable->Pid);
           break;
         }
         case BFI_CONNECT_VIA_NAME: {
-          proc = std::make_unique<Process>(m_ctx.get(), args->Name);
+          proc = std::make_unique<Process>(m_ctx.get(), args->Executable->Name);
           break;
         }
         case BFI_UNKNOWN:
         default:
           throw Exception("Failed to inject executabled: Unknown executable mode (bfi_InjectorArguments_t::Mode is set to BFI_UNKNOWN)");
       }
+      rpPid = proc->GetPid();
 
       // Attach a debugger?
-      if (args->Debugger) {
+      if (args->InjectorArguments->Debugger) {
         m_debugger = std::make_unique<Debugger>(m_ctx.get());
         m_debugger->Attach(proc->GetPid());
 
@@ -138,26 +152,34 @@ class InjectorContext {
       proc->Inject(std::move(injectArguments));
 
       // Resume execution..
-      if (args->Mode == BFI_LAUNCH) proc->Resume();
+      if (args->Executable->Mode == BFI_LAUNCH) proc->Resume();
 
     } catch (...) {
-      if (proc && args->Mode == BFI_LAUNCH) {
+      if (proc && args->Executable->Mode == BFI_LAUNCH) {
         KillProcess(m_ctx.get(), proc->GetPid());
       }
-      m_ctx->Logger().Error("Failed to inject plugins");
+
+      m_ctx->Logger().Error("Failed to load plugins");
       throw;
     }
 
     *process = new bfi_Process;
     (*process)->_Internal = proc.release();
 
-    m_ctx->Logger().Info("Successfully injected plugins");
+    // Assemble the result
+    *result = new bfi_PluginLoadResult;
+    (*result)->RemoteProcessPid = rpPid;
+    (*result)->SharedMemorySize = smSize;
+    (*result)->SharedMemoryName = new char[smName.size() + 1];
+    std::memcpy((void*)(*result)->SharedMemoryName, smName.c_str(), smName.size() + 1);
+
+    m_ctx->Logger().Info("Successfully loaded plugins");
     return BFI_OK;
   }
 
   // Wait for the process to complete, kill it if we time out
   bfi_Status ProcessWait(Process* process, uint32_t timeout, int32_t* exitCode) {
-    m_ctx->Logger().InfoFormat("Waiting for %s seconds for process to complete ...", timeout == 0 ? "infinite" : std::to_string(timeout).c_str());
+    m_ctx->Logger().InfoFormat("Waiting for %s seconds for remote process to complete ...", timeout == 0 ? "infinite" : std::to_string(timeout).c_str());
     u32 reason = process->Wait(timeout);
 
     if (reason == WAIT_TIMEOUT || reason == WAIT_ABANDONED) {
@@ -173,10 +195,23 @@ class InjectorContext {
   }
 
   // Poll the process and set the error code if it completed
-  bfi_Status ProcessPoll(Process* process, int32_t* running, int32_t* exitCode) { return BFI_OK; }
+  bfi_Status ProcessPoll(Process* process, int32_t* running, int32_t* exitCode) {
+    const u32* ec = process->GetExitCode();
+    if (ec) {
+      if (running) *running = 0;
+      if (exitCode) *exitCode = *ec;
+    } else {
+      if (running) *running = 1;
+      if (exitCode) *exitCode = STILL_ACTIVE;
+    }
+    return BFI_OK;
+  }
 
   // Kill the process
-  bfi_Status ProcessKill(Process* process) { return BFI_OK; }
+  bfi_Status ProcessKill(Process* process) {
+    KillProcess(m_ctx.get(), process->GetPid());
+    return BFI_OK;
+  }
 
   // Error stash
   void SetLastError(std::string msg) { m_error = std::move(msg); }
@@ -227,17 +262,6 @@ Process* Get(bfi_Process* process) { return (Process*)process->_Internal; }
 
 }  // namespace
 
-#pragma region Version
-
-bfi_Version bfi_GetVersion() { return {BIFROST_INJECTOR_VERSION_MAJOR, BIFROST_INJECTOR_VERSION_MINOR, BIFROST_INJECTOR_VERSION_PATCH}; }
-
-const char* bfi_GetVersionString() {
-  return BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MAJOR) "." BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MINOR) "." BIFROST_STRINGIFY(
-      BIFROST_INJECTOR_VERSION_PATCH);
-}
-
-#pragma endregion
-
 #pragma region Context
 
 bfi_Context* bfi_ContextInit() { return Init<bfi_Context, InjectorContext>(); }
@@ -252,11 +276,45 @@ bfi_Status bfi_ContextSetLoggingCallback(bfi_Context* ctx, bfi_LoggingCallback c
 
 #pragma endregion
 
+#pragma region Version
+
+bfi_Version bfi_GetVersion() { return {BIFROST_INJECTOR_VERSION_MAJOR, BIFROST_INJECTOR_VERSION_MINOR, BIFROST_INJECTOR_VERSION_PATCH}; }
+
+const char* bfi_GetVersionString() {
+  return BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MAJOR) "." BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MINOR) "." BIFROST_STRINGIFY(
+      BIFROST_INJECTOR_VERSION_PATCH);
+}
+
+#pragma endregion
+
 #pragma region Process
 
+BIFROST_INJECTOR_API bfi_Status bfi_ProcessLaunch(bfi_Context* ctx, const wchar_t* path, const char* arguments, bfi_Process_t** process) {
+  BIFROST_INJECTOR_CATCH_ALL({
+    *process = (Init<bfi_Process, Process>(Get(ctx)->GetContext(), Process::LaunchArguments{path ? path : L"", arguments ? arguments : ""}));
+    return BFI_OK;
+  });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_ProcessFromPid(bfi_Context* ctx, uint32_t pid, bfi_Process_t** process) {
+  BIFROST_INJECTOR_CATCH_ALL({
+    *process = (Init<bfi_Process, Process>(Get(ctx)->GetContext(), pid));
+    return BFI_OK;
+  });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_ProcessFromName(bfi_Context* ctx, const wchar_t* name, bfi_Process_t** process) {
+  BIFROST_INJECTOR_CATCH_ALL({
+    *process = (Init<bfi_Process, Process>(Get(ctx)->GetContext(), std::wstring(name)));
+    return BFI_OK;
+  });
+}
+
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessFree(bfi_Context* ctx, bfi_Process* process) {
-  Free<bfi_Process, Process>(process);
-  return BFI_OK;
+  BIFROST_INJECTOR_CATCH_ALL({
+    (Free<bfi_Process, Process>(process));
+    return BFI_OK;
+  });
 }
 
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessWait(bfi_Context* ctx, bfi_Process* process, int32_t timeout, int32_t* exitCode) {
@@ -273,34 +331,34 @@ BIFROST_INJECTOR_API bfi_Status bfi_ProcessKill(bfi_Context* ctx, bfi_Process* p
 
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessKillByName(bfi_Context* ctx, const wchar_t* name) {
   BIFROST_INJECTOR_CATCH_ALL({
-    KillProcess(Get(ctx)->GetContext(), name);
+    KillProcess(Get(ctx)->GetContext(), name, true);
     return BFI_OK;
-  })
+  });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_ProcessKillByPid(bfi_Context* ctx, uint32_t pid) {
+  BIFROST_INJECTOR_CATCH_ALL({
+    KillProcess(Get(ctx)->GetContext(), pid, true);
+    return BFI_OK;
+  });
 }
 
 #pragma endregion
 
-#pragma region Injector
+#pragma region Plugin
 
-bfi_InjectorArguments* bfi_InjectorArgumentsInit(bfi_Context* ctx) {
-  BIFROST_INJECTOR_CATCH_ALL_PTR({
-    bfi_InjectorArguments* args = new bfi_InjectorArguments;
-    ZeroMemory(args, sizeof(bfi_InjectorArguments));
-    args->InjectorTimeoutInS = BIFROST_INJECTOR_DEFAULT_InjectorArguments_InjectorTimeoutInS;
-    args->SharedMemorySizeInBytes = BIFROST_INJECTOR_DEFAULT_InjectorArguments_SharedMemorySizeInBytes;
-    return args;
-  });
+bfi_Status bfi_PluginLoad(bfi_Context* ctx, const bfi_PluginLoadArguments* args, bfi_Process_t** process, bfi_PluginLoadResult** result) {
+  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->PluginLoad(args, process, result); });
 }
 
-bfi_Status bfi_InjectorArgumentsFree(bfi_Context* ctx, bfi_InjectorArguments* args) {
+BIFROST_INJECTOR_API bfi_Status bfi_PluginLoadResultFree(bfi_Context* ctx, bfi_PluginLoadResult* result) {
   BIFROST_INJECTOR_CATCH_ALL({
-    if (args) delete args;
+    if (result) {
+      if(result->SharedMemoryName) delete[] result->SharedMemoryName;
+      delete result;
+    }
     return BFI_OK;
   });
-}
-
-bfi_Status bfi_ProcessInject(bfi_Context* ctx, const bfi_InjectorArguments* args, bfi_Process_t** process) {
-  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->ProcessInject(args, process); });
 }
 
 #pragma endregion

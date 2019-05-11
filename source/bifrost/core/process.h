@@ -92,9 +92,9 @@ class Process : public Object {
 };
 
 /// Kill the process given by `pid`
-extern void KillProcess(Context* ctx, u32 pid);
+extern void KillProcess(Context* ctx, u32 pid, bool failOnError = false);
 
 /// Kill all processes given by `name`
-extern void KillProcess(Context* ctx, std::wstring_view name);
+extern void KillProcess(Context* ctx, std::wstring_view name, bool failOnError = false);
 
 }  // namespace bifrost

@@ -27,9 +27,11 @@ void PluginLoader::Serialize(const std::vector<Plugin>& plugins) {
   Json j = Json::array();
   for (const auto& plugin : plugins) {
     Json jPlugin;
+    jPlugin["name"] = plugin.Name;
     jPlugin["path"] = plugin.Path;
     jPlugin["arguments"] = plugin.Arguments;
-    Logger().DebugFormat(L" %s : \"%s\"", plugin.Path.c_str(), StringToWString(plugin.Arguments).c_str());
+    Logger().DebugFormat(L" %-10s: \"%-20s\"%s", StringToWString(plugin.Name).c_str(), plugin.Path.c_str(),
+                         plugin.Arguments.empty() ? L"" : StringFormat(L": \"%s\"", StringToWString(plugin.Arguments).c_str()).c_str());
     j.push_back(std::move(jPlugin));
   }
 
@@ -59,11 +61,13 @@ std::vector<Plugin> PluginLoader::Deserialize() {
   for (i32 i = 0; i < j.size(); ++i) {
     auto jPlugin = j[i];
 
+    if (!jPlugin.count("name")) throwInvalidFormat(StringFormat("Plugin %i: missing key \"name\"", i));
     if (!jPlugin.count("path")) throwInvalidFormat(StringFormat("Plugin %i: missing key \"path\"", i));
     if (!jPlugin.count("arguments")) throwInvalidFormat(StringFormat("Plugin %i: missing key \"arguments\"", i));
 
     Plugin plugin;
 
+    plugin.Name = jPlugin["name"];
     plugin.Path = jPlugin["path"].get<std::wstring>();
     plugin.Arguments = jPlugin["arguments"];
     plugins.emplace_back(std::move(plugin));

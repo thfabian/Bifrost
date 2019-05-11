@@ -25,7 +25,7 @@ class PluginLoaderTest : public TestBaseSharedMemory {};
 TEST_F(PluginLoaderTest, Serialize) {
   PluginLoader loader(GetContext());
 
-  std::vector<Plugin> plugins{{L"foo", "1"}, {L"bar", "1 2 3"}};
+  std::vector<Plugin> plugins{{"foo", L"foo.dll", "1"}, {"bar", L"bar.dll", "1 2 3"}};
   ASSERT_NO_THROW(loader.Serialize(plugins));
   ASSERT_TRUE(GetContext()->Memory().GetSMStorage()->Contains(GetContext(), PluginLoader::PluginKey));
 
@@ -43,9 +43,12 @@ TEST_F(PluginLoaderTest, Serialize) {
   ASSERT_THROW(loader.Deserialize(), std::runtime_error);  // root is not an array
 
   GetContext()->Memory().GetSMStorage()->InsertString(GetContext(), PluginLoader::PluginKey, "[{\"foo\":\"bar\"}]");
+  ASSERT_THROW(loader.Deserialize(), std::runtime_error);  // missing "name" key"
+
+  GetContext()->Memory().GetSMStorage()->InsertString(GetContext(), PluginLoader::PluginKey, "[{\"name\":\"bar\"}]");
   ASSERT_THROW(loader.Deserialize(), std::runtime_error);  // missing "path" key"
 
-  GetContext()->Memory().GetSMStorage()->InsertString(GetContext(), PluginLoader::PluginKey, "[{\"path\":\"bar\"}]");
+  GetContext()->Memory().GetSMStorage()->InsertString(GetContext(), PluginLoader::PluginKey, "[{\"name\":\"bar\", \"path\":\"bar\"}]");
   ASSERT_THROW(loader.Deserialize(), std::runtime_error);  // missing "arguments" key"
 
   plugins.clear();

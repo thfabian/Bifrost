@@ -220,31 +220,30 @@ std::shared_ptr<void> Process::AllocateRemoteMemory(const void* data, u32 sizeIn
 
 DWORD Process::RunRemoteThread(const char* functionName, LPTHREAD_START_ROUTINE threadFunc, void* threadParam, u32 timeoutInMs) {
   // Launch the remote thread
-  Logger().DebugFormat("Launching remote thread for %s ...", functionName);
+  Logger().DebugFormat("Launching remote thread for %s function ...", functionName);
   HANDLE hRemoteThread = NULL;
   BIFROST_ASSERT_WIN_CALL((hRemoteThread = ::CreateRemoteThread(m_hProcess, NULL, 0, threadFunc, threadParam, 0, NULL)) != NULL);
 
   // Wait for thread to return
   auto timeoutStrInS = timeoutInMs == INFINITE ? std::string("infinitely") : std::to_string(timeoutInMs / 1000);
-  Logger().DebugFormat("Waiting %s for %s seconds to return ...", timeoutStrInS.c_str(), functionName);
+  Logger().DebugFormat("Waiting %s seconds for %s function to return ...", timeoutStrInS.c_str(), functionName);
   DWORD reason = 0;
   BIFROST_ASSERT_WIN_CALL((reason = ::WaitForSingleObject(hRemoteThread, timeoutInMs)) != WAIT_FAILED);
   if (reason == WAIT_TIMEOUT) {
-    throw Exception("Waiting for %s timed out after %s seconds", functionName, timeoutStrInS.c_str());
+    throw Exception("Waiting for %s function timed out after %s seconds", functionName, timeoutStrInS.c_str());
   } else if (reason == WAIT_ABANDONED) {
-    throw Exception("Waiting for %s was abandoned", functionName);
+    throw Exception("Waiting for %s function was abandoned", functionName);
   }
 
   DWORD remoteThreadExitCode = 0;
   BIFROST_ASSERT_WIN_CALL(::GetExitCodeThread(hRemoteThread, &remoteThreadExitCode) != FALSE);
-  Logger().DebugFormat("%s returned - exit code %u", functionName, remoteThreadExitCode & ((~0u) >> 16));
+  Logger().DebugFormat("%s function returned - exit code %u", functionName, remoteThreadExitCode & ((~0u) >> 16));
 
   BIFROST_ASSERT_WIN_CALL(::CloseHandle(hRemoteThread) != FALSE);
   return remoteThreadExitCode;
 }
 
 void Process::Inject(InjectArguments args) {
-  
   try {
     Logger().InfoFormat(L"Injecting Dll \"%s\" into remote process %u ...", args.DllPath.c_str(), GetPid());
     if (!std::filesystem::exists(std::filesystem::path(args.DllPath))) {
@@ -255,7 +254,7 @@ void Process::Inject(InjectArguments args) {
     HMODULE hKernel32 = NULL;
     BIFROST_ASSERT_WIN_CALL((hKernel32 = ::GetModuleHandleW(L"kernel32")) != NULL);
 
-    // Allocate memory for the dll path 
+    // Allocate memory for the dll path
     const void* hostDllPtr = args.DllPath.c_str();
     u32 hostDllNameSize = sizeof(wchar_t) * (args.DllPath.size() + 1);
     auto threadDllNamePtr = AllocateRemoteMemory(hostDllPtr, hostDllNameSize, PAGE_READWRITE, "dll path");
@@ -267,7 +266,7 @@ void Process::Inject(InjectArguments args) {
       const void* hostInitProcNamePtr = args.InitProcName.c_str();
       hostInitProcNameSize = sizeof(char) * (args.InitProcName.size() + 1);
       threadInitProcName = AllocateRemoteMemory(hostInitProcNamePtr, hostInitProcNameSize, PAGE_READWRITE, "init procedure name");
-    } 
+    }
 
     // Allocate memory for init procedure
     std::shared_ptr<void> threadInitProcArg;
@@ -276,7 +275,7 @@ void Process::Inject(InjectArguments args) {
       const void* hostInitProcArgPtr = args.InitProcArg.c_str();
       hostInitProcArgSize = sizeof(char) * (args.InitProcArg.size() + 1);
       threadInitProcArg = AllocateRemoteMemory(hostInitProcArgPtr, hostInitProcArgSize, PAGE_READWRITE, "init procedure argument");
-    } 
+    }
 
     // Allocate memory for the thread parameter containing the address of the function which are going to be called (LoadLibrary + GetLastError)
     ThreadParameter param = {0};
@@ -305,14 +304,14 @@ void Process::Inject(InjectArguments args) {
 
     // Run the thread and wait on it
     const char* functionName = "Injector";
-    DWORD retCode =  RunRemoteThread(functionName, (LPTHREAD_START_ROUTINE)threadFunc.get(), threadParam.get(), args.TimeoutInMs);
-    
+    DWORD retCode = RunRemoteThread(functionName, (LPTHREAD_START_ROUTINE)threadFunc.get(), threadParam.get(), args.TimeoutInMs);
+
     // Extract error code [upper 16 bits -> stage, lower 16 bits -> error code]
     StageEnum stage = static_cast<StageEnum>(retCode >> 16);
     DWORD errorCode = retCode & ((~0u) >> 16);
 
     auto error = [&](const wchar_t* where, const wchar_t* msg, const wchar_t* newLine = L"\n") {
-      auto formattedMsg = StringFormat(L"Failed to inject \"%s\": %s in remote process %s: %s%s  Init Procedure: %s\n  Init Arguments: %s",
+      auto formattedMsg = StringFormat(L"Failed to inject \"%s\": %s function in remote process %s: %s%s  Init Procedure: %s\n  Init Arguments: %s",
                                        args.DllPath.c_str(), StringToWString(functionName).c_str(), where, msg, newLine,
                                        StringToWString(args.InitProcName).c_str(), StringToWString(args.InitProcArg).c_str());
       Logger().Error(formattedMsg.c_str());
@@ -330,7 +329,8 @@ void Process::Inject(InjectArguments args) {
       case bifrost::E_WaitForSingleObject:
         winError(L"failed in WaitForSingleObject", errorCode);
       case bifrost::E_Timeout:
-        error(L"timed out", StringFormat(L"thread timed out after %u ms", args.TimeoutInMs == INFINITE ? L"infinite" : std::to_wstring(args.TimeoutInMs).c_str()).c_str());
+        error(L"timed out",
+              StringFormat(L"thread timed out after %u ms", args.TimeoutInMs == INFINITE ? L"infinite" : std::to_wstring(args.TimeoutInMs).c_str()).c_str());
       case bifrost::E_Abandoned:
         error(L"timed out", L"wait was abandoned");
       case bifrost::E_GetExitCodeThread:
@@ -416,17 +416,20 @@ void Process::OpenThread() {
                               StringFormat("Failed to open main thread of process with pid: %i", GetPid()).c_str());
 }
 
-void KillProcess(Context* ctx, u32 pid) {
+void KillProcess(Context* ctx, u32 pid, bool failOnError) {
   HANDLE hProcess = INVALID_HANDLE_VALUE;
   BIFROST_CHECK_WIN_CALL_CTX(ctx, (hProcess = ::OpenProcess(PROCESS_TERMINATE, FALSE, pid)) != NULL);
+
   if (hProcess != NULL) {
     ctx->Logger().InfoFormat("Terminating process: %i", pid);
     BIFROST_CHECK_WIN_CALL_CTX(ctx, ::TerminateProcess(hProcess, 9) != FALSE);
     BIFROST_CHECK_WIN_CALL_CTX(ctx, ::CloseHandle(hProcess) != FALSE);
+  } else if (failOnError) {
+    throw Exception("Failed to terminate process: %u", pid);
   }
 }
 
-void KillProcess(Context* ctx, std::wstring_view name) {
+void KillProcess(Context* ctx, std::wstring_view name, bool failOnError) {
   HANDLE snapshot;
   BIFROST_ASSERT_WIN_CALL_CTX(ctx, (snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)) != NULL);
 
@@ -437,7 +440,7 @@ void KillProcess(Context* ctx, std::wstring_view name) {
   if (::Process32FirstW(snapshot, &process)) {
     do {
       if (std::wstring_view(process.szExeFile) == name) {
-        KillProcess(ctx, process.th32ProcessID);
+        KillProcess(ctx, process.th32ProcessID, failOnError);
       }
     } while (Process32Next(snapshot, &process));
   }

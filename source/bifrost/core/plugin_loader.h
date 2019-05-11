@@ -20,6 +20,7 @@ class ModuleLoader;
 
 /// Plugin description
 struct Plugin {
+  std::string Name;       ///< Identifier of the Plugin
   std::wstring Path;      ///< Path to the DLL
   std::string Arguments;  ///< Plugin arguments
 };
