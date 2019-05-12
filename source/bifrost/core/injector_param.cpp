@@ -23,16 +23,14 @@ std::string InjectorParam::Serialize() const {
   j["SharedMemorySize"] = SharedMemorySize;
   j["Pid"] = Pid;
   j["WorkingDirectory"] = WorkingDirectory;
+  j["CustomArgument"] = CustomArgument;
   return j.dump();
 }
 
 InjectorParam InjectorParam::Deserialize(Context* ctx, const char* jStr) {
   InjectorParam param;
 
-  if (!jStr) {
-    throw Exception("Failed to parse JSON string for InjectorParam: JSON string is NULL");
-    return param;
-  }
+  if (!jStr) throw Exception("Failed to parse JSON string for InjectorParam: JSON string is NULL");
 
   try {
     Json j = Json::parse(jStr);
@@ -40,6 +38,7 @@ InjectorParam InjectorParam::Deserialize(Context* ctx, const char* jStr) {
     param.SharedMemoryName = j["SharedMemoryName"];
     param.SharedMemorySize = j["SharedMemorySize"];
     param.WorkingDirectory = j["WorkingDirectory"].get<std::wstring>();
+    param.CustomArgument = j["CustomArgument"];
 
   } catch (std::exception& e) {
     throw Exception("Failed to parse JSON string for InjectorParam: %s\n  JSON: %s", e.what(), jStr);

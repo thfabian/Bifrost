@@ -168,6 +168,7 @@ workspace "bifrost"
     disablewarnings { "4267", "4146" }
     defines { "BIFROST_INJECTOR_EXPORTS" }
     
+    dependson { "bifrost_loader" }
     bifrost_add_bifrost_core()
     bifrost_add_bifrost_debugger()
     bifrost_add_bifrost_loader()

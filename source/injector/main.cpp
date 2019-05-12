@@ -189,7 +189,7 @@ int main(int argc, const char* argv[]) {
     parser.helpParams.shortPrefix = INJECTOR_SHORT_PREFIX;
     parser.helpParams.longPrefix = INJECTOR_LONG_PREFIX;
     parser.Prog(argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "injector");
-    parser.Epilog(StringFormat("\nEXAMPLES:\n  %s --exe=foo.exe --plugin=bar.dll\n  %s --pid=19252 --plugin=\"bar.dll:--foo\" --plugin=foo.dll\n",
+    parser.Epilog(StringFormat("\nEXAMPLES:\n  %s --exe=foo.exe --plugin=bar.dll\n  %s --pid=19252 --plugin=\"bar.dll:bar\" --plugin-arg=\"bar:--foo\"\n",
                                program.c_str(), program.c_str()));
 
     args::Group generalGroup(parser, "GENERAL:");

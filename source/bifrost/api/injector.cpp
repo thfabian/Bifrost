@@ -20,7 +20,7 @@
 #include "bifrost/core/injector_param.h"
 #include "bifrost/core/macros.h"
 #include "bifrost/core/module_loader.h"
-#include "bifrost/core/plugin_loader.h"
+#include "bifrost/core/plugin_param.h"
 #include "bifrost/core/process.h"
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
@@ -90,13 +90,13 @@ class InjectorContext {
       SetUpLogConsumer();
 
       // Write plugins to shared memory
-      std::vector<Plugin> plugins;
-      for (u32 i = 0; i < args->NumPlugins; ++i) {
-        plugins.emplace_back(Plugin{args->Plugins[i].Name ? args->Plugins[i].Name : "", args->Plugins[i].Path ? args->Plugins[i].Path : L"",
-                                    args->Plugins[i].Arguments ? args->Plugins[i].Arguments : "" });
-      }
-      PluginLoader loader(m_ctx.get());
-      loader.Serialize(plugins);
+      //std::vector<Plugin> plugins;
+      //for (u32 i = 0; i < args->NumPlugins; ++i) {
+      //  plugins.emplace_back(Plugin{args->Plugins[i].Name ? args->Plugins[i].Name : "", args->Plugins[i].Path ? args->Plugins[i].Path : L"",
+      //                              args->Plugins[i].Arguments ? args->Plugins[i].Arguments : "" });
+      //}
+      //PluginLoader loader(m_ctx.get());
+      //loader.Serialize(plugins);
 
       // Setup the injector arguments for bifrost_loader.dll
       InjectorParam param;

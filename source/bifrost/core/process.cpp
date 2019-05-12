@@ -277,7 +277,8 @@ void Process::Inject(InjectArguments args) {
       threadInitProcArg = AllocateRemoteMemory(hostInitProcArgPtr, hostInitProcArgSize, PAGE_READWRITE, "init procedure argument");
     }
 
-    // Allocate memory for the thread parameter containing the address of the function which are going to be called (LoadLibrary + GetLastError)
+    // Allocate memory for the thread parameter containing the address of the function which are going to be called - This works because kernel32 is always
+    // mapped to the same address in each process.
     ThreadParameter param = {0};
     BIFROST_ASSERT_WIN_CALL((param.LoadLibraryW_A = (u64)::GetProcAddress(hKernel32, "LoadLibraryW")) != NULL);
     BIFROST_ASSERT_WIN_CALL((param.GetLastError_A = (u64)::GetProcAddress(hKernel32, "GetLastError")) != NULL);

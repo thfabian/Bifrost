@@ -23,6 +23,7 @@ struct InjectorParam {
   u32 SharedMemorySize;           ///< Size of the shared memory
   u32 Pid;                        ///< Identifier of the injector
   std::wstring WorkingDirectory;  ///< Working directory of the injector
+  std::string CustomArgument;     ///< Custom arguments passed to the Injector function
 
   /// Serialize the parameters to a JSON string
   std::string Serialize() const;

@@ -23,6 +23,8 @@ using namespace bifrost;
 
 extern "C" {
 __declspec(dllexport) DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter);
+__declspec(dllexport) DWORD WINAPI bfl_UnloadPlugins(LPVOID lpThreadParameter);
+__declspec(dllexport) DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter);
 }
 
 namespace {
@@ -42,73 +44,133 @@ class SharedLogger : public ILogger {
   std::string m_module;
 };
 
-/// Try very hard to get a logging message to the user
-void HandleException(BufferedLogger* bufferedLogger, SharedLogger* sharedLogger, std::exception* ep) {
-  auto log = [&](ILogger* logger) {
-    if (ep) {
-      logger->ErrorFormat("Plugin loading failed: %s", ep->what());
-    } else {
-      logger->Error(BIFROST_API_UNCAUGHT_EXCEPTION);
+class LoaderContext {
+ public:
+  struct Storage {
+    ~Storage() {
+      // Remove shared memory logger
+      Context->SetLogger(BufferedLogger.get());
+      this->SharedLogger.reset();
+      this->ModuleLoader.reset();
+
+      // Disconnect memory
+      this->Memory.reset();
+      this->Context.reset();
     }
+
+    std::unique_ptr<BufferedLogger> BufferedLogger;
+    std::unique_ptr<Context> Context;
+    std::unique_ptr<SharedMemory> Memory;
+    std::unique_ptr<SharedLogger> SharedLogger;
+    std::unique_ptr<ModuleLoader> ModuleLoader;
   };
 
-  if (sharedLogger) {
-    log(sharedLogger);
-  } else if (bufferedLogger) {
-    log(bufferedLogger);
-    if (!bufferedLogger->FlushToDisk("bifrost_loader.log.txt")) bufferedLogger->FlushToErr();
+  LoaderContext(LPVOID lpThreadParameter) { m_storage = InitStorage(lpThreadParameter); }
+
+  /// Parse InjectorParam given by `lpThreadParameter` and setup context and shared memory
+  std::unique_ptr<Storage> InitStorage(LPVOID lpThreadParameter) {
+    auto storage = std::make_unique<Storage>();
+    SafeExec(storage.get(), [&lpThreadParameter, &storage, this]() {
+      storage->BufferedLogger = std::make_unique<BufferedLogger>();
+
+      // Set up a buffered logger
+      storage->Context = std::make_unique<Context>();
+      storage->Context->SetLogger(storage->BufferedLogger.get());
+
+      storage->ModuleLoader = std::make_unique<ModuleLoader>(storage->Context.get());
+      auto curModule = WStringToString(storage->ModuleLoader->GetCurrentModuleName());
+      storage->BufferedLogger->SetModule(curModule.c_str());
+
+      // Try to unpack the injector params
+      auto param = InjectorParam::Deserialize(storage->Context.get(), (const char*)lpThreadParameter);
+
+      // Connect to the shared memory
+      storage->Memory = std::make_unique<SharedMemory>(storage->Context.get(), param.SharedMemoryName, param.SharedMemorySize);
+      storage->Context->SetMemory(storage->Memory.get());
+
+      // Flush the buffered logger and start logging to shared memory
+      storage->SharedLogger = std::make_unique<SharedLogger>(storage->Context.get());
+      storage->SharedLogger->SetModule(curModule.c_str());
+      storage->Context->SetLogger(storage->SharedLogger.get());
+      storage->BufferedLogger->Flush(storage->SharedLogger.get());
+    });
+    return storage;
   }
-}
+
+  /// Safely execute function `func`
+  template <class FuncT>
+  inline void SafeExec(Storage* storage, FuncT&& func) {
+    try {
+      func();
+    } catch (std::exception& e) {
+      HandleException(storage, &e);
+      throw;
+    } catch (...) {
+      HandleException(storage, nullptr);
+      throw;
+    }
+  }
+
+  /// Is the context properly initialized?
+  inline bool IsInitialized() { return m_storage != nullptr; }
+
+  /// Try very hard to get a logging message to the user
+  void HandleException(Storage* storage, std::exception* ep) {
+    auto log = [&](ILogger* logger) {
+      if (ep) {
+        logger->ErrorFormat("Plugin loading failed: %s", ep->what());
+      } else {
+        logger->Error(BIFROST_API_UNCAUGHT_EXCEPTION);
+      }
+    };
+
+    if (storage->SharedLogger) {
+      log(storage->SharedLogger.get());
+    } else if (storage->BufferedLogger) {
+      log(storage->BufferedLogger.get());
+      storage->BufferedLogger->FlushToDisk("bifrost_loader.log.txt");
+      storage->BufferedLogger->FlushToErr();
+    }
+  }
+
+ private:
+  std::unique_ptr<Storage> m_storage;
+};
+
+// Singleton context
+static SpinMutex g_mutex;
+static LoaderContext* g_context = nullptr;
 
 }  // namespace
 
-DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter) {
-  std::unique_ptr<Context> ctx;
-  std::unique_ptr<SharedMemory> memory;
-
-  std::unique_ptr<BufferedLogger> bufferedLogger;
-  std::unique_ptr<SharedLogger> sharedLogger;
-
-  try {
-    bufferedLogger = std::make_unique<BufferedLogger>();
-
-    // Set up a buffered logger
-    ctx = std::make_unique<Context>();
-    ctx->SetLogger(bufferedLogger.get());
-
-    ModuleLoader moduleLoader(ctx.get());
-    auto curModule = WStringToString(moduleLoader.GetCurrentModuleName());
-    bufferedLogger->SetModule(curModule.c_str());
-
-    // Try to unpack the injector params
-    auto param = InjectorParam::Deserialize(ctx.get(), (const char*)lpThreadParameter);
-
-    // Connect to the shared memory
-    memory = std::make_unique<SharedMemory>(ctx.get(), param.SharedMemoryName, param.SharedMemorySize);
-    ctx->SetMemory(memory.get());
-
-    // Flush the buffered logger and start logging to shared memory
-    sharedLogger = std::make_unique<SharedLogger>(ctx.get());
-    sharedLogger->SetModule(curModule.c_str());
-    ctx->SetLogger(sharedLogger.get());
-    bufferedLogger->Flush(sharedLogger.get());
-
-    // Remove shared memory logger
-    ctx->SetLogger(bufferedLogger.get());
-    sharedLogger = nullptr;
-
-    // Disconnect memory
-    memory.reset();
-    ctx.reset();
-
-  } catch (std::exception& e) {
-    HandleException(bufferedLogger.get(), sharedLogger.get(), &e);
-    return 1;
-  } catch (...) {
-    HandleException(bufferedLogger.get(), sharedLogger.get(), nullptr);
-    return 1;
-  }
+#define BFL_FUNC(stmt)                                                  \
+  try {                                                                 \
+    {                                                                   \
+      BIFROST_LOCK_GUARD(g_mutex);                                      \
+      if (!g_context) g_context = new LoaderContext(lpThreadParameter); \
+    }                                                                   \
+    stmt                                                                \
+  } catch (...) {                                                       \
+    return 1;                                                           \
+  }                                                                     \
   return 0;
+
+DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter) {
+  BFL_FUNC({
+
+  });
+}
+
+DWORD WINAPI bfl_UnloadPlugins(LPVOID lpThreadParameter) {
+  BFL_FUNC({
+
+  });
+}
+
+DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter) {
+  BFL_FUNC({
+
+  });
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
