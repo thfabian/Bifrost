@@ -22,8 +22,8 @@ class Debugger : public Object {
   Debugger(Context* ctx);
   ~Debugger();
 
-  /// Attach the given process to Visual Studio - throws on error
-  void Attach(u32 pid);
+  /// Attach the process, given by `pid` to Visual Studio which has `solution`` - throws on error
+  void Attach(u32 pid, const wchar_t* solution = nullptr);
 
  private:
   class DebuggerImpl;

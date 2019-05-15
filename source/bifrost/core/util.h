@@ -90,6 +90,26 @@ std::unique_ptr<U> StaticUniquePointerCast(std::unique_ptr<T>&& old) {
   return std::unique_ptr<U>{static_cast<U*>(old.release())};
 }
 
+/// Case insensitive string comparison
+inline bool StringCompareCaseInsensitive(std::wstring_view str1, std::wstring_view str2) {
+  return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(), [](wchar_t c1, wchar_t c2) -> bool {
+           if (c1 == c2)
+             return true;
+           else if (std::towupper(c1) == std::towupper(c2))
+             return true;
+           return false;
+         });
+}
+inline bool StringCompareCaseInsensitive(std::string_view str1, std::string_view str2) {
+  return str1.size() == str2.size() && std::equal(str1.begin(), str1.end(), str2.begin(), [](char c1, char c2) -> bool {
+           if (c1 == c2)
+             return true;
+           else if (std::toupper(c1) == std::toupper(c2))
+             return true;
+           return false;
+         });
+}
+
 /// Get a UUID string
 std::string UUID(Context* ctx);
 

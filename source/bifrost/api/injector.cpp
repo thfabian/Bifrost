@@ -135,14 +135,14 @@ class InjectorContext {
         }
         case BFI_UNKNOWN:
         default:
-          throw Exception("Failed to inject executabled: Unknown executable mode (bfi_InjectorArguments_t::Mode is set to BFI_UNKNOWN)");
+          throw Exception("Failed to inject executable: Unknown executable mode (bfi_InjectorArguments.Executable.Mode is set to BFI_UNKNOWN)");
       }
       rpPid = proc->GetPid();
 
       // Attach a debugger?
       if (args->InjectorArguments->Debugger) {
         m_debugger = std::make_unique<Debugger>(m_ctx.get());
-        m_debugger->Attach(proc->GetPid());
+        m_debugger->Attach(proc->GetPid(), args->InjectorArguments->VSSolution);
 
         // Wait forever
         injectArguments.TimeoutInMs = INFINITE;

@@ -87,7 +87,7 @@ typedef struct bfi_InjectorArguments_t {
   const char* SharedMemoryName;      ///< Name of shared memory
   uint32_t SharedMemorySizeInBytes;  ///< Size of shared memory
   uint32_t Debugger;                 ///< Attach a Visual Studio debugger?
-  const char* VSSolution;            ///< Connect to the Visual Studio instance which has `VSolution` open
+  const wchar_t* VSSolution;         ///< Connect to the Visual Studio instance which has `VSolution` open - if set to NULL any of them is used
 } bfi_InjectorArguments;
 
 /// @brief Plugin load arguments

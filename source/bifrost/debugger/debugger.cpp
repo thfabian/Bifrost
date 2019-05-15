@@ -12,8 +12,11 @@
 #include "bifrost/debugger/common.h"
 #include "bifrost/debugger/debugger.h"
 #include "bifrost/debugger/error.h"
+#include "bifrost/core/util.h"
 
 namespace bifrost {
+
+namespace {
 
 // RAII construction of COM
 struct ComInit : public Object {
@@ -21,42 +24,35 @@ struct ComInit : public Object {
   ~ComInit() { ::CoUninitialize(); }
 };
 
+}  // namespace
+
 class Debugger::DebuggerImpl : public Object {
  public:
   DebuggerImpl(Context* ctx) : Object(ctx) {}
 
-  void Attach(u32 pid) {
+  void Attach(u32 pid, const wchar_t* solution) {
     Logger().InfoFormat("Attaching Visual Studio Debugger to %u ...", pid);
     try {
       ComInit com(&GetContext());
 
-      // Look up CLSID in the registry (VisualStudio.DTE maps to any Visual Studio)
-      CLSID clsid;
-      BIFROST_ASSERT_COM_CALL(::CLSIDFromProgID(L"VisualStudio.DTE", &clsid));
-
-      // Get the running object which has been registered with OLE
-      IUnknown* unknown;
-      BIFROST_ASSERT_COM_CALL(::GetActiveObject(clsid, 0, &unknown));
-
       // Get pointer to the _DTE interface
-      CComPtr<EnvDTE::_DTE> dte;
-      BIFROST_ASSERT_COM_CALL(unknown->QueryInterface(&dte));
+      CComPtr<EnvDTE::_DTE> dte = GetDTEInstance(solution);
 
-      EnvDTE::Debugger* debugger;
+      CComPtr<EnvDTE::Debugger> debugger;
       BIFROST_ASSERT_COM_CALL(dte->get_Debugger(&debugger));
 
       // Get a list of all processes
-      EnvDTE::Processes* procs;
+      CComPtr<EnvDTE::Processes> procs;
       BIFROST_ASSERT_COM_CALL(debugger->get_LocalProcesses(&procs));
 
       long numProcs = 0;
       BIFROST_ASSERT_COM_CALL(procs->get_Count(&numProcs));
 
-      EnvDTE::Process* targetProcess = nullptr;
+      CComPtr<EnvDTE::Process> targetProcess = nullptr;
 
       // Find the target process
       for (long i = 1; i <= numProcs; i++) {
-        EnvDTE::Process* proc;
+        CComPtr<EnvDTE::Process> proc;
         if (FAILED(procs->Item(variant_t(i), &proc))) continue;
 
         long procID;
@@ -69,8 +65,23 @@ class Debugger::DebuggerImpl : public Object {
       }
 
       if (targetProcess) {
+        auto solutionName = GetSolutionName(dte);
+        if (!solutionName.empty()) Logger().InfoFormat(L"Using Visual Studio with solution \"%s\"", solutionName.c_str());
+
+        Logger().Info("If target process is suspended, the debugger will break at ntdll.dll!LdrpDoDebuggerBreak - you can safely continue");
         BIFROST_ASSERT_COM_CALL(targetProcess->Attach());
-        //BIFROST_ASSERT_COM_CALL(targetProcess->Break(true));
+
+        // Focus the window
+        CComPtr<EnvDTE::Window> window;
+        BIFROST_ASSERT_COM_CALL(dte->get_MainWindow(&window));
+
+        if (window) {
+          HWND hwnd;
+          BIFROST_ASSERT_COM_CALL(window->get_HWnd((long*)&hwnd));
+
+          BIFROST_ASSERT_WIN_CALL(::ShowWindow(hwnd, SW_SHOWMAXIMIZED));
+          BIFROST_ASSERT_WIN_CALL(::SetForegroundWindow(hwnd));
+        }
         Logger().Info("Successfully attached Visual Studio Debugger");
       } else {
         throw Exception("Failed to attach Visual Studio Debugger to %u: No process found with given pid", pid);
@@ -81,12 +92,108 @@ class Debugger::DebuggerImpl : public Object {
       throw;
     }
   }
+
+ private:
+  /// Get the name of the associated solution
+  std::wstring GetSolutionName(const CComPtr<EnvDTE::_DTE>& dte) {
+    CComPtr<EnvDTE::_Solution> sol;
+    BIFROST_ASSERT_COM_CALL(dte->get_Solution(&sol));
+    if (sol) {
+      wchar_t* solutionPath;
+      BIFROST_ASSERT_COM_CALL(sol->get_FileName(&solutionPath));
+      return std::filesystem::path(solutionPath).filename().native();
+    }
+
+    return L"";
+  }
+
+  /// Get the DTE instance associated with `solution` (or any other instance if `solution` is NULL)
+  CComPtr<EnvDTE::_DTE> GetDTEInstance(const wchar_t* solution) {
+    const std::wstring vsPrefix = L"!VisualStudio";
+    IUnknown* instance = nullptr;
+
+    if (solution) {
+      std::wstring solutionStr{solution};
+
+      CComPtr<IMalloc> mem;
+      BIFROST_ASSERT_COM_CALL(::CoGetMalloc(1, &mem));
+
+      // The running table
+      CComPtr<IRunningObjectTable> rot;
+      BIFROST_ASSERT_COM_CALL(::GetRunningObjectTable(0, &rot));
+
+      // Iterate the table
+      CComPtr<IEnumMoniker> enumMoniker;
+      BIFROST_ASSERT_COM_CALL(rot->EnumRunning(&enumMoniker));
+
+      IMoniker* moniker;
+      ULONG ret;
+      std::vector<CComPtr<EnvDTE::_DTE>> dtes;
+      std::wstringstream ssSoltutioNames;
+
+      while (enumMoniker->Next(1, &moniker, &ret) == 0) {
+        CComPtr<IBindCtx> bindObj;
+        BIFROST_ASSERT_COM_CALL(::CreateBindCtx(0, &bindObj));
+
+        if (bindObj == nullptr) continue;
+
+        // Get the display name and the object itself
+        wchar_t* p;
+        BIFROST_ASSERT_COM_CALL(moniker->GetDisplayName(bindObj, NULL, &p));
+        std::shared_ptr<wchar_t> displayName(p, [&mem](wchar_t* p) { mem->Free(p); });
+
+        // Check if the instance is a VS instance and has our solution open
+        if (std::wstring_view(displayName.get()).substr(0, vsPrefix.size()) == vsPrefix) {
+          BIFROST_ASSERT_COM_CALL(rot->GetObjectW(moniker, &instance));
+
+          CComPtr<EnvDTE::_DTE> dte;
+          BIFROST_ASSERT_COM_CALL(instance->QueryInterface(&dte));
+
+          if (dte) {
+            auto solutionName = GetSolutionName(dte);
+
+            // Precise match
+            if (StringCompareCaseInsensitive(solutionName, solutionStr)) {
+              return dte;
+            }
+
+            // Partial match
+            if (StringCompareCaseInsensitive(std::wstring_view(solutionName).substr(0, solutionStr.size()), solutionStr)) {
+              dtes.emplace_back(dte);
+            }
+
+            ssSoltutioNames << L"  " << solutionName << L"\n";
+          }
+        }
+      }
+
+      // Use partial match
+      if (dtes.size() == 1) {
+        return dtes[0];
+      }
+
+      throw Exception(L"No Visual Studio instance with open solution \"%s\" could be found. Solutions open:\n%s", solution, ssSoltutioNames.str().c_str());
+      return nullptr;
+
+    } else {
+      // Look up CLSID in the registry (VisualStudio.DTE maps to any Visual Studio)
+      CLSID clsid;
+      BIFROST_ASSERT_COM_CALL(::CLSIDFromProgID(L"VisualStudio.DTE", &clsid));
+
+      // Get the running object which has been registered with OLE (this takes the first registered one)
+      BIFROST_ASSERT_COM_CALL(::GetActiveObject(clsid, 0, &instance));
+
+      CComPtr<EnvDTE::_DTE> dte;
+      BIFROST_ASSERT_COM_CALL(instance->QueryInterface(&dte));
+      return dte;
+    }
+  }
 };
 
 Debugger::Debugger(Context* ctx) : Object(ctx) { m_impl = std::make_unique<DebuggerImpl>(ctx); }
 
 Debugger::~Debugger() = default;
 
-void Debugger::Attach(u32 pid) { m_impl->Attach(pid); }
+void Debugger::Attach(u32 pid, const wchar_t* solution) { m_impl->Attach(pid, solution); }
 
 }  // namespace bifrost

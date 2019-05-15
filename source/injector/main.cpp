@@ -278,7 +278,7 @@ int main(int argc, const char* argv[]) {
 
           injectorArguments.Debugger = injectorOption.GetFlag(InjectorOptions::Debugger)->Matched() || ::IsDebuggerPresent();
           auto debugger = injectorOption.GetValue<std::string>(InjectorOptions::Debugger);
-          injectorArguments.VSSolution = debugger.empty() ? NULL : mem.CopyString(debugger);
+          injectorArguments.VSSolution = debugger.empty() ? NULL : mem.CopyString(StringToWString(debugger));
 
           // Setup plugin arguments
           std::unordered_map<std::string, std::string> bfiPluginArguments;
