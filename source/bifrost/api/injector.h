@@ -110,7 +110,7 @@ typedef struct bfi_PluginLoadResult_t {
 #pragma region Context
 
 /// @brief Initialize the context
-BIFROST_INJECTOR_API bfi_Context* bfi_ContextInit();
+BIFROST_INJECTOR_API bfi_Context* bfi_ContextInit(void);
 
 /// @brief Free the context
 /// @param[in] ctx   Context description
@@ -142,10 +142,10 @@ BIFROST_INJECTOR_API const char* bfi_ContextGetLastError(bfi_Context* ctx);
 #define BIFROST_INJECTOR_VERSION_PATCH 1
 
 /// @brief Get the version triple
-BIFROST_INJECTOR_API bfi_Version bfi_GetVersion();
+BIFROST_INJECTOR_API bfi_Version bfi_GetVersion(void);
 
 /// @brief Get the version string
-BIFROST_INJECTOR_API const char* bfi_GetVersionString();
+BIFROST_INJECTOR_API const char* bfi_GetVersionString(void);
 
 #pragma endregion
 

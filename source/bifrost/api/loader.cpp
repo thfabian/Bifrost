@@ -18,6 +18,7 @@
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
 #include "bifrost/core/module_loader.h"
+#include "bifrost/core/exception.h"
 
 using namespace bifrost;
 
@@ -70,7 +71,7 @@ class LoaderContext {
   /// Parse InjectorParam given by `lpThreadParameter` and setup context and shared memory
   std::unique_ptr<Storage> InitStorage(LPVOID lpThreadParameter) {
     auto storage = std::make_unique<Storage>();
-    SafeExec(storage.get(), [&lpThreadParameter, &storage, this]() {
+    SafeExec(storage.get(), "library initialization", [&lpThreadParameter, &storage, this]() {
       storage->BufferedLogger = std::make_unique<BufferedLogger>();
 
       // Set up a buffered logger
@@ -97,16 +98,56 @@ class LoaderContext {
     return storage;
   }
 
+  void LoadPlugins(LPVOID lpThreadParameter) {
+    SafeExec(m_storage.get(), "loading", [&lpThreadParameter, this]() {
+      auto ctx = m_storage->Context.get();
+
+      auto param = CheckSharedMemory(lpThreadParameter);
+
+    });
+  }
+
+  void UnloadPlugins(LPVOID lpThreadParameter) {
+  
+  }
+
+  void MessagePlugin(LPVOID lpThreadParameter) {
+  
+  }
+
+  /// Check the requested shared memory is the same as the used shared memory by deserializing InjectorParam
+  InjectorParam CheckSharedMemory(LPVOID lpThreadParameter) {
+    auto ctx = m_storage->Context.get();
+
+    auto param = InjectorParam::Deserialize(ctx, (const char*)lpThreadParameter);
+
+    // Empty shared memory provided -> skip it
+    if (param.SharedMemoryName.empty() && param.SharedMemoryName != ctx->Memory().GetName()) {
+      ctx->Logger().WarnFormat("Empty shared memory provided, using existing shared memory \"%s\"", ctx->Memory().GetName());
+    }
+
+    // The shared memories are different -> abort
+    if (param.SharedMemoryName != ctx->Memory().GetName()) {
+      auto otherStorage = InitStorage(lpThreadParameter);
+      SafeExec(otherStorage.get(), "shared memory check", [&]() {
+        throw Exception("Provided shared memory \"%s\" differs from the already existing bifrost_loader shared memory in target process \"%s\"",
+                        otherStorage->Context->Memory().GetName(), ctx->Memory().GetName());
+      });
+    }
+
+    return param;
+  }
+
   /// Safely execute function `func`
   template <class FuncT>
-  inline void SafeExec(Storage* storage, FuncT&& func) {
+  inline void SafeExec(Storage* storage, const char* action, FuncT&& func) {
     try {
       func();
     } catch (std::exception& e) {
-      HandleException(storage, &e);
+      HandleException(storage, action, &e);
       throw;
     } catch (...) {
-      HandleException(storage, nullptr);
+      HandleException(storage, action, nullptr);
       throw;
     }
   }
@@ -115,10 +156,10 @@ class LoaderContext {
   inline bool IsInitialized() { return m_storage != nullptr; }
 
   /// Try very hard to get a logging message to the user
-  void HandleException(Storage* storage, std::exception* ep) {
+  void HandleException(Storage* storage, const char* action, std::exception* ep) {
     auto log = [&](ILogger* logger) {
       if (ep) {
-        logger->ErrorFormat("Plugin loading failed: %s", ep->what());
+        logger->ErrorFormat("Plugin %s failed: %s", action, ep->what());
       } else {
         logger->Error(BIFROST_API_UNCAUGHT_EXCEPTION);
       }
@@ -133,6 +174,8 @@ class LoaderContext {
     }
   }
 
+  Storage* GetStorage() const { return m_storage.get(); }
+
  private:
   std::unique_ptr<Storage> m_storage;
 };
@@ -141,36 +184,40 @@ class LoaderContext {
 static SpinMutex g_mutex;
 static LoaderContext* g_context = nullptr;
 
+void FreeLoaderContext(void) {
+  if (g_context) {
+    delete g_context;
+    g_context = nullptr;
+  }
+}
+
 }  // namespace
 
-#define BFL_FUNC(stmt)                                                  \
-  try {                                                                 \
-    {                                                                   \
-      BIFROST_LOCK_GUARD(g_mutex);                                      \
-      if (!g_context) g_context = new LoaderContext(lpThreadParameter); \
-    }                                                                   \
-    stmt                                                                \
-  } catch (...) {                                                       \
-    return 1;                                                           \
-  }                                                                     \
+#define BFL_FUNC(stmt)                                    \
+  try {                                                   \
+    {                                                     \
+      BIFROST_LOCK_GUARD(g_mutex);                        \
+      if (!g_context) {                                   \
+        g_context = new LoaderContext(lpThreadParameter); \
+        std::atexit(FreeLoaderContext);                   \
+      }                                                   \
+    }                                                     \
+    stmt                                                  \
+  } catch (...) {                                         \
+    return 1;                                             \
+  }                                                       \
   return 0;
 
 DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter) {
-  BFL_FUNC({
-
-  });
+  BFL_FUNC({ g_context->LoadPlugins(lpThreadParameter); });
 }
 
 DWORD WINAPI bfl_UnloadPlugins(LPVOID lpThreadParameter) {
-  BFL_FUNC({
-
-  });
+  BFL_FUNC({ g_context->UnloadPlugins(lpThreadParameter); });
 }
 
 DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter) {
-  BFL_FUNC({
-
-  });
+  BFL_FUNC({ g_context->MessagePlugin(lpThreadParameter); });
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

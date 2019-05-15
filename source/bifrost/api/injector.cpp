@@ -264,7 +264,7 @@ Process* Get(bfi_Process* process) { return (Process*)process->_Internal; }
 
 #pragma region Context
 
-bfi_Context* bfi_ContextInit() { return Init<bfi_Context, InjectorContext>(); }
+bfi_Context* bfi_ContextInit(void) { return Init<bfi_Context, InjectorContext>(); }
 
 void bfi_ContextFree(bfi_Context* ctx) { Free<bfi_Context, InjectorContext>(ctx); }
 
@@ -278,9 +278,9 @@ bfi_Status bfi_ContextSetLoggingCallback(bfi_Context* ctx, bfi_LoggingCallback c
 
 #pragma region Version
 
-bfi_Version bfi_GetVersion() { return {BIFROST_INJECTOR_VERSION_MAJOR, BIFROST_INJECTOR_VERSION_MINOR, BIFROST_INJECTOR_VERSION_PATCH}; }
+bfi_Version bfi_GetVersion(void) { return {BIFROST_INJECTOR_VERSION_MAJOR, BIFROST_INJECTOR_VERSION_MINOR, BIFROST_INJECTOR_VERSION_PATCH}; }
 
-const char* bfi_GetVersionString() {
+const char* bfi_GetVersionString(void) {
   return BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MAJOR) "." BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MINOR) "." BIFROST_STRINGIFY(
       BIFROST_INJECTOR_VERSION_PATCH);
 }

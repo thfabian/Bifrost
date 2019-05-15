@@ -40,7 +40,7 @@ extern std::string GetLastComError(HRESULT errorCode);
 #define BIFROST_ASSERT_COM_CALL(hresult) BIFROST_ASSERT_COM_CALL_CTX(GetContext(), hresult)
 #define BIFROST_ASSERT_COM_CALL_MSG(hresult, msg) BIFROST_ASSERT_COM_CALL_MSG_CTX(GetContext(), hresult, msg)
 #define BIFROST_ASSERT_COM_CALL_CTX(ctx, hresult) BIFROST_COM_CALL_IMPL(ctx, hresult, true, false, {})
-#define BIFROST_ASSERT_COM_CALL_MSG_CTX(ctx, hresult, msg) BIFROST_CALBIFROST_COM_CALL_IMPL(ctx, hresult, true, true, msg)
+#define BIFROST_ASSERT_COM_CALL_MSG_CTX(ctx, hresult, msg) BIFROST_COM_CALL_IMPL(ctx, hresult, true, true, msg)
 
 /// Check that the HRESULT is SUCCEEDED and issue a warning in case of an error
 #define BIFROST_CHECK_COM_CALL(hresult) BIFROST_CHECK_COM_CALL_CTX(GetContext(), hresult)

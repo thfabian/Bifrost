@@ -31,6 +31,7 @@ ModuleLoader::~ModuleLoader() {
       Logger().DebugFormat(L"Unloading library '%s'", m.first.c_str());
       BIFROST_CHECK_WIN_CALL(::FreeLibrary(m.second.Handle) != 0);
     }
+    BIFROST_CHECK_WIN_CALL(m.second.Handle);
   }
 }
 

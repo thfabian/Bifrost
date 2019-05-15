@@ -181,7 +181,7 @@ class Debugger::DebuggerImpl : public Object {
       BIFROST_ASSERT_COM_CALL(::CLSIDFromProgID(L"VisualStudio.DTE", &clsid));
 
       // Get the running object which has been registered with OLE (this takes the first registered one)
-      BIFROST_ASSERT_COM_CALL(::GetActiveObject(clsid, 0, &instance));
+      BIFROST_ASSERT_COM_CALL_MSG(::GetActiveObject(clsid, 0, &instance), "Query active Visual Studio instances - at least one instance is required");
 
       CComPtr<EnvDTE::_DTE> dte;
       BIFROST_ASSERT_COM_CALL(instance->QueryInterface(&dte));

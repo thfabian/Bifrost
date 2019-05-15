@@ -47,9 +47,7 @@ struct MemoryPool {
   const wchar_t* CopyString(const std::wstring& str) { return WstrMem.emplace_back(StringCopy(str)).get(); };
 };
 
-std::string GetMatcherOption(args::FlagBase* flag) {
-  return flag->GetMatcher().GetLongOrAny().str(INJECTOR_SHORT_PREFIX, INJECTOR_LONG_PREFIX);
-}
+std::string GetMatcherOption(args::FlagBase* flag) { return flag->GetMatcher().GetLongOrAny().str(INJECTOR_SHORT_PREFIX, INJECTOR_LONG_PREFIX); }
 
 /// Check of the flag has been set and throw on error
 void Required(const args::Command& cmd, args::FlagBase* flag) {
@@ -105,8 +103,7 @@ class SuccessException : public std::exception {
   SuccessException(Json&& output) : Output(std::move(output)) {}
   Json Output;
 };
-void Success(Json output = {}) { 
-  throw SuccessException(std::move(output)); }
+void Success(Json output = {}) { throw SuccessException(std::move(output)); }
 
 struct GeneralOptions {
   bool Json = false;
@@ -144,10 +141,10 @@ struct InjectorOptions : public OptionCollection {
         SharedMemoryName, std::string{},
         new args::ValueFlag<std::string>(parser, "name", "Set the shared memory name to <name>.", {"shared-memory-name"}, args::Options::HiddenFromUsage));
     AddOption(Debugger, std::string{},
-              new args::ImplicitValueFlag<std::string>(
-                  parser, "solution",
-                  "Attach a Visual Studio debugger. If multiple Visual Studio instances are running, connects to the one with which has <solution> open.",
-                  {"debugger"}, args::Options::HiddenFromUsage));
+              new args::ImplicitValueFlag<std::string>(parser, "solution",
+                                                       "Attach a Visual Studio debugger. If multiple Visual Studio instances are running, connects to the one "
+                                                       "with which has <solution> open - the <solution> argument is optional.",
+                                                       {"debugger"}, args::Options::HiddenFromUsage));
   }
 };
 
@@ -219,8 +216,8 @@ int main(int argc, const char* argv[]) {
     args::Group commandGroup(parser, "COMMANDS:");
 
     // Load command
-    args::Command loadCommand(commandGroup, "load", "Launch <exe> or connect to the executable <pid> or <name> and load the plugin(s).", 
-      [&](args::Subparser& launchParser) {
+    args::Command loadCommand(
+        commandGroup, "load", "Launch <exe> or connect to the executable <pid> or <name> and load the plugin(s).", [&](args::Subparser& launchParser) {
           auto connectOptions = ConnectOptions(launchParser);
           auto exeOptions = ExecutableOptions(launchParser);
 
@@ -348,9 +345,10 @@ int main(int argc, const char* argv[]) {
           bfi_PluginLoadResult* bfiPluginLoadResult = nullptr;
 
           INJECTOR_CHECK(bfi_PluginLoad(ctx.get(), &pluginLoadArguments, &bfiProcess, &bfiPluginLoadResult))
-          
+
           std::shared_ptr<bfi_Process> process(bfiProcess, [&](bfi_Process* p) { INJECTOR_CHECK(bfi_ProcessFree(ctx.get(), p)); });
-          std::shared_ptr<bfi_PluginLoadResult> pluginLoadResult(bfiPluginLoadResult, [&](bfi_PluginLoadResult* p) { INJECTOR_CHECK(bfi_PluginLoadResultFree(ctx.get(), p)); });
+          std::shared_ptr<bfi_PluginLoadResult> pluginLoadResult(bfiPluginLoadResult,
+                                                                 [&](bfi_PluginLoadResult* p) { INJECTOR_CHECK(bfi_PluginLoadResultFree(ctx.get(), p)); });
 
           int32_t exitCode = STILL_ACTIVE;
           if (!noWait) {
@@ -359,10 +357,10 @@ int main(int argc, const char* argv[]) {
           }
 
           Success({
-            {"SharedMemoryName", bfiPluginLoadResult->SharedMemoryName },
-            {"SharedMemorySize", bfiPluginLoadResult->SharedMemorySize },
-            {"RemoteProcessPid", bfiPluginLoadResult->RemoteProcessPid},
-            {"RemoteProcessExitCode", exitCode},
+              {"SharedMemoryName", bfiPluginLoadResult->SharedMemoryName},
+              {"SharedMemorySize", bfiPluginLoadResult->SharedMemorySize},
+              {"RemoteProcessPid", bfiPluginLoadResult->RemoteProcessPid},
+              {"RemoteProcessExitCode", exitCode},
           });
         });
 
@@ -416,6 +414,8 @@ int main(int argc, const char* argv[]) {
   } catch (SuccessException& e) {
     if (generalOptions.Json) {
       PrintJsonOutput(true, e.Output, "");
+    } else if(!generalOptions.Quiet) {
+      PrintOutput(e.Output);
     }
     return 0;
 
