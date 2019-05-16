@@ -14,6 +14,7 @@
 /** Bifrost Core **/
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
+#include "bifrost/core/json.h"
 
 /** Bifrost Injector **/
 #include "bifrost/api/injector.h"

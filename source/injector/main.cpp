@@ -18,6 +18,8 @@
 #include "bifrost/core/util.h"
 #include "bifrost/core/ilogger.h"
 #include "bifrost/core/json.h"
+#include "bifrost/core/context.h"
+#include "bifrost/core/module_loader.h"
 #include <iostream>
 
 using namespace bifrost;
@@ -196,6 +198,9 @@ int main(int argc, const char* argv[]) {
     args::Flag json(generalGroup, "json", "Print output JSON formatted to stdout.", {"json"}, args::Options::HiddenFromUsage);
     args::ValueFlag<std::string> logFile(generalGroup, "file", "Log to <file> (default: " INJECTOR_LOG_FILE ")", {"log-file"}, INJECTOR_LOG_FILE,
                                          args::Options::HiddenFromUsage);
+    
+    Context bfCtx;
+    ModuleLoader bfLoader(&bfCtx);
 
     auto ParseCommand = [&](args::Subparser& p) {
       p.Parse();
@@ -205,6 +210,8 @@ int main(int argc, const char* argv[]) {
 
       Logger::Get().AddSinks({{"file", Logger::MakeFileSink(generalOptions.LogFile)}, {"mscv", Logger::MakeMsvcSink()}});
       if (!generalOptions.Quiet) Logger::Get().AddSink("stderr", Logger::MakeStderrSink());
+      bfCtx.SetLogger(&Logger::Get());
+      bfCtx.Logger().SetModule(program.c_str());
     };
 
     auto Warn = [&](std::string msg) {
@@ -293,24 +300,29 @@ int main(int argc, const char* argv[]) {
               bfiPluginArguments.emplace(std::move(name), std::move(args));
             }
           }
-
           std::unordered_set<std::string> seenPlugins;
 
           // Construct the plugins
           std::vector<bfi_Plugin> bfiPlugins;
           for (const auto& p : plugins) {
             std::string name, args;
-            std::wstring path;
+
+            std::wstring pathStr;
+            std::filesystem::path path;
 
             // Extract path and name
             auto idx = p.find_first_of(':');
             if (idx != -1) {
-              path = StringToWString(p.substr(0, idx));
+              pathStr = StringToWString(p.substr(0, idx));
               name = p.substr(idx + 1);
             } else {
-              path = StringToWString(p);
+              pathStr = StringToWString(p);
               name = std::filesystem::path(path).stem().string();
             }
+
+            assert(0 && "fix that crap");
+            //bfLoader.GetCurrentModuleName()
+            //path = std::filesystem::absolute(pathStr);
 
             // Associate arguments
             auto it = bfiPluginArguments.find(name);
@@ -321,7 +333,7 @@ int main(int argc, const char* argv[]) {
 
             bfi_Plugin plugin;
             plugin.Name = name.empty() ? NULL : mem.CopyString(name);
-            plugin.Path = path.empty() ? NULL : mem.CopyString(path);
+            plugin.Path = path.empty() ? NULL : mem.CopyString(path.native());
             plugin.Arguments = args.empty() ? NULL : mem.CopyString(args);
 
             bfiPlugins.emplace_back(plugin);

@@ -31,17 +31,18 @@ std::string PluginLoadParam::Serialize() const {
   return j.dump();
 }
 
-PluginLoadParam PluginLoadParam::Deserialize(const char* jStr) {
+PluginLoadParam PluginLoadParam::Deserialize(const std::string& jStr) {
   PluginLoadParam param;
 
-  if (!jStr) throw Exception("Failed to parse JSON string for InjectorParam: JSON string is NULL");
+  if (jStr.empty()) throw Exception("Failed to parse JSON string for PluginLoadParam: JSON string is empty");
 
   try {
     Json j = Json::parse(jStr);
 
     if (!j["Plugins"].is_null()) {
       for (const auto& p : j["Plugins"]) {
-        param.Plugins.emplace_back(PluginLoadParam::Plugin{p["Identifier"].get<std::string>(), p["Path"].get<std::wstring>(), p["Arguments"].get<std::string>()});
+        param.Plugins.emplace_back(
+            PluginLoadParam::Plugin{p["Identifier"].get<std::string>(), p["Path"].get<std::wstring>(), p["Arguments"].get<std::string>()});
       }
     }
 
@@ -59,12 +60,11 @@ std::string PluginUnloadParam::Serialize() const {
   return j.dump();
 }
 
-PluginUnloadParam PluginUnloadParam::Deserialize(const char* jStr) {
+PluginUnloadParam PluginUnloadParam::Deserialize(const std::string& jStr) {
   PluginUnloadParam param;
 
-  if (!jStr) 
-    throw Exception("Failed to parse JSON string for InjectorParam: JSON string is NULL");
-  
+  if (jStr.empty()) throw Exception("Failed to parse JSON string for PluginUnloadParam: JSON string is empty");
+
   try {
     Json j = Json::parse(jStr);
 
@@ -87,10 +87,10 @@ std::string PluginMessageParam::Serialize() const {
   return j.dump();
 }
 
-PluginMessageParam PluginMessageParam::Deserialize(const char* jStr) {
+PluginMessageParam PluginMessageParam::Deserialize(const std::string& jStr) {
   PluginMessageParam param;
 
-  if (!jStr) throw Exception("Failed to parse JSON string for InjectorParam: JSON string is NULL");
+  if (jStr.empty()) throw Exception("Failed to parse JSON string for PluginMessageParam: JSON string is empty");
 
   try {
     Json j = Json::parse(jStr);

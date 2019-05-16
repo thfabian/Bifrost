@@ -24,7 +24,7 @@ TEST_F(PluginLoadParamTest, SerializeEmpty) {
   PluginLoadParam param;
   ASSERT_EQ(param.Plugins.size(), 0);
 
-  PluginLoadParam other = PluginLoadParam::Deserialize(param.Serialize().c_str());
+  PluginLoadParam other = PluginLoadParam::Deserialize(param.Serialize());
   ASSERT_EQ(param.Plugins.size(), other.Plugins.size());
 }
 
@@ -46,7 +46,7 @@ TEST_F(PluginUnloadParamTest, SerializeEmpty) {
   PluginUnloadParam param;
   ASSERT_EQ(param.Plugins.size(), 0);
 
-  PluginUnloadParam other = PluginUnloadParam::Deserialize(param.Serialize().c_str());
+  PluginUnloadParam other = PluginUnloadParam::Deserialize(param.Serialize());
   ASSERT_EQ(param.Plugins.size(), other.Plugins.size());
 }
 
@@ -56,7 +56,7 @@ TEST_F(PluginUnloadParamTest, Serialize) {
   param.UnloadAll = true;
   ASSERT_EQ(param.Plugins.size(), 1);
 
-  PluginUnloadParam other = PluginUnloadParam::Deserialize(param.Serialize().c_str());
+  PluginUnloadParam other = PluginUnloadParam::Deserialize(param.Serialize());
   ASSERT_EQ(param.Plugins.size(), other.Plugins.size());
   EXPECT_STREQ(param.Plugins[0].c_str(), other.Plugins[0].c_str());
   EXPECT_EQ(param.UnloadAll, other.UnloadAll);
@@ -67,7 +67,7 @@ class PluginMessageParamTest : public TestBaseNoSharedMemory {};
 TEST_F(PluginMessageParamTest, SerializeEmpty) {
   PluginMessageParam param;
 
-  PluginMessageParam other = PluginMessageParam::Deserialize(param.Serialize().c_str());
+  PluginMessageParam other = PluginMessageParam::Deserialize(param.Serialize());
   ASSERT_EQ(param.Identifier, other.Identifier);
   ASSERT_EQ(param.Message, other.Message);
 }
@@ -77,7 +77,7 @@ TEST_F(PluginMessageParamTest, Serialize) {
   param.Identifier = "foo";
   param.Message = "bar";
 
-  PluginMessageParam other = PluginMessageParam::Deserialize(param.Serialize().c_str());
+  PluginMessageParam other = PluginMessageParam::Deserialize(param.Serialize());
   ASSERT_EQ(param.Identifier, other.Identifier);
   ASSERT_EQ(param.Message, other.Message);
 }

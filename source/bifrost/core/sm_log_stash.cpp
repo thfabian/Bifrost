@@ -49,7 +49,7 @@ bool SMLogStash::TryPop(Context* ctx, LogMessage& msg) {
   return true;
 }
 
-bifrost::u64 SMLogStash::Size(Context* ctx) {
+u64 SMLogStash::Size(Context* ctx) {
   BIFROST_LOCK_GUARD(m_mutex);
   return m_messageQueue.Size(ctx);
 }

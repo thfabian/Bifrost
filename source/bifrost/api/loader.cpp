@@ -14,13 +14,18 @@
 #include "bifrost/api/helper.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
+#include "bifrost/core/error.h"
+#include "bifrost/core/exception.h"
 #include "bifrost/core/injector_param.h"
+#include "bifrost/core/module_loader.h"
+#include "bifrost/core/plugin_param.h"
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
-#include "bifrost/core/module_loader.h"
-#include "bifrost/core/exception.h"
 
 using namespace bifrost;
+
+#define BIFROST_LOADER_SETUP_PROC "bfl_PluginSetUp"
+#define BIFROST_LOADER_TEARDOWN_PROC "bfl_PluginTearDown"
 
 extern "C" {
 __declspec(dllexport) DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter);
@@ -101,9 +106,23 @@ class LoaderContext {
   void LoadPlugins(LPVOID lpThreadParameter) {
     SafeExec(m_storage.get(), "loading", [&lpThreadParameter, this]() {
       auto ctx = m_storage->Context.get();
-
       auto param = CheckSharedMemory(lpThreadParameter);
+      auto loadParam = PluginLoadParam::Deserialize(param.CustomArgument);
 
+      for (const auto& p : loadParam.Plugins) {
+
+        // Load the library
+        HMODULE handle = m_storage->ModuleLoader->GetOrLoadModule(p.Identifier, {p.Path});
+        BIFROST_ASSERT_WIN_CALL_CTX(ctx, ::DisableThreadLibraryCalls(handle) != 0);
+
+        // Get the init procedure
+        FARPROC setUpProc = ::GetProcAddress(handle, BIFROST_LOADER_SETUP_PROC);
+        if (!setUpProc) {
+          ctx->Logger().WarnFormat("Failed to load plugin \"%s\": Failed to get set up procedure \"%s\": %s", p.Identifier, BIFROST_LOADER_SETUP_PROC,
+                                   GetLastWin32Error().c_str());
+          continue;
+        }
+      }
     });
   }
 

@@ -100,6 +100,10 @@ void Logger::RemoveSink(const std::string& name) {
   MakeLogger();
 }
 
+void Logger::SetModule(const char* module) { m_module = module; }
+void Logger::Sink(LogLevel level, const char* module, const char* msg) { Log((u32)level, module, msg); }
+void Logger::Sink(LogLevel level, const char* msg) { Sink(level, m_module.c_str(), msg); }
+
 void Logger::MakeLogger() {
   if (m_logger) spdlog::drop("injector");
 

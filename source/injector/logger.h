@@ -12,10 +12,11 @@
 #pragma once
 
 #include "injector/common.h"
+#include "bifrost/core/ilogger.h"
 
 namespace injector {
 
-class Logger {
+class Logger : public bifrost::ILogger {
  public:
   /// Get singleton instance
   static Logger& Get();
@@ -61,7 +62,11 @@ class Logger {
   /// Unregister the sink `name`
   void RemoveSink(const std::string& name);
 
- private:
+  virtual void SetModule(const char* module) override;
+  virtual void Sink(LogLevel level, const char* module, const char* msg) override;
+  virtual void Sink(LogLevel level, const char* msg) override;
+
+private:
   /// Register the `m_logger` with `m_sinks`
   void MakeLogger();
 
@@ -75,6 +80,8 @@ class Logger {
   std::unordered_map<std::string, std::shared_ptr<LogSinkT>> m_sinks;
   std::mutex m_mutex;
   std::string m_buffer;
+
+  std::string m_module = "";
 };
 
 /// Logging callback

@@ -16,6 +16,7 @@
 #include "bifrost/core/error.h"
 #include "bifrost/core/util.h"
 #include "bifrost/core/exception.h"
+#include "bifrost/core/json.h"
 #include <tlhelp32.h>
 
 namespace bifrost {
@@ -32,6 +33,7 @@ struct ThreadParameter {
   u64 WaitForSingleObject_A;
   u64 GetExitCodeThread_A;
   u64 CloseHandle_A;
+  u64 DisableThreadLibraryCalls_A;
 
   // Data
   u32 DllNameSize;
@@ -55,12 +57,16 @@ __declspec(noinline) static DWORD WINAPI Injector(LPVOID lpThreadParameter) {
   using WaitForSingleObject_fn = decltype(&::WaitForSingleObject);
   using GetExitCodeThread_fn = decltype(&::GetExitCodeThread);
   using CloseHandle_fn = decltype(&::CloseHandle);
+  using DisableThreadLibraryCalls_fn = decltype(&::DisableThreadLibraryCalls);
 
   ThreadParameter* param = (ThreadParameter*)lpThreadParameter;
 
   // Load the library
   HMODULE hModule = ((LoadLibraryW_fn)param->LoadLibraryW_A)((LPCWSTR)param->DllNamePtr);
   if (hModule == NULL) return (E_LoadLibraryW << 16) + ((GetLastError_fn)param->GetLastError_A)();
+
+  // Disable thread calls
+  ((DisableThreadLibraryCalls_fn)param->DisableThreadLibraryCalls_A)(hModule);
 
   // Create a thread which calls `InitProcName` with `InitProcData` and return the thread id if everything goes as planned
   DWORD threadId = 0;
@@ -287,6 +293,7 @@ void Process::Inject(InjectArguments args) {
     BIFROST_ASSERT_WIN_CALL((param.WaitForSingleObject_A = (u64)::GetProcAddress(hKernel32, "WaitForSingleObject")) != NULL);
     BIFROST_ASSERT_WIN_CALL((param.GetExitCodeThread_A = (u64)::GetProcAddress(hKernel32, "GetExitCodeThread")) != NULL);
     BIFROST_ASSERT_WIN_CALL((param.CloseHandle_A = (u64)::GetProcAddress(hKernel32, "CloseHandle")) != NULL);
+    BIFROST_ASSERT_WIN_CALL((param.DisableThreadLibraryCalls_A = (u64)::GetProcAddress(hKernel32, "DisableThreadLibraryCalls")) != NULL);
 
     param.DllNameSize = hostDllNameSize;
     param.DllNamePtr = (u64)threadDllNamePtr.get();

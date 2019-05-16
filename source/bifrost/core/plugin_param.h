@@ -29,7 +29,7 @@ struct PluginLoadParam {
   std::string Serialize() const;
 
   /// Deserialize the parameters from a JSON string - throws on error
-  static PluginLoadParam Deserialize(const char* jStr);
+  static PluginLoadParam Deserialize(const std::string& jStr);
 };
 
 /// Parameter for unloading plugin
@@ -41,7 +41,7 @@ struct PluginUnloadParam {
   std::string Serialize() const;
 
   /// Deserialize the parameters from a JSON string - throws on error
-  static PluginUnloadParam Deserialize(const char* jStr);
+  static PluginUnloadParam Deserialize(const std::string& jStr);
 };
 
 struct PluginMessageParam {
@@ -52,7 +52,7 @@ struct PluginMessageParam {
   std::string Serialize() const;
 
   /// Deserialize the parameters from a JSON string - throws on error
-  static PluginMessageParam Deserialize(const char* jStr);
+  static PluginMessageParam Deserialize(const std::string& jStr);
 };
 
 }  // namespace bifrost

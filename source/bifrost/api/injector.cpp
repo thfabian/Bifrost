@@ -89,20 +89,19 @@ class InjectorContext {
       m_ctx->SetMemory(m_memory.get());
       SetUpLogConsumer();
 
-      // Write plugins to shared memory
-      //std::vector<Plugin> plugins;
-      //for (u32 i = 0; i < args->NumPlugins; ++i) {
-      //  plugins.emplace_back(Plugin{args->Plugins[i].Name ? args->Plugins[i].Name : "", args->Plugins[i].Path ? args->Plugins[i].Path : L"",
-      //                              args->Plugins[i].Arguments ? args->Plugins[i].Arguments : "" });
-      //}
-      //PluginLoader loader(m_ctx.get());
-      //loader.Serialize(plugins);
-
       // Setup the injector arguments for bifrost_loader.dll
       InjectorParam param;
       param.Pid = ::GetCurrentProcessId();
       param.SharedMemoryName = m_ctx->Memory().GetName();
       param.SharedMemorySize = (u32)m_ctx->Memory().GetSizeInBytes();
+
+      PluginLoadParam loadParam;
+      for (u32 i = 0; i < args->NumPlugins; ++i) {
+        loadParam.Plugins.emplace_back(PluginLoadParam::Plugin{args->Plugins[i].Name ? args->Plugins[i].Name : "",
+                                                               args->Plugins[i].Path ? args->Plugins[i].Path : L"",
+                                                               args->Plugins[i].Arguments ? args->Plugins[i].Arguments : ""});
+      }
+      param.CustomArgument = loadParam.Serialize();
 
       std::wstring cwd(2 * MAX_PATH, '\0');
       DWORD len = (u32)cwd.size();
@@ -112,7 +111,7 @@ class InjectorContext {
 
       // Prepare bifrost_loader.dll to be injected
       Process::InjectArguments injectArguments;
-      injectArguments.DllPath = m_loader->GetModulePath(m_loader->GetModule(L"bifrost_loader.dll"));
+      injectArguments.DllPath = m_loader->GetModulePath(m_loader->GetOrLoadModule("bifrost_loader", {L"bifrost_loader.dll"}));
       injectArguments.InitProcArg = param.Serialize();
       injectArguments.InitProcName = "bfl_LoadPlugins";
       injectArguments.TimeoutInMs = args->InjectorArguments->TimeoutInS * 1000;

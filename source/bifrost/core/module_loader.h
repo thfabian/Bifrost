@@ -24,9 +24,16 @@ class ModuleLoader : public Object {
   ModuleLoader(Context* ctx);
   ~ModuleLoader();
 
-  /// Get module given by `moduleName` or throw std::runtime_error on error
-  HMODULE GetModule(std::string moduleName, std::string dllDirectory = std::string{});
-  HMODULE GetModule(std::wstring moduleName, std::wstring dllDirectory = std::wstring{});
+  struct ModuleDesc {
+    std::wstring Path;          ///< Module path passed to LoadLibrary (name or full path)
+    std::wstring DllDirectory;  ///< Custom DLL load directory (if necessary)
+  };
+
+  /// Get or load module given by `identifier` or throw std::runtime_error on error
+  HMODULE GetOrLoadModule(std::string identifier, ModuleDesc desc);
+
+  /// Get module given by `identifier` or throw std::runtime_error if identifier does not exist
+  HMODULE GetModule(std::string identifier);
 
   /// Get the current module
   HMODULE GetCurrentModule();
@@ -40,6 +47,12 @@ class ModuleLoader : public Object {
   /// Get the name of the current module
   std::wstring GetCurrentModuleName();
 
+  /// Get the path of the current module
+  std::wstring GetCurrentModulePath();
+
+ private:
+  HMODULE GetModuleImpl(std::string identifier, ModuleDesc* desc);
+
  private:
   struct Module {
     HMODULE Handle;
@@ -47,7 +60,7 @@ class ModuleLoader : public Object {
   };
 
   std::mutex m_mutex;
-  std::unordered_map<std::wstring, Module> m_modules;
+  std::unordered_map<std::string, Module> m_modules;
 };
 
 }  // namespace bifrost
