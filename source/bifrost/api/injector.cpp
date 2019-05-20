@@ -31,8 +31,8 @@ using namespace bifrost::api;
 
 namespace {
 
-#define BIFROST_INJECTOR_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(stmts, BFI_ERROR)
-#define BIFROST_INJECTOR_CATCH_ALL_PTR(stmts) BIFROST_API_CATCH_ALL_IMPL(stmts, nullptr)
+#define BIFROST_INJECTOR_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, BFI_ERROR)
+#define BIFROST_INJECTOR_CATCH_ALL_PTR(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, nullptr)
 
 class ForwardLogger : public ILogger {
  public:
@@ -109,9 +109,12 @@ class InjectorContext {
       param.WorkingDirectory = cwd.substr(0, len);
       m_ctx->Logger().DebugFormat(L"Using working directory: \"%s\"", param.WorkingDirectory.c_str());
 
+      auto handle = m_loader->GetOrLoadModule("bifrost_loader", {L"bifrost_loader.dll"});
+      BIFROST_CHECK_WIN_CALL_CTX(m_ctx.get(), ::DisableThreadLibraryCalls(handle) != 0);
+
       // Prepare bifrost_loader.dll to be injected
       Process::InjectArguments injectArguments;
-      injectArguments.DllPath = m_loader->GetModulePath(m_loader->GetOrLoadModule("bifrost_loader", {L"bifrost_loader.dll"}));
+      injectArguments.DllPath = m_loader->GetModulePath(handle);
       injectArguments.InitProcArg = param.Serialize();
       injectArguments.InitProcName = "bfl_LoadPlugins";
       injectArguments.TimeoutInMs = args->InjectorArguments->TimeoutInS * 1000;
@@ -226,6 +229,7 @@ class InjectorContext {
     return BFI_OK;
   }
 
+  // Logging
   void SetUpBufferedLogger() { m_ctx->SetLogger(m_bufferedLogger.get()); }
 
   void SetUpForwardLogger(bfi_LoggingCallback cb) {
@@ -261,6 +265,17 @@ Process* Get(bfi_Process* process) { return (Process*)process->_Internal; }
 
 }  // namespace
 
+#pragma region Version
+
+bfi_Version bfi_GetVersion(void) { return {BIFROST_INJECTOR_VERSION_MAJOR, BIFROST_INJECTOR_VERSION_MINOR, BIFROST_INJECTOR_VERSION_PATCH}; }
+
+const char* bfi_GetVersionString(void) {
+  return BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MAJOR) "." BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MINOR) "." BIFROST_STRINGIFY(
+      BIFROST_INJECTOR_VERSION_PATCH);
+}
+
+#pragma endregion
+
 #pragma region Context
 
 bfi_Context* bfi_ContextInit(void) { return Init<bfi_Context, InjectorContext>(); }
@@ -271,17 +286,6 @@ const char* bfi_ContextGetLastError(bfi_Context* ctx) { return Get(ctx)->GetLast
 
 bfi_Status bfi_ContextSetLoggingCallback(bfi_Context* ctx, bfi_LoggingCallback cb) {
   BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->SetLogCallback(cb); })
-}
-
-#pragma endregion
-
-#pragma region Version
-
-bfi_Version bfi_GetVersion(void) { return {BIFROST_INJECTOR_VERSION_MAJOR, BIFROST_INJECTOR_VERSION_MINOR, BIFROST_INJECTOR_VERSION_PATCH}; }
-
-const char* bfi_GetVersionString(void) {
-  return BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MAJOR) "." BIFROST_STRINGIFY(BIFROST_INJECTOR_VERSION_MINOR) "." BIFROST_STRINGIFY(
-      BIFROST_INJECTOR_VERSION_PATCH);
 }
 
 #pragma endregion

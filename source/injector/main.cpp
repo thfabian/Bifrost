@@ -25,7 +25,7 @@
 using namespace bifrost;
 using namespace injector;
 
-#define INJECTOR_LOG_FILE "injector.log.txt"
+#define INJECTOR_LOG_FILE "log.injector.txt"
 #define INJECTOR_SHORT_PREFIX "-"
 #define INJECTOR_LONG_PREFIX "--"
 
@@ -320,9 +320,16 @@ int main(int argc, const char* argv[]) {
               name = std::filesystem::path(path).stem().string();
             }
 
-            assert(0 && "fix that crap");
-            //bfLoader.GetCurrentModuleName()
-            //path = std::filesystem::absolute(pathStr);
+            // 1) Use path relative to the current working directory
+            // 2) Use path is relative to the executable
+            // 3) Fall-back and use path which has been provided
+            path = std::filesystem::absolute(pathStr);
+            if (!std::filesystem::exists(path)) {
+              path = std::filesystem::path(bfLoader.GetCurrentModulePath()).parent_path() / pathStr;
+              if (!std::filesystem::exists(path)) {
+                path = pathStr;
+              }
+            }
 
             // Associate arguments
             auto it = bfiPluginArguments.find(name);

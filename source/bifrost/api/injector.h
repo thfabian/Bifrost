@@ -100,10 +100,29 @@ typedef struct bfi_PluginLoadArguments_t {
 
 /// @brief Result of loading plugins
 typedef struct bfi_PluginLoadResult_t {
-  const char* SharedMemoryName;      ///< Name of the used shared memory
-  uint32_t SharedMemorySize;  ///< Size of the used shared memory
-  uint32_t RemoteProcessPid;         ///< Process identifier of the launched or connected process
+  const char* SharedMemoryName;  ///< Name of the used shared memory
+  uint32_t SharedMemorySize;     ///< Size of the used shared memory
+  uint32_t RemoteProcessPid;     ///< Process identifier of the launched or connected process
 } bfi_PluginLoadResult;
+
+#pragma endregion
+
+#pragma region Version
+
+/// @brief Major version
+#define BIFROST_INJECTOR_VERSION_MAJOR 0
+
+/// @brief Minor version [0-99]
+#define BIFROST_INJECTOR_VERSION_MINOR 0
+
+/// @brief Patch version [0-99]
+#define BIFROST_INJECTOR_VERSION_PATCH 1
+
+/// @brief Get the version triple
+BIFROST_INJECTOR_API bfi_Version bfi_GetVersion(void);
+
+/// @brief Get the version string
+BIFROST_INJECTOR_API const char* bfi_GetVersionString(void);
 
 #pragma endregion
 
@@ -127,25 +146,6 @@ BIFROST_INJECTOR_API bfi_Status bfi_ContextSetLoggingCallback(bfi_Context* ctx, 
 /// @brief Get the last error message occurred in `ctx`
 /// @param[in] ctx  Context description
 BIFROST_INJECTOR_API const char* bfi_ContextGetLastError(bfi_Context* ctx);
-
-#pragma endregion
-
-#pragma region Version
-
-/// @brief Major version
-#define BIFROST_INJECTOR_VERSION_MAJOR 0
-
-/// @brief Minor version [0-99]
-#define BIFROST_INJECTOR_VERSION_MINOR 0
-
-/// @brief Patch version [0-99]
-#define BIFROST_INJECTOR_VERSION_PATCH 1
-
-/// @brief Get the version triple
-BIFROST_INJECTOR_API bfi_Version bfi_GetVersion(void);
-
-/// @brief Get the version string
-BIFROST_INJECTOR_API const char* bfi_GetVersionString(void);
 
 #pragma endregion
 

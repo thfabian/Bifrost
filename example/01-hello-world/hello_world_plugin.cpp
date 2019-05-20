@@ -9,25 +9,5 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-
-// ----------------------
-
-
-
-
-
-
-// ----------------------
-
-#include <Windows.h>
-
-extern "C" {
-__declspec(dllexport) DWORD WINAPI __BifrostPluginInit__(LPVOID lpThreadParameter);
-}
-
-DWORD WINAPI __BifrostPluginInit__(LPVOID lpThreadParameter) {   
-  return 0; 
-}
-
-BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
-
+#define BIFROST_IMPLEMENTATION
+#include "bifrost/template/plugin_main.h"

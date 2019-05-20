@@ -71,6 +71,9 @@ class Debugger::DebuggerImpl : public Object {
         Logger().Info("If target process is suspended, the debugger will break at ntdll.dll!LdrpDoDebuggerBreak - you can safely continue");
         BIFROST_ASSERT_COM_CALL(targetProcess->Attach());
 
+        // Sleep a little to avoid "Call was rejected by callee" (Sleep can dead-lock here!)
+        MsgWaitForMultipleObjects(0, NULL, false, 5000, QS_ALLINPUT);
+
         // Focus the window
         CComPtr<EnvDTE::Window> window;
         BIFROST_ASSERT_COM_CALL(dte->get_MainWindow(&window));

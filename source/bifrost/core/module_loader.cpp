@@ -19,7 +19,7 @@ namespace bifrost {
 
 namespace {
 
-[[nodiscard]] static bool FunctionInThisDll() { return true; }
+static bool FunctionInThisDll() { return true; }
 
 }  // namespace
 

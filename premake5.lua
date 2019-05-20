@@ -144,6 +144,12 @@ workspace "bifrost"
       links "bifrost_debugger"
     end
     
+  -- *** Bifrost Template ***
+  project "bifrost_template"
+    kind "None"
+    includedirs { "source" }
+    files { "source/bifrost/template/**" }
+    
   -- *** Bifrost Loader ***
   project "bifrost_loader"
     kind "SharedLib"
@@ -158,6 +164,7 @@ workspace "bifrost"
       includedirs "source" 
       links "bifrost_loader"
     end
+    
     
   -- *** Bifrost Injector ***
   project "bifrost_injector"
@@ -183,8 +190,9 @@ workspace "bifrost"
     kind "SharedLib"
     includedirs { "source" }
     
-    files { "source/bifrost/api/plugin.cpp", "source/bifrost/api/plugin.h" }
+    files { "source/bifrost/api/plugin*" }
     disablewarnings { "4267", "4146" }
+    defines { "BIFROST_PLUGIN_EXPORTS" }
     
     bifrost_add_bifrost_core()
 
@@ -249,5 +257,6 @@ workspace "bifrost"
   
   project "01-hello-world-plugin"
     kind "SharedLib"
+    includedirs { "source" }
     files "example/01-hello-world/hello_world_plugin.cpp" 
     

@@ -12,6 +12,10 @@
 #pragma once
 
 #include "bifrost/core/common.h"
+#include "bifrost/core/context.h"
+#include "bifrost/core/ilogger.h"
+#include "bifrost/core/shared_memory.h"
+#include "bifrost/core/sm_log_stash.h"
 
 namespace bifrost::api {
 
@@ -21,14 +25,14 @@ namespace bifrost::api {
 #define BIFROST_API_UNCAUGHT_EXCEPTION "Uncaught exception.\n  Function: " __FUNCTION__ "\n  File: " __FILE__ ":" BIFROST_STRINGIFY(__LINE__)
 #endif
 
-#define BIFROST_API_CATCH_ALL_IMPL(stmts, error)            \
+#define BIFROST_API_CATCH_ALL_IMPL(instance, stmts, error)       \
   try {                                                     \
     stmts;                                                  \
   } catch (std::exception & e) {                            \
-    Get(ctx)->SetLastError(e.what());                       \
+    Get(instance)->SetLastError(e.what());                       \
     return error;                                           \
   } catch (...) {                                           \
-    Get(ctx)->SetLastError(BIFROST_API_UNCAUGHT_EXCEPTION); \
+    Get(instance)->SetLastError(BIFROST_API_UNCAUGHT_EXCEPTION); \
     return error;                                           \
   }
 
@@ -54,4 +58,19 @@ void Free(StructT* s) {
   }
 }
 
-}  // namespace bifrost
+class SharedLogger : public ILogger {
+ public:
+  SharedLogger(Context* ctx) : m_ctx(ctx) {}
+
+  virtual void SetModule(const char* module) override { m_module = module; }
+  virtual void Sink(LogLevel level, const char* module, const char* msg) override {
+    m_ctx->Memory().GetSMLogStash()->Push(m_ctx, static_cast<u32>(level), module, msg);
+  }
+  virtual void Sink(LogLevel level, const char* msg) override { Sink(level, m_module.c_str(), msg); }
+
+ private:
+  Context* m_ctx;
+  std::string m_module;
+};
+
+}  // namespace bifrost::api

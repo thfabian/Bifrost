@@ -11,7 +11,10 @@
 
 #include "bifrost/core/common.h"
 
+#include "bifrost/template/plugin_proc_decl.h"
+
 #include "bifrost/api/helper.h"
+#include "bifrost/api/plugin_impl.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
 #include "bifrost/core/error.h"
@@ -23,9 +26,7 @@
 #include "bifrost/core/sm_log_stash.h"
 
 using namespace bifrost;
-
-#define BIFROST_LOADER_SETUP_PROC "bfl_PluginSetUp"
-#define BIFROST_LOADER_TEARDOWN_PROC "bfl_PluginTearDown"
+using namespace bifrost::api;
 
 extern "C" {
 __declspec(dllexport) DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter);
@@ -34,21 +35,6 @@ __declspec(dllexport) DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter);
 }
 
 namespace {
-
-class SharedLogger : public ILogger {
- public:
-  SharedLogger(Context* ctx) : m_ctx(ctx) {}
-
-  virtual void SetModule(const char* module) override { m_module = module; }
-  virtual void Sink(LogLevel level, const char* module, const char* msg) override {
-    m_ctx->Memory().GetSMLogStash()->Push(m_ctx, static_cast<u32>(level), module, msg);
-  }
-  virtual void Sink(LogLevel level, const char* msg) override { Sink(level, m_module.c_str(), msg); }
-
- private:
-  Context* m_ctx;
-  std::string m_module;
-};
 
 class LoaderContext {
  public:
@@ -69,6 +55,7 @@ class LoaderContext {
     std::unique_ptr<SharedMemory> Memory;
     std::unique_ptr<SharedLogger> SharedLogger;
     std::unique_ptr<ModuleLoader> ModuleLoader;
+    std::unique_ptr<PluginManager> PluginManager;
   };
 
   LoaderContext(LPVOID lpThreadParameter) { m_storage = InitStorage(lpThreadParameter); }
@@ -113,15 +100,18 @@ class LoaderContext {
 
         // Load the library
         HMODULE handle = m_storage->ModuleLoader->GetOrLoadModule(p.Identifier, {p.Path});
-        BIFROST_ASSERT_WIN_CALL_CTX(ctx, ::DisableThreadLibraryCalls(handle) != 0);
+        BIFROST_CHECK_WIN_CALL_CTX(ctx, ::DisableThreadLibraryCalls(handle) != 0);
 
         // Get the init procedure
-        FARPROC setUpProc = ::GetProcAddress(handle, BIFROST_LOADER_SETUP_PROC);
-        if (!setUpProc) {
-          ctx->Logger().WarnFormat("Failed to load plugin \"%s\": Failed to get set up procedure \"%s\": %s", p.Identifier, BIFROST_LOADER_SETUP_PROC,
-                                   GetLastWin32Error().c_str());
+        auto bifrost_PluginSetUp = (BIFROST_PLUGIN_SETUP_PROC_TYPE)::GetProcAddress(handle, BIFROST_PLUGIN_SETUP_PROC_NAME_STRING);
+        if (!bifrost_PluginSetUp) {
+          ctx->Logger().WarnFormat("Failed to load plugin \"%s\": Failed to get set up procedure \"%s\": %s", p.Identifier,
+                                   BIFROST_PLUGIN_SETUP_PROC_NAME_STRING, GetLastWin32Error().c_str());
           continue;
         }
+
+
+        bifrost_PluginSetUp(nullptr);
       }
     });
   }
@@ -188,7 +178,7 @@ class LoaderContext {
       log(storage->SharedLogger.get());
     } else if (storage->BufferedLogger) {
       log(storage->BufferedLogger.get());
-      storage->BufferedLogger->FlushToDisk("bifrost_loader.log.txt");
+      storage->BufferedLogger->FlushToDisk("log.bifrost_loader.txt");
       storage->BufferedLogger->FlushToErr();
     }
   }
