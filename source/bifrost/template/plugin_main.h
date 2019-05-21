@@ -22,11 +22,14 @@
 #endif
 
 #include "bifrost/api/plugin.h"
-#include "bifrost/template/plugin_proc_decl.h"
+
+#include "bifrost/template/plugin_decl.h"
 
 #pragma endregion
 
-// $BIFROST_PLUGIN_HEADER$
+#ifdef BIFROST_PLUGIN
+$BIFROST_PLUGIN_HEADER$
+#endif
 
 #pragma region Implementation
 #if defined(BIFROST_IMPLEMENTATION) || defined(__INTELLISENSE__)
@@ -41,9 +44,9 @@
 
 #pragma region Bifrost Plugin Dll
 
-struct bfp_Plugin;
-
 namespace bifrost {
+
+Plugin* Plugin::s_instance = nullptr;
 
 namespace {
 
@@ -67,17 +70,22 @@ std::string GetLastWin32Error() {
 /// Interaction with bifrost_plugin.dll
 class BifrostPluginApi {
  public:
-  using bfp_PluginInit_fn = bfp_Plugin* (*)(void);
+  using bfp_PluginInit_fn = decltype(&bfp_PluginInit);
   bfp_PluginInit_fn bfp_PluginInit;
 
-    using bfp_PluginInit_fn = bfp_Plugin* (*)(bfp_Plugin*);
-  bfp_PluginInit_fn bfp_PluginInit;
+  using bfp_PluginSetUp_fn = decltype(&bfp_PluginSetUp);
+  bfp_PluginSetUp_fn bfp_PluginSetUp;
+
+  using bfp_PluginGetLastError_fn = decltype(&bfp_PluginGetLastError);
+  bfp_PluginGetLastError_fn bfp_PluginGetLastError;
 
   BifrostPluginApi() {
     HMODULE hModule = NULL;
     Check("LoadLibrary: bifrost_plugin.dll", (hModule = ::LoadLibraryW(L"bifrost_plugin.dll")) != NULL);
     Check("GetProcAddress: bfp_PluginInit", (bfp_PluginInit = (bfp_PluginInit_fn)::GetProcAddress(hModule, "bfp_PluginInit")) != NULL);
     Check("GetProcAddress: bfp_PluginSetUp", (bfp_PluginSetUp = (bfp_PluginSetUp_fn)::GetProcAddress(hModule, "bfp_PluginSetUp")) != NULL);
+    Check("GetProcAddress: bfp_PluginGetLastError",
+          (bfp_PluginGetLastError = (bfp_PluginGetLastError_fn)::GetProcAddress(hModule, "bfp_PluginGetLastError")) != NULL);
   }
 
  private:
@@ -93,12 +101,12 @@ class BifrostPluginApi {
       bool queriedDllName = false;
 
       HMODULE hModule = NULL;
-      if (::GetModuleHandleEx(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)&FunctionInThisDll, &hModule) !=
+      if (::GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)&FunctionInThisDll, &hModule) !=
           0) {
         DWORD err = ERROR_SUCCESS;
         do {
           path.resize(path.size() * 2);
-          err = ::GetModuleFileName(hModule, (LPSTR)path.c_str(), path.size()) != 0;
+          err = ::GetModuleFileNameA(hModule, (LPSTR)path.c_str(), (DWORD)path.size()) != 0;
         } while (err == ERROR_INSUFFICIENT_BUFFER);
 
         if (err == ERROR_SUCCESS) {
@@ -113,28 +121,28 @@ class BifrostPluginApi {
     }
   }
 };
-static BifrostPluginApi* api = nullptr;
-static std::mutex mutex;
+static BifrostPluginApi* g_api = nullptr;
+static std::mutex g_mutex;
 
 /// Free the API singleton (thread-safe)
 static void FreeApi() {
-  std::lock_guard<std::mutex> lock(mutex);
-  if (api) {
-    delete api;
-    api = nullptr;
+  std::lock_guard<std::mutex> lock(g_mutex);
+  if (g_api) {
+    delete g_api;
+    g_api = nullptr;
   }
 }
 
 /// Access the API singleton (thread-safe)
 static BifrostPluginApi& GetApi() {
-  if (!api) {
-    std::lock_guard<std::mutex> lock(mutex);
-    if (!api) {
-      api = new BifrostPluginApi;
+  if (!g_api) {
+    std::lock_guard<std::mutex> lock(g_mutex);
+    if (!g_api) {
+      g_api = new BifrostPluginApi;
       std::atexit(FreeApi);
     }
   }
-  return *api;
+  return *g_api;
 }
 
 #pragma endregion
@@ -147,13 +155,16 @@ BIFROST_PLUGIN_SETUP_PROC_DECL
 
 BIFROST_PLUGIN_SETUP_PROC_DEF {
   using namespace bifrost;
-  auto ctx = GetApi().bfp_PluginInit();
+  auto plugin = GetApi().bfp_PluginInit();
+  if (GetApi().bfp_PluginSetUp(plugin, param) != BFI_OK) throw std::runtime_error(GetApi().bfp_PluginGetLastError(plugin));
   return 0;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
 
-// $BIFROST_PLUGIN_IMPLEMENTATION$
+#ifdef BIFROST_PLUGIN
+$BIFROST_PLUGIN_IMPLEMENTATION$
+#endif
 
 #endif
 

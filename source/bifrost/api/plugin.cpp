@@ -51,6 +51,6 @@ bfp_Status bfp_PluginTearDown(bfp_Plugin* plugin) {
 
 void bfp_PluginFree(bfp_Plugin* plugin) { Free<bfp_Plugin, Plugin>(plugin); }
 
-const char* bfi_PluginGetLastError(bfp_Plugin* plugin) { return Get(plugin)->GetLastError(); }
+const char* bfp_PluginGetLastError(bfp_Plugin* plugin) { return Get(plugin)->GetLastError(); }
 
 #pragma endregion

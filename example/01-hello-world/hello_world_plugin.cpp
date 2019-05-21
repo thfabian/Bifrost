@@ -11,3 +11,11 @@
 
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
+
+class MyPlugin final : public ::bifrost::Plugin {
+ public:
+  virtual void SetUp() override {}
+  virtual void TearDown() override {}
+};
+
+BIFROST_REGISTER_PLUGIN(MyPlugin)

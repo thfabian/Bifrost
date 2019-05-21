@@ -11,7 +11,8 @@
 
 #include "bifrost/core/common.h"
 
-#include "bifrost/template/plugin_proc_decl.h"
+#include "bifrost/api/plugin.h"
+#include "bifrost/template/plugin_decl.h"
 
 #include "bifrost/api/helper.h"
 #include "bifrost/api/plugin_impl.h"

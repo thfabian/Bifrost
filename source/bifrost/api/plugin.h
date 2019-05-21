@@ -90,7 +90,7 @@ BIFROST_PLUGIN_API void bfp_PluginFree(bfp_Plugin* plugin);
 
 /// @brief Get the last error message occurred in `plugin`
 /// @param[in] plugin   Plugin description
-BIFROST_PLUGIN_API const char* bfi_PluginGetLastError(bfp_Plugin* plugin);
+BIFROST_PLUGIN_API const char* bfp_PluginGetLastError(bfp_Plugin* plugin);
 
 #pragma endregion
 
