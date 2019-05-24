@@ -66,7 +66,7 @@ class InjectorContext {
     m_forwardLogger.reset();
   }
 
-  // Inject the plugins
+  // Load the plugins
   bfi_Status PluginLoad(const bfi_PluginLoadArguments* args, bfi_Process_t** process, bfi_PluginLoadResult** result) {
     m_ctx->Logger().Info("Loading plugins into remote process ...");
 

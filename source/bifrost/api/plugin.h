@@ -47,7 +47,7 @@ typedef struct bfp_Version_t {
 /// @brief Injector context
 typedef struct bfp_Plugin_t {
   void* _Internal;  ///< Internal pointer, do not use
-} bfp_Plugin;
+} bfp_PluginContext;
 
 #pragma endregion
 
@@ -73,24 +73,28 @@ BIFROST_PLUGIN_API const char* bfp_GetVersionString(void);
 #pragma region Plugin
 
 /// @brief Initialize the plugin
-BIFROST_PLUGIN_API bfp_Plugin* bfp_PluginInit(void);
+BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(void);
 
 /// @brief Set-up the plugin
-/// @param[in] plugin   Plugin description
+/// @param[in] ctx      Plugin context description
+/// @param[in] name     Name of the plugin
+/// @param[in] plugin   Plugin instance
 /// @param[in] param    Plugin set up parameter
-BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUp(bfp_Plugin* plugin, void* param);
+BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUp(bfp_PluginContext* ctx, const char* name, void* plugin, void* param);
 
-/// @brief tear down the plugin
-/// @param[in] plugin   Plugin description
-BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDown(bfp_Plugin* plugin);
+/// @brief Tear-down the plugin
+/// @param[in] ctx      Plugin context description
+/// @param[in] plugin   Plugin instance
+/// @param[in] param    Plugin set up parameter
+BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* plugin, void* param);
 
 /// @brief Free the plugin
-/// @param[in] plugin   Plugin description
-BIFROST_PLUGIN_API void bfp_PluginFree(bfp_Plugin* plugin);
+/// @param[in] plugin   Plugin context description
+BIFROST_PLUGIN_API void bfp_PluginFree(bfp_PluginContext* ctx);
 
 /// @brief Get the last error message occurred in `plugin`
-/// @param[in] plugin   Plugin description
-BIFROST_PLUGIN_API const char* bfp_PluginGetLastError(bfp_Plugin* plugin);
+/// @param[in] plugin   Plugin context description
+BIFROST_PLUGIN_API const char* bfp_PluginGetLastError(bfp_PluginContext* plugin);
 
 #pragma endregion
 

@@ -318,14 +318,14 @@ void Process::Inject(InjectArguments args) {
     StageEnum stage = static_cast<StageEnum>(retCode >> 16);
     DWORD errorCode = retCode & ((~0u) >> 16);
 
-    auto error = [&](const wchar_t* where, const wchar_t* msg, const wchar_t* newLine = L"\n") {
-      auto formattedMsg = StringFormat(L"Failed to inject \"%s\": %s function in remote process %s: %s%s  Init Procedure: %s\n  Init Arguments: %s",
-                                       args.DllPath.c_str(), StringToWString(functionName).c_str(), where, msg, newLine,
-                                       StringToWString(args.InitProcName).c_str(), StringToWString(args.InitProcArg).c_str());
+    auto error = [&](const wchar_t* where, std::wstring msg) {
+      if (msg[msg.size() - 1] == '\n') msg[msg.size() - 1] = '\0';
+      auto formattedMsg = StringFormat(L"Failed to inject \"%s\": %s function in remote process %s: %s", args.DllPath.c_str(),
+                                       StringToWString(functionName).c_str(), where, msg.c_str());
       Logger().Error(formattedMsg.c_str());
       throw Exception(formattedMsg);
     };
-    auto winError = [&](const wchar_t* where, DWORD ec) { error(where, StringToWString(GetLastWin32Error(ec)).c_str(), L""); };
+    auto winError = [&](const wchar_t* where, DWORD ec) { error(where, StringToWString(GetLastWin32Error(ec)).c_str()); };
 
     switch (stage) {
       case bifrost::E_LoadLibraryW:

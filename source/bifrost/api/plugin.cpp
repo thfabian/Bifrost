@@ -9,9 +9,6 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/core/common.h"
-
-#include "bifrost/api/helper.h"
 #include "bifrost/api/plugin_impl.h"
 
 using namespace bifrost;
@@ -19,10 +16,10 @@ using namespace bifrost::api;
 
 namespace {
 
-#define BIFROST_PLUGIN_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(plugin, stmts, BFI_ERROR)
-#define BIFROST_PLUGIN_CATCH_ALL_PTR(stmts) BIFROST_API_CATCH_ALL_IMPL(plugin, stmts, nullptr)
+#define BIFROST_PLUGIN_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, BFI_ERROR)
+#define BIFROST_PLUGIN_CATCH_ALL_PTR(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, nullptr)
 
-Plugin* Get(bfp_Plugin* plugin) { return (Plugin*)plugin->_Internal; }
+PluginContext* Get(bfp_PluginContext* ctx) { return (PluginContext*)ctx->_Internal; }
 
 }  // namespace
 
@@ -39,18 +36,18 @@ const char* bfp_GetVersionString(void) {
 
 #pragma region Plugin
 
-bfp_Plugin* bfp_PluginInit(void) { return Init<bfp_Plugin, Plugin>(); }
+bfp_PluginContext* bfp_PluginInit(void) { return Init<bfp_PluginContext, PluginContext>(); }
 
-bfp_Status bfp_PluginSetUp(bfp_Plugin* plugin, void* param) {
-  BIFROST_PLUGIN_CATCH_ALL({ return BFI_OK; });
+bfp_Status bfp_PluginSetUp(bfp_PluginContext* ctx, const char* name, void* plugin, void* param) {
+  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->SetUp(ctx, name, plugin, param); });
 }
 
-bfp_Status bfp_PluginTearDown(bfp_Plugin* plugin) {
-  BIFROST_PLUGIN_CATCH_ALL({ return BFI_OK; });
+bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* plugin, void* param) {
+  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->TearDown(ctx, plugin, param); });
 }
 
-void bfp_PluginFree(bfp_Plugin* plugin) { Free<bfp_Plugin, Plugin>(plugin); }
+void bfp_PluginFree(bfp_PluginContext* ctx) { Free<bfp_PluginContext, PluginContext>(ctx); }
 
-const char* bfp_PluginGetLastError(bfp_Plugin* plugin) { return Get(plugin)->GetLastError(); }
+const char* bfp_PluginGetLastError(bfp_PluginContext* ctx) { return Get(ctx)->GetLastError(); }
 
 #pragma endregion

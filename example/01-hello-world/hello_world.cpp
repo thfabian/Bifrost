@@ -18,6 +18,6 @@ int hello_world(int bar) { return bar + 1; }
 
 int main(int argc, const char* argv[]) {
   int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(500);
+  ::Sleep(2000);
   return bar;
 }

@@ -13,6 +13,7 @@
 
 #include "bifrost/core/common.h"
 
+#include "bifrost/api/helper.h"
 #include "bifrost/api/plugin.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
@@ -22,43 +23,71 @@
 #include "bifrost/core/module_loader.h"
 #include "bifrost/core/shared_memory.h"
 
+#define BIFROST_IMPLEMENTATION
+#include "bifrost/template/plugin_decl.h"
+
 namespace bifrost::api {
 
-class PluginManager;
-
 /// Context of each plugin
-class Plugin {
+class PluginContext {
  public:
-  struct InitParam {
-    std::string SharedMemoryName;
-    u32 SharedMemorySize;
-  };
-
-  Plugin() {
+  PluginContext() {
     m_ctx = std::make_unique<Context>();
     m_bufferedLogger = std::make_unique<BufferedLogger>();
     m_loader = std::make_unique<ModuleLoader>(m_ctx.get());
     m_bufferedLogger->SetModule(WStringToString(m_loader->GetCurrentModuleName()).c_str());
-
-    SetUpBufferedLogger();
+    m_ctx->SetLogger(m_bufferedLogger.get());
   }
 
-  ~Plugin() {
+  ~PluginContext() {
     m_sharedLogger.reset();
     m_memory.reset();
     m_loader.reset();
     m_bufferedLogger.reset();
   }
 
-  void SetUp(void* param) { InitParam* p = (InitParam*)param; }
+  struct SetUpParam {
+    std::string SharedMemoryName;
+    u64 SharedMemorySize;
+  };
+
+  bfp_Status SetUp(bfp_PluginContext* ctx, const char* name, void* bfPlugin, void* setUpParam) {
+    Plugin* plugin = (Plugin*)bfPlugin;
+    SetUpParam* param = (SetUpParam*)setUpParam;
+    try {
+      // Set the module
+      m_bufferedLogger->SetModule(name);
+      m_ctx->Logger().InfoFormat("Initializing plugin: %s", name);
+
+      // Connect to the shared memory
+      m_memory = std::make_unique<SharedMemory>(m_ctx.get(), param->SharedMemoryName, param->SharedMemorySize);
+      m_ctx->SetMemory(m_memory.get());
+
+      // Flush the buffered logger and start logging to shared memory
+      m_sharedLogger = std::make_unique<SharedLogger>(m_ctx.get());
+      m_sharedLogger->SetModule(name);
+      m_ctx->SetLogger(m_sharedLogger.get());
+      m_bufferedLogger->Flush(m_sharedLogger.get());
+
+      // Call the setup method
+      plugin->_SetUpImpl((bfp_PluginContext_t*)ctx);
+
+    } catch (...) {
+      m_ctx->Logger().ErrorFormat("Failed to initialize plugin: %s", name);
+      throw;
+    }
+    return BFI_OK;
+  }
+
+  struct TearDownParam {
+    bool NoFail;
+  };
+
+  bfp_Status TearDown(bfp_PluginContext* ctx, void* bfPlugin, void* tearDownParam) { return BFI_OK; }
 
   // Error stash
   void SetLastError(std::string msg) { m_error = std::move(msg); }
   const char* GetLastError() { return m_error.empty() ? "No Error" : m_error.c_str(); }
-
-  // Logging
-  void SetUpBufferedLogger() { m_ctx->SetLogger(m_bufferedLogger.get()); }
-  void SetUpSharedLogger() {}
 
  private:
   std::string m_error;
@@ -69,22 +98,6 @@ class Plugin {
 
   std::unique_ptr<BufferedLogger> m_bufferedLogger;
   std::unique_ptr<SharedLogger> m_sharedLogger;
-};
-
-/// Manager of plugins
-class PluginManager {
- public:
-  /// Register a new plugin
-  void Register(std::string name, std::unique_ptr<Plugin> plugin) { m_plugins.emplace(name, std::move(plugin)); }
-
-  /// Get the plugin `name` or NULL
-  Plugin* Get(std::string name) {
-    auto it = m_plugins.find(name);
-    return it != m_plugins.end() ? it->second.get() : nullptr;
-  }
-
- private:
-  std::unordered_map<std::string, std::unique_ptr<Plugin>> m_plugins;
 };
 
 }  // namespace bifrost::api

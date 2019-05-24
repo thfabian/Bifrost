@@ -11,9 +11,6 @@
 
 #include "bifrost/core/common.h"
 
-#include "bifrost/api/plugin.h"
-#include "bifrost/template/plugin_decl.h"
-
 #include "bifrost/api/helper.h"
 #include "bifrost/api/plugin_impl.h"
 #include "bifrost/core/buffered_logger.h"
@@ -56,7 +53,6 @@ class LoaderContext {
     std::unique_ptr<SharedMemory> Memory;
     std::unique_ptr<SharedLogger> SharedLogger;
     std::unique_ptr<ModuleLoader> ModuleLoader;
-    std::unique_ptr<PluginManager> PluginManager;
   };
 
   LoaderContext(LPVOID lpThreadParameter) { m_storage = InitStorage(lpThreadParameter); }
@@ -91,14 +87,14 @@ class LoaderContext {
     return storage;
   }
 
-  void LoadPlugins(LPVOID lpThreadParameter) {
-    SafeExec(m_storage.get(), "loading", [&lpThreadParameter, this]() {
+  DWORD LoadPlugins(LPVOID lpThreadParameter) {
+    bool success;
+    SafeExec(m_storage.get(), "loading", [&lpThreadParameter, &success, this]() {
       auto ctx = m_storage->Context.get();
       auto param = CheckSharedMemory(lpThreadParameter);
       auto loadParam = PluginLoadParam::Deserialize(param.CustomArgument);
 
       for (const auto& p : loadParam.Plugins) {
-
         // Load the library
         HMODULE handle = m_storage->ModuleLoader->GetOrLoadModule(p.Identifier, {p.Path});
         BIFROST_CHECK_WIN_CALL_CTX(ctx, ::DisableThreadLibraryCalls(handle) != 0);
@@ -111,19 +107,18 @@ class LoaderContext {
           continue;
         }
 
-
-        bifrost_PluginSetUp(nullptr);
+        PluginContext::InitParam param;
+        param.SharedMemoryName = m_storage->Memory->GetName();
+        param.SharedMemorySize = m_storage->Memory->GetSizeInBytes();
+        success &= bifrost_PluginSetUp((void*)&param) == 0;
       }
     });
+    return success;
   }
 
-  void UnloadPlugins(LPVOID lpThreadParameter) {
-  
-  }
+  DWORD UnloadPlugins(LPVOID lpThreadParameter) { return 0; }
 
-  void MessagePlugin(LPVOID lpThreadParameter) {
-  
-  }
+  DWORD MessagePlugin(LPVOID lpThreadParameter) { return 0; }
 
   /// Check the requested shared memory is the same as the used shared memory by deserializing InjectorParam
   InjectorParam CheckSharedMemory(LPVOID lpThreadParameter) {
@@ -219,15 +214,15 @@ void FreeLoaderContext(void) {
   return 0;
 
 DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter) {
-  BFL_FUNC({ g_context->LoadPlugins(lpThreadParameter); });
+  BFL_FUNC({ return g_context->LoadPlugins(lpThreadParameter); });
 }
 
 DWORD WINAPI bfl_UnloadPlugins(LPVOID lpThreadParameter) {
-  BFL_FUNC({ g_context->UnloadPlugins(lpThreadParameter); });
+  BFL_FUNC({ return g_context->UnloadPlugins(lpThreadParameter); });
 }
 
 DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter) {
-  BFL_FUNC({ g_context->MessagePlugin(lpThreadParameter); });
+  BFL_FUNC({ return g_context->MessagePlugin(lpThreadParameter); });
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

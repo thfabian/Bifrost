@@ -11,7 +11,14 @@
 
 #pragma once
 
-#pragma region Includes
+#include "bifrost/template/plugin_decl.h"
+
+#ifdef BIFROST_PLUGIN
+$BIFROST_PLUGIN_HEADER$
+#endif
+
+#pragma region Implementation
+#if defined(BIFROST_IMPLEMENTATION) || defined(__INTELLISENSE__)
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
@@ -21,32 +28,19 @@
 #define NOMINMAX
 #endif
 
-#include "bifrost/api/plugin.h"
-
-#include "bifrost/template/plugin_decl.h"
-
-#pragma endregion
-
-#ifdef BIFROST_PLUGIN
-$BIFROST_PLUGIN_HEADER$
-#endif
-
-#pragma region Implementation
-#if defined(BIFROST_IMPLEMENTATION) || defined(__INTELLISENSE__)
-
 #include <Windows.h>
 
 #include <fstream>
 #include <iostream>
 #include <mutex>
+#include <stdexcept>
 #include <string>
-#include <filesystem>
 
-#pragma region Bifrost Plugin Dll
+#include "bifrost/api/plugin.h"
 
 namespace bifrost {
 
-Plugin* Plugin::s_instance = nullptr;
+#pragma region Bifrost Plugin Dll
 
 namespace {
 
@@ -76,6 +70,9 @@ class BifrostPluginApi {
   using bfp_PluginSetUp_fn = decltype(&bfp_PluginSetUp);
   bfp_PluginSetUp_fn bfp_PluginSetUp;
 
+  using bfp_PluginTearDown_fn = decltype(&bfp_PluginTearDown);
+  bfp_PluginTearDown_fn bfp_PluginTearDown;
+
   using bfp_PluginGetLastError_fn = decltype(&bfp_PluginGetLastError);
   bfp_PluginGetLastError_fn bfp_PluginGetLastError;
 
@@ -84,6 +81,7 @@ class BifrostPluginApi {
     Check("LoadLibrary: bifrost_plugin.dll", (hModule = ::LoadLibraryW(L"bifrost_plugin.dll")) != NULL);
     Check("GetProcAddress: bfp_PluginInit", (bfp_PluginInit = (bfp_PluginInit_fn)::GetProcAddress(hModule, "bfp_PluginInit")) != NULL);
     Check("GetProcAddress: bfp_PluginSetUp", (bfp_PluginSetUp = (bfp_PluginSetUp_fn)::GetProcAddress(hModule, "bfp_PluginSetUp")) != NULL);
+    Check("GetProcAddress: bfp_PluginTearDown", (bfp_PluginTearDown = (bfp_PluginTearDown_fn)::GetProcAddress(hModule, "bfp_PluginTearDown")) != NULL);
     Check("GetProcAddress: bfp_PluginGetLastError",
           (bfp_PluginGetLastError = (bfp_PluginGetLastError_fn)::GetProcAddress(hModule, "bfp_PluginGetLastError")) != NULL);
   }
@@ -155,8 +153,29 @@ BIFROST_PLUGIN_SETUP_PROC_DECL
 
 BIFROST_PLUGIN_SETUP_PROC_DEF {
   using namespace bifrost;
-  auto plugin = GetApi().bfp_PluginInit();
-  if (GetApi().bfp_PluginSetUp(plugin, param) != BFI_OK) throw std::runtime_error(GetApi().bfp_PluginGetLastError(plugin));
+  auto& api = GetApi();
+
+  Plugin* plugin = &Plugin::Get();
+  bfp_PluginContext* ctx = api.bfp_PluginInit();
+
+  if (api.bfp_PluginSetUp(ctx, plugin->GetName(), (void*)plugin, param) != BFI_OK) {
+    throw std::runtime_error(api.bfp_PluginGetLastError(ctx));
+  }
+  return 0;
+}
+
+BIFROST_PLUGIN_TEARDOWN_PROC_DECL
+
+BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
+  using namespace bifrost;
+  auto& api = GetApi();
+
+  Plugin* plugin = &Plugin::Get();
+  bfp_PluginContext* ctx = (bfp_PluginContext*)plugin->_GetPlugin();
+
+  if (api.bfp_PluginTearDown(ctx, (void*)plugin, param) != BFI_OK) {
+    throw std::runtime_error(api.bfp_PluginGetLastError(ctx));
+  }
   return 0;
 }
 
