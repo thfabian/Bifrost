@@ -31,13 +31,22 @@ class Plugin {
   /// Get the name of the plugin
   virtual const char* GetName() { return s_name; }
 
+  /// Severity level
+  enum class LogLevel : unsigned int { Debug = 0, Info, Warn, Error, Disable };
+
+  /// Log a message - throws on error
+  ///
+  /// @param[in] level  Severity level
+  /// @param[in] msg    Message which has to be '\0' terminated
+  void Log(LogLevel level, const char* msg);
+
   /// Internal use only
   void _SetUpImpl(bfp_PluginContext_t* plugin);
 
   /// Internal use only
   void _TearDownImpl(bool noFail);
 
-    /// Internal use only
+  /// Internal use only
   bfp_PluginContext_t* _GetPlugin();
 
  private:
@@ -66,8 +75,6 @@ class Plugin {
 
 namespace bifrost {
 
-Plugin* Plugin::s_instance = nullptr;
-
 void Plugin::_SetUpImpl(bfp_PluginContext_t* plugin) {
   m_plugin = plugin;
   if (m_init) throw std::runtime_error("Plugin already set up");
@@ -81,8 +88,6 @@ void Plugin::_TearDownImpl(bool noFail) {
   TearDown();
   m_init = false;
 }
-
-bfp_PluginContext_t* Plugin::_GetPlugin() { return m_plugin; }
 
 }  // namespace bifrost
 

@@ -16,7 +16,7 @@ using namespace bifrost::api;
 
 namespace {
 
-#define BIFROST_PLUGIN_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, BFI_ERROR)
+#define BIFROST_PLUGIN_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, BFP_ERROR)
 #define BIFROST_PLUGIN_CATCH_ALL_PTR(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, nullptr)
 
 PluginContext* Get(bfp_PluginContext* ctx) { return (PluginContext*)ctx->_Internal; }
@@ -44,6 +44,10 @@ bfp_Status bfp_PluginSetUp(bfp_PluginContext* ctx, const char* name, void* plugi
 
 bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* plugin, void* param) {
   BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->TearDown(ctx, plugin, param); });
+}
+
+bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* module, const char* msg) {
+  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->Log(level, module, msg); });
 }
 
 void bfp_PluginFree(bfp_PluginContext* ctx) { Free<bfp_PluginContext, PluginContext>(ctx); }

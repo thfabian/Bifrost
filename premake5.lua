@@ -253,10 +253,18 @@ workspace "bifrost"
   -- *** Hello World ***
   project "01-hello-world"
     kind "ConsoleApp"
-    files { "example/01-hello-world/hello_world.h", "example/01-hello-world/hello_world.cpp" }
+    files { 
+      "example/01-hello-world/hello_world.h", 
+      "example/01-hello-world/hello_world.cpp",
+    }
   
   project "01-hello-world-plugin"
     kind "SharedLib"
     includedirs { "source" }
-    files "example/01-hello-world/hello_world_plugin.cpp" 
+    files { 
+      "example/01-hello-world/hello_world_plugin.cpp", 
+
+      "source/bifrost/template/plugin_main.h",
+      "source/bifrost/template/plugin_decl.h"
+    }
     

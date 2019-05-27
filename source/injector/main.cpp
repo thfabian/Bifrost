@@ -34,7 +34,7 @@ using namespace injector;
     throw std::runtime_error(bfi_ContextGetLastError(ctx.get())); \
   }
 #define INJECTOR_CHECK(expr)                                      \
-  if ((expr) != BFI_OK) {                                         \
+  if ((expr) != BFP_OK) {                                         \
     throw std::runtime_error(bfi_ContextGetLastError(ctx.get())); \
   }
 

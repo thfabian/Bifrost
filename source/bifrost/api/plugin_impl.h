@@ -76,14 +76,19 @@ class PluginContext {
       m_ctx->Logger().ErrorFormat("Failed to initialize plugin: %s", name);
       throw;
     }
-    return BFI_OK;
+    return BFP_OK;
   }
 
   struct TearDownParam {
     bool NoFail;
   };
 
-  bfp_Status TearDown(bfp_PluginContext* ctx, void* bfPlugin, void* tearDownParam) { return BFI_OK; }
+  bfp_Status TearDown(bfp_PluginContext* ctx, void* bfPlugin, void* tearDownParam) { return BFP_OK; }
+
+  bfp_Status Log(uint32_t level, const char* module, const char* msg) {
+    m_ctx->Logger().Sink((ILogger::LogLevel)level, module, msg);
+    return BFP_OK;
+  }
 
   // Error stash
   void SetLastError(std::string msg) { m_error = std::move(msg); }

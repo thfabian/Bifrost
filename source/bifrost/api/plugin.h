@@ -29,8 +29,8 @@ extern "C" {
 
 /// @brief Error status
 enum bfp_Status {
-  BFI_OK = 0,    ///< Everything is fine - no error
-  BFI_ERROR = 1  ///< An error occurred, call bfp_GetLastError to get the message
+  BFP_OK = 0,    ///< Everything is fine - no error
+  BFP_ERROR = 1  ///< An error occurred, call bfp_GetLastError to get the message
 };
 
 #pragma endregion
@@ -87,6 +87,13 @@ BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUp(bfp_PluginContext* ctx, const char
 /// @param[in] plugin   Plugin instance
 /// @param[in] param    Plugin set up parameter
 BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* plugin, void* param);
+
+/// @brief Log the message
+/// @param[in] ctx       Plugin context description
+/// @param[in] severity  Plugin instance
+/// @param[in] module    Plugin set up parameter
+/// @param[in] msg       Plugin set up parameter
+BIFROST_PLUGIN_API bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* module, const char* msg);
 
 /// @brief Free the plugin
 /// @param[in] plugin   Plugin context description

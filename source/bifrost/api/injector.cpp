@@ -31,7 +31,7 @@ using namespace bifrost::api;
 
 namespace {
 
-#define BIFROST_INJECTOR_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, BFI_ERROR)
+#define BIFROST_INJECTOR_CATCH_ALL(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, BFP_ERROR)
 #define BIFROST_INJECTOR_CATCH_ALL_PTR(stmts) BIFROST_API_CATCH_ALL_IMPL(ctx, stmts, nullptr)
 
 class ForwardLogger : public ILogger {
@@ -176,7 +176,7 @@ class InjectorContext {
     std::memcpy((void*)(*result)->SharedMemoryName, smName.c_str(), smName.size() + 1);
 
     m_ctx->Logger().Info("Successfully loaded plugins");
-    return BFI_OK;
+    return BFP_OK;
   }
 
   // Wait for the process to complete, kill it if we time out
@@ -193,7 +193,7 @@ class InjectorContext {
       const u32* ec = process->GetExitCode();
       *exitCode = ec ? *ec : STILL_ACTIVE;
     }
-    return BFI_OK;
+    return BFP_OK;
   }
 
   // Poll the process and set the error code if it completed
@@ -206,13 +206,13 @@ class InjectorContext {
       if (running) *running = 1;
       if (exitCode) *exitCode = STILL_ACTIVE;
     }
-    return BFI_OK;
+    return BFP_OK;
   }
 
   // Kill the process
   bfi_Status ProcessKill(Process* process) {
     KillProcess(m_ctx.get(), process->GetPid());
-    return BFI_OK;
+    return BFP_OK;
   }
 
   // Error stash
@@ -226,7 +226,7 @@ class InjectorContext {
     } else {
       SetUpBufferedLogger();
     }
-    return BFI_OK;
+    return BFP_OK;
   }
 
   // Logging
@@ -295,28 +295,28 @@ bfi_Status bfi_ContextSetLoggingCallback(bfi_Context* ctx, bfi_LoggingCallback c
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessLaunch(bfi_Context* ctx, const wchar_t* path, const char* arguments, bfi_Process_t** process) {
   BIFROST_INJECTOR_CATCH_ALL({
     *process = (Init<bfi_Process, Process>(Get(ctx)->GetContext(), Process::LaunchArguments{path ? path : L"", arguments ? arguments : ""}));
-    return BFI_OK;
+    return BFP_OK;
   });
 }
 
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessFromPid(bfi_Context* ctx, uint32_t pid, bfi_Process_t** process) {
   BIFROST_INJECTOR_CATCH_ALL({
     *process = (Init<bfi_Process, Process>(Get(ctx)->GetContext(), pid));
-    return BFI_OK;
+    return BFP_OK;
   });
 }
 
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessFromName(bfi_Context* ctx, const wchar_t* name, bfi_Process_t** process) {
   BIFROST_INJECTOR_CATCH_ALL({
     *process = (Init<bfi_Process, Process>(Get(ctx)->GetContext(), std::wstring(name)));
-    return BFI_OK;
+    return BFP_OK;
   });
 }
 
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessFree(bfi_Context* ctx, bfi_Process* process) {
   BIFROST_INJECTOR_CATCH_ALL({
     (Free<bfi_Process, Process>(process));
-    return BFI_OK;
+    return BFP_OK;
   });
 }
 
@@ -335,14 +335,14 @@ BIFROST_INJECTOR_API bfi_Status bfi_ProcessKill(bfi_Context* ctx, bfi_Process* p
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessKillByName(bfi_Context* ctx, const wchar_t* name) {
   BIFROST_INJECTOR_CATCH_ALL({
     KillProcess(Get(ctx)->GetContext(), name, true);
-    return BFI_OK;
+    return BFP_OK;
   });
 }
 
 BIFROST_INJECTOR_API bfi_Status bfi_ProcessKillByPid(bfi_Context* ctx, uint32_t pid) {
   BIFROST_INJECTOR_CATCH_ALL({
     KillProcess(Get(ctx)->GetContext(), pid, true);
-    return BFI_OK;
+    return BFP_OK;
   });
 }
 
@@ -360,7 +360,7 @@ BIFROST_INJECTOR_API bfi_Status bfi_PluginLoadResultFree(bfi_Context* ctx, bfi_P
       if(result->SharedMemoryName) delete[] result->SharedMemoryName;
       delete result;
     }
-    return BFI_OK;
+    return BFP_OK;
   });
 }
 

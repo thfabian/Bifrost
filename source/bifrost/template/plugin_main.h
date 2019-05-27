@@ -64,26 +64,27 @@ std::string GetLastWin32Error() {
 /// Interaction with bifrost_plugin.dll
 class BifrostPluginApi {
  public:
-  using bfp_PluginInit_fn = decltype(&bfp_PluginInit);
-  bfp_PluginInit_fn bfp_PluginInit;
+#define BIFROST_PLUGIN_API_DECL(name) \
+  using name##_fn = decltype(&name);  \
+  name##_fn name;
+#define BIFROST_PLUGIN_API_DEF(name) Check("GetProcAddress: " #name, (name = (name##_fn)::GetProcAddress(hModule, #name)) != NULL);
 
-  using bfp_PluginSetUp_fn = decltype(&bfp_PluginSetUp);
-  bfp_PluginSetUp_fn bfp_PluginSetUp;
-
-  using bfp_PluginTearDown_fn = decltype(&bfp_PluginTearDown);
-  bfp_PluginTearDown_fn bfp_PluginTearDown;
-
-  using bfp_PluginGetLastError_fn = decltype(&bfp_PluginGetLastError);
-  bfp_PluginGetLastError_fn bfp_PluginGetLastError;
+  BIFROST_PLUGIN_API_DECL(bfp_PluginFree)
+  BIFROST_PLUGIN_API_DECL(bfp_PluginGetLastError)
+  BIFROST_PLUGIN_API_DECL(bfp_PluginInit)
+  BIFROST_PLUGIN_API_DECL(bfp_PluginLog)
+  BIFROST_PLUGIN_API_DECL(bfp_PluginSetUp)
+  BIFROST_PLUGIN_API_DECL(bfp_PluginTearDown)
 
   BifrostPluginApi() {
     HMODULE hModule = NULL;
     Check("LoadLibrary: bifrost_plugin.dll", (hModule = ::LoadLibraryW(L"bifrost_plugin.dll")) != NULL);
-    Check("GetProcAddress: bfp_PluginInit", (bfp_PluginInit = (bfp_PluginInit_fn)::GetProcAddress(hModule, "bfp_PluginInit")) != NULL);
-    Check("GetProcAddress: bfp_PluginSetUp", (bfp_PluginSetUp = (bfp_PluginSetUp_fn)::GetProcAddress(hModule, "bfp_PluginSetUp")) != NULL);
-    Check("GetProcAddress: bfp_PluginTearDown", (bfp_PluginTearDown = (bfp_PluginTearDown_fn)::GetProcAddress(hModule, "bfp_PluginTearDown")) != NULL);
-    Check("GetProcAddress: bfp_PluginGetLastError",
-          (bfp_PluginGetLastError = (bfp_PluginGetLastError_fn)::GetProcAddress(hModule, "bfp_PluginGetLastError")) != NULL);
+    BIFROST_PLUGIN_API_DEF(bfp_PluginInit)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginLog)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginFree)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginGetLastError)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginSetUp)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginTearDown)
   }
 
  private:
@@ -101,21 +102,26 @@ class BifrostPluginApi {
       HMODULE hModule = NULL;
       if (::GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, (LPCSTR)&FunctionInThisDll, &hModule) !=
           0) {
-        DWORD err = ERROR_SUCCESS;
+        DWORD size = 0;
         do {
           path.resize(path.size() * 2);
-          err = ::GetModuleFileNameA(hModule, (LPSTR)path.c_str(), (DWORD)path.size()) != 0;
-        } while (err == ERROR_INSUFFICIENT_BUFFER);
+          size = ::GetModuleFileNameA(hModule, (LPSTR)path.c_str(), (DWORD)path.size());
+        } while (size == ERROR_INSUFFICIENT_BUFFER);
 
-        if (err == ERROR_SUCCESS) {
+        if (size > 0) {
           auto idx = path.find_last_of("\\/");
-          if (idx != -1) path = path.substr(idx);
+          if (idx != -1) path = path.substr(idx + 1, size - idx - 1);
           queriedDllName = true;
         }
       }
+
       if (!queriedDllName) path = "plugin";
-      std::ofstream ofs("log." + path + ".txt");
+
+      std::string filename = "log." + path + ".txt";
+      std::ofstream ofs(filename);
       ofs << errMsg << std::endl;
+
+      throw std::runtime_error(errMsg.c_str());
     }
   }
 };
@@ -147,6 +153,21 @@ static BifrostPluginApi& GetApi() {
 
 }  // namespace
 
+#pragma region Plugin Interface
+
+Plugin* Plugin::s_instance = nullptr;
+
+bfp_PluginContext_t* Plugin::_GetPlugin() { return m_plugin; }
+
+void Plugin::Log(Plugin::LogLevel level, const char* msg) {
+  auto& api = GetApi();
+  if (api.bfp_PluginLog((bfp_PluginContext*)m_plugin, (uint32_t)level, GetName(), msg) != BFP_OK) {
+    throw std::runtime_error(api.bfp_PluginGetLastError((bfp_PluginContext*)m_plugin));
+  }
+}
+
+#pragma endregion
+
 }  // namespace bifrost
 
 BIFROST_PLUGIN_SETUP_PROC_DECL
@@ -158,7 +179,7 @@ BIFROST_PLUGIN_SETUP_PROC_DEF {
   Plugin* plugin = &Plugin::Get();
   bfp_PluginContext* ctx = api.bfp_PluginInit();
 
-  if (api.bfp_PluginSetUp(ctx, plugin->GetName(), (void*)plugin, param) != BFI_OK) {
+  if (api.bfp_PluginSetUp(ctx, plugin->GetName(), (void*)plugin, param) != BFP_OK) {
     throw std::runtime_error(api.bfp_PluginGetLastError(ctx));
   }
   return 0;
@@ -173,9 +194,11 @@ BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
   Plugin* plugin = &Plugin::Get();
   bfp_PluginContext* ctx = (bfp_PluginContext*)plugin->_GetPlugin();
 
-  if (api.bfp_PluginTearDown(ctx, (void*)plugin, param) != BFI_OK) {
+  if (api.bfp_PluginTearDown(ctx, (void*)plugin, param) != BFP_OK) {
     throw std::runtime_error(api.bfp_PluginGetLastError(ctx));
   }
+  
+  api.bfp_PluginFree(ctx);
   return 0;
 }
 

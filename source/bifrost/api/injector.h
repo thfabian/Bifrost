@@ -29,8 +29,8 @@ extern "C" {
 
 /// @brief Error status
 enum bfi_Status {
-  BFI_OK = 0,    ///< Everything is fine - no error
-  BFI_ERROR = 1  ///< An error occurred, call bfi_GetLastError to get the message
+  BFP_OK = 0,    ///< Everything is fine - no error
+  BFP_ERROR = 1  ///< An error occurred, call bfi_GetLastError to get the message
 };
 
 /// @brief Launch or connect to the executable

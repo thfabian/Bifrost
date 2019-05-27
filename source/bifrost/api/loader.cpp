@@ -107,7 +107,7 @@ class LoaderContext {
           continue;
         }
 
-        PluginContext::InitParam param;
+        PluginContext::SetUpParam param;
         param.SharedMemoryName = m_storage->Memory->GetName();
         param.SharedMemorySize = m_storage->Memory->GetSizeInBytes();
         success &= bifrost_PluginSetUp((void*)&param) == 0;
