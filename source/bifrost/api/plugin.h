@@ -90,9 +90,9 @@ BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* p
 
 /// @brief Log the message
 /// @param[in] ctx       Plugin context description
-/// @param[in] severity  Plugin instance
-/// @param[in] module    Plugin set up parameter
-/// @param[in] msg       Plugin set up parameter
+/// @param[in] severity  Severity of the log message
+/// @param[in] module    Module to log from
+/// @param[in] msg       Log message
 BIFROST_PLUGIN_API bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* module, const char* msg);
 
 /// @brief Free the plugin

@@ -148,6 +148,23 @@ struct InjectorOptions : public OptionCollection {
                                                        "with which has <solution> open - the <solution> argument is optional.",
                                                        {"debugger"}, args::Options::HiddenFromUsage));
   }
+
+  bfi_InjectorArguments GetInjectorArguments(MemoryPool& mem) {
+    bfi_InjectorArguments args;
+    ZeroMemory(&args, sizeof(args));
+
+    args.TimeoutInS = GetValue<u32>(Timeout);
+    args.SharedMemorySizeInBytes = GetValue<u32>(SharedMemorySize);
+
+    auto sharedMemoryName = GetValue<std::string>(SharedMemoryName);
+    args.SharedMemoryName = sharedMemoryName.empty() ? NULL : mem.CopyString(sharedMemoryName);
+
+    args.Debugger = GetFlag(Debugger)->Matched() || ::IsDebuggerPresent();
+    auto debugger = GetValue<std::string>(Debugger);
+    args.VSSolution = debugger.empty() ? NULL : mem.CopyString(StringToWString(debugger));
+
+    return args;
+  }
 };
 
 /// Options used to launching executables
@@ -241,7 +258,7 @@ int main(int argc, const char* argv[]) {
           args::ValueFlagList<std::string> pluginArgs(launchParser, "name:args", "Pass <args> to the plugin <name>. This option can be repeated.",
                                                       {"plugin-arg"}, {}, args::Options::HiddenFromUsage);
 
-          auto injectorOption = InjectorOptions(launchParser);
+          auto injectorOptions = InjectorOptions(launchParser);
           ParseCommand(launchParser);
 
           RequiredAndExclusive(launchParser.GetCommand(), {exeOptions.GetFlag(ExecutableOptions::Executable), connectOptions.GetFlag(ConnectOptions::Pid),
@@ -271,18 +288,7 @@ int main(int argc, const char* argv[]) {
           }
 
           // Setup injector arguments
-          bfi_InjectorArguments injectorArguments;
-          ZeroMemory(&injectorArguments, sizeof(injectorArguments));
-
-          injectorArguments.TimeoutInS = injectorOption.GetValue<u32>(InjectorOptions::Timeout);
-          injectorArguments.SharedMemorySizeInBytes = injectorOption.GetValue<u32>(InjectorOptions::SharedMemorySize);
-
-          auto sharedMemoryName = injectorOption.GetValue<std::string>(InjectorOptions::SharedMemoryName);
-          injectorArguments.SharedMemoryName = sharedMemoryName.empty() ? NULL : mem.CopyString(sharedMemoryName);
-
-          injectorArguments.Debugger = injectorOption.GetFlag(InjectorOptions::Debugger)->Matched() || ::IsDebuggerPresent();
-          auto debugger = injectorOption.GetValue<std::string>(InjectorOptions::Debugger);
-          injectorArguments.VSSolution = debugger.empty() ? NULL : mem.CopyString(StringToWString(debugger));
+          bfi_InjectorArguments injectorArguments = injectorOptions.GetInjectorArguments(mem);
 
           // Setup plugin arguments
           std::unordered_map<std::string, std::string> bfiPluginArguments;
@@ -382,6 +388,135 @@ int main(int argc, const char* argv[]) {
               {"RemoteProcessExitCode", exitCode},
           });
         });
+
+    args::Command unloadCommand(
+        commandGroup, "unload", "Connect to the executable <pid> or <name> and unload the plugin(s).", [&](args::Subparser& launchParser) {
+          auto connectOptions = ConnectOptions(launchParser);
+
+          args::ValueFlagList<std::string> plugins(launchParser, "name", "Unload plugins given by <name>.", {"plugin"});
+
+          auto injectorOptions = InjectorOptions(launchParser);
+          ParseCommand(launchParser);
+
+          RequiredAndExclusive(launchParser.GetCommand(), {connectOptions.GetFlag(ConnectOptions::Pid), connectOptions.GetFlag(ConnectOptions::Name)});
+          Required(launchParser.GetCommand(), &plugins);
+
+          // Initialize Bifrost Injector
+          std::shared_ptr<bfi_Context> ctx(bfi_ContextInit(), [](bfi_Context* c) { bfi_ContextFree(c); });
+          if (ctx == nullptr) throw std::runtime_error("Failed to initialize bifrost injector context");
+          INJECTOR_CHECK(bfi_ContextSetLoggingCallback(ctx.get(), LogCallback));
+
+          // Connect to the executable
+          bfi_Process* proc = nullptr;
+          if (connectOptions.GetFlag(ConnectOptions::Pid)->Matched()) {
+            INJECTOR_CHECK(bfi_ProcessFromPid(ctx.get(), connectOptions.GetValue<u32>(ConnectOptions::Pid), &proc));
+          } else if (connectOptions.GetFlag(ConnectOptions::Name)->Matched()) {
+            INJECTOR_CHECK(bfi_ProcessFromName(ctx.get(), mem.CopyString(StringToWString(connectOptions.GetValue<std::string>(ConnectOptions::Name))), &proc));
+          }
+          std::shared_ptr<bfi_Process> process(proc, [ctx](bfi_Process* p) { bfi_ProcessFree(ctx.get(), p); });
+
+          // Setup injector arguments
+          bfi_InjectorArguments injectorArguments = injectorOptions.GetInjectorArguments(mem);
+
+          //// Setup plugin arguments
+          //std::unordered_map<std::string, std::string> bfiPluginArguments;
+          //for (const auto& p : pluginArgs) {
+          //  auto idx = p.find_first_of(':');
+          //  if (idx == -1) throw std::runtime_error(StringFormat("Invalid format of --plugin-arg=\"%s\": expected <name>:<args> pair, missing ':'", p.c_str()));
+
+          //  auto name = p.substr(0, idx);
+          //  auto args = p.substr(idx + 1);
+
+          //  auto it = bfiPluginArguments.find(name);
+          //  if (it != bfiPluginArguments.end()) {
+          //    it->second += " " + args;
+          //  } else {
+          //    bfiPluginArguments.emplace(std::move(name), std::move(args));
+          //  }
+          //}
+          //std::unordered_set<std::string> seenPlugins;
+
+          //// Construct the plugins
+          //std::vector<bfi_Plugin> bfiPlugins;
+          //for (const auto& p : plugins) {
+          //  std::string name, args;
+
+          //  std::wstring pathStr;
+          //  std::filesystem::path path;
+
+          //  // Extract path and name
+          //  auto idx = p.find_first_of(':');
+          //  if (idx != -1) {
+          //    pathStr = StringToWString(p.substr(0, idx));
+          //    name = p.substr(idx + 1);
+          //  } else {
+          //    pathStr = StringToWString(p);
+          //    name = std::filesystem::path(path).stem().string();
+          //  }
+
+          //  // 1) Use path relative to the current working directory
+          //  // 2) Use path is relative to the executable
+          //  // 3) Fall-back and use path which has been provided
+          //  path = std::filesystem::absolute(pathStr);
+          //  if (!std::filesystem::exists(path)) {
+          //    path = std::filesystem::path(bfLoader.GetCurrentModulePath()).parent_path() / pathStr;
+          //    if (!std::filesystem::exists(path)) {
+          //      path = pathStr;
+          //    }
+          //  }
+
+          //  // Associate arguments
+          //  auto it = bfiPluginArguments.find(name);
+          //  if (it != bfiPluginArguments.end()) {
+          //    args = it->second;
+          //    seenPlugins.emplace(name);
+          //  }
+
+          //  bfi_Plugin plugin;
+          //  plugin.Name = name.empty() ? NULL : mem.CopyString(name);
+          //  plugin.Path = path.empty() ? NULL : mem.CopyString(path.native());
+          //  plugin.Arguments = args.empty() ? NULL : mem.CopyString(args);
+
+          //  bfiPlugins.emplace_back(plugin);
+          //}
+
+          //// Warn about arguments which were not used
+          //for (const auto& p : bfiPluginArguments) {
+          //  if (seenPlugins.count(p.first) == 0) Warn(StringFormat("Arguments of plugin \"%s\" were not used", p.first.c_str()));
+          //}
+
+          //// Launch/connect to the executable and inject the plugins
+          //bfi_PluginLoadArguments pluginLoadArguments;
+          //ZeroMemory(&pluginLoadArguments, sizeof(pluginLoadArguments));
+
+          //pluginLoadArguments.Executable = &exeArguments;
+          //pluginLoadArguments.InjectorArguments = &injectorArguments;
+          //pluginLoadArguments.Plugins = bfiPlugins.data();
+          //pluginLoadArguments.NumPlugins = (u32)bfiPlugins.size();
+
+          //bfi_Process* bfiProcess = nullptr;
+          //bfi_PluginLoadResult* bfiPluginLoadResult = nullptr;
+
+          //INJECTOR_CHECK(bfi_PluginLoad(ctx.get(), &pluginLoadArguments, &bfiProcess, &bfiPluginLoadResult))
+
+          //std::shared_ptr<bfi_Process> process(bfiProcess, [&](bfi_Process* p) { INJECTOR_CHECK(bfi_ProcessFree(ctx.get(), p)); });
+          //std::shared_ptr<bfi_PluginLoadResult> pluginLoadResult(bfiPluginLoadResult,
+          //                                                       [&](bfi_PluginLoadResult* p) { INJECTOR_CHECK(bfi_PluginLoadResultFree(ctx.get(), p)); });
+
+          //int32_t exitCode = STILL_ACTIVE;
+          //if (!noWait) {
+          //  INJECTOR_CHECK(bfi_ProcessWait(ctx.get(), process.get(), exeTimeout ? exeTimeout.Get() : 0, &exitCode));
+          //  LogCallback((u32)ILogger::LogLevel::Debug, program.c_str(), StringFormat("Exit code of remote process: %i", exitCode).c_str());
+          //}
+
+          //Success({
+          //    {"SharedMemoryName", bfiPluginLoadResult->SharedMemoryName},
+          //    {"SharedMemorySize", bfiPluginLoadResult->SharedMemorySize},
+          //    {"RemoteProcessPid", bfiPluginLoadResult->RemoteProcessPid},
+          //    {"RemoteProcessExitCode", exitCode},
+          //});
+        });
+
 
     // Unload command
 

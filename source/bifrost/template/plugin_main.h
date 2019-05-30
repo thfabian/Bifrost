@@ -85,6 +85,9 @@ class BifrostPluginApi {
     BIFROST_PLUGIN_API_DEF(bfp_PluginGetLastError)
     BIFROST_PLUGIN_API_DEF(bfp_PluginSetUp)
     BIFROST_PLUGIN_API_DEF(bfp_PluginTearDown)
+
+#undef BIFROST_PLUGIN_API_DECL
+#undef BIFROST_PLUGIN_API_DEF
   }
 
  private:

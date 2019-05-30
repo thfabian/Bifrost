@@ -57,7 +57,7 @@ class PluginContext {
     try {
       // Set the module
       m_bufferedLogger->SetModule(name);
-      m_ctx->Logger().InfoFormat("Initializing plugin: %s", name);
+      m_ctx->Logger().InfoFormat("Setting up plugin: %s", name);
 
       // Connect to the shared memory
       m_memory = std::make_unique<SharedMemory>(m_ctx.get(), param->SharedMemoryName, param->SharedMemorySize);
@@ -73,7 +73,7 @@ class PluginContext {
       plugin->_SetUpImpl((bfp_PluginContext_t*)ctx);
 
     } catch (...) {
-      m_ctx->Logger().ErrorFormat("Failed to initialize plugin: %s", name);
+      m_ctx->Logger().ErrorFormat("Failed to set up plugin: %s", name);
       throw;
     }
     return BFP_OK;
@@ -83,7 +83,31 @@ class PluginContext {
     bool NoFail;
   };
 
-  bfp_Status TearDown(bfp_PluginContext* ctx, void* bfPlugin, void* tearDownParam) { return BFP_OK; }
+  bfp_Status TearDown(bfp_PluginContext* ctx, void* bfPlugin, void* tearDownParam) {
+    Plugin* plugin = (Plugin*)bfPlugin;
+    TearDownParam* param = (TearDownParam*)tearDownParam;
+    std::string name = m_bufferedLogger->GetModule();
+
+    try {
+      m_ctx->Logger().InfoFormat("Setting up plugin: %s", name.c_str());
+
+      // Call tear-down
+      plugin->_TearDownImpl(param->NoFail);
+
+      // Remove the shared logger
+      m_sharedLogger.reset();
+      m_ctx->SetLogger(m_bufferedLogger.get());
+
+      // Disconnect the shared memory
+      m_memory.reset();
+      m_ctx->SetMemory(nullptr);
+
+    } catch (...) {
+      m_ctx->Logger().ErrorFormat("Failed to tear down plugin: %s", name.c_str());
+      throw;
+    }
+    return BFP_OK;
+  }
 
   bfp_Status Log(uint32_t level, const char* module, const char* msg) {
     m_ctx->Logger().Sink((ILogger::LogLevel)level, module, msg);

@@ -94,7 +94,7 @@ typedef struct bfi_InjectorArguments_t {
 typedef struct bfi_PluginLoadArguments_t {
   bfi_ExecutableArguments* Executable;         ///< Executable to launch or connect
   bfi_InjectorArguments_t* InjectorArguments;  ///< Arguments to the injector process
-  bfi_Plugin* Plugins;                         ///< Plugins to inject
+  bfi_Plugin* Plugins;                         ///< Plugins to load
   uint32_t NumPlugins;                         ///< Number of plugins
 } bfi_PluginLoadArguments;
 
@@ -104,6 +104,18 @@ typedef struct bfi_PluginLoadResult_t {
   uint32_t SharedMemorySize;     ///< Size of the used shared memory
   uint32_t RemoteProcessPid;     ///< Process identifier of the launched or connected process
 } bfi_PluginLoadResult;
+
+/// @brief Plugin load arguments
+typedef struct bfi_PluginUnloadArguments_t {
+  bfi_InjectorArguments_t* InjectorArguments;  ///< Arguments to the injector process
+  bfi_Plugin* Plugins;                         ///< Plugins to unload
+  uint32_t NumPlugins;                         ///< Number of plugins
+} bfi_PluginUnloadArguments;
+
+/// @brief Result of unloading plugins
+typedef struct bfi_PluginUnloadResult_t {
+  int32_t* Unloaded;  ///< Set to 1 if the plugin has been successfully unloaded, 0 otherwise - (size `bfi_PluginUnloadArguments.NumPlugins`)
+} bfi_PluginUnloadResult;
 
 #pragma endregion
 
@@ -208,7 +220,7 @@ BIFROST_INJECTOR_API bfi_Status bfi_ProcessKillByPid(bfi_Context* ctx, uint32_t 
 
 #pragma region Plugin
 
-/// @brief Load the plugins into the process by connecting or launching the process
+/// @brief Load the plugins into the process by connecting or launching the executable
 /// @param[in] ctx       Context description
 /// @param[in] args      Argument description
 /// @param[out] process  If injection succeeds, set to the process description
@@ -219,6 +231,19 @@ BIFROST_INJECTOR_API bfi_Status bfi_PluginLoad(bfi_Context* ctx, const bfi_Plugi
 /// @param[in] ctx      Context description
 /// @param[in] result   Result of the plugin loading
 BIFROST_INJECTOR_API bfi_Status bfi_PluginLoadResultFree(bfi_Context* ctx, bfi_PluginLoadResult* result);
+
+/// @brief Unload the plugins from the process
+/// @param[in] ctx       Context description
+/// @param[in] args      Argument description
+/// @param[in] process   Process to unload the plugins from
+/// @param[out] result   Result of the plugin unloading
+BIFROST_INJECTOR_API bfi_Status bfi_PluginUnload(bfi_Context* ctx, const bfi_PluginUnloadArguments* args, const bfi_Process_t* process,
+                                                 bfi_PluginUnloadResult** result);
+
+/// @brief Free plugin unload result
+/// @param[in] ctx      Context description
+/// @param[in] result   Result of the plugin unloading
+BIFROST_INJECTOR_API bfi_Status bfi_PluginUnloadResultFree(bfi_Context* ctx, bfi_PluginUnloadResult* result);
 
 #pragma endregion
 

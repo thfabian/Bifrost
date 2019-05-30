@@ -179,6 +179,32 @@ class InjectorContext {
     return BFP_OK;
   }
 
+  // Unload the plugins
+  bfi_Status PluginUnload(const bfi_PluginUnloadArguments* args, const bfi_Process_t* process, bfi_PluginUnloadResult** result) {
+    m_ctx->Logger().Info("Unloading plugins into remote process ...");
+
+    if (!args->InjectorArguments) throw Exception("bfi_PluginLoadArguments.InjectorArguments is NULL");
+
+    *result = NULL;
+
+    try {
+      std::string smName = args->InjectorArguments->SharedMemoryName ? args->InjectorArguments->SharedMemoryName : UUID(m_ctx.get());
+      u64 smSize = (u64)args->InjectorArguments->SharedMemorySizeInBytes;
+
+      //// Create shared memory
+      //m_memory = std::make_unique<SharedMemory>(m_ctx.get(), smName, smSize);
+      //m_ctx->SetMemory(m_memory.get());
+      //SetUpLogConsumer();
+  
+    } catch (...) {
+      m_ctx->Logger().Error("Failed to unload plugins");
+      throw;
+    }
+
+    m_ctx->Logger().Info("Successfully unloaded plugins");
+    return BFP_OK;
+  }
+
   // Wait for the process to complete, kill it if we time out
   bfi_Status ProcessWait(Process* process, uint32_t timeout, int32_t* exitCode) {
     m_ctx->Logger().InfoFormat("Waiting for %s seconds for remote process to complete ...", timeout == 0 ? "infinite" : std::to_string(timeout).c_str());
@@ -357,7 +383,22 @@ bfi_Status bfi_PluginLoad(bfi_Context* ctx, const bfi_PluginLoadArguments* args,
 BIFROST_INJECTOR_API bfi_Status bfi_PluginLoadResultFree(bfi_Context* ctx, bfi_PluginLoadResult* result) {
   BIFROST_INJECTOR_CATCH_ALL({
     if (result) {
-      if(result->SharedMemoryName) delete[] result->SharedMemoryName;
+      if (result->SharedMemoryName) delete[] result->SharedMemoryName;
+      delete result;
+    }
+    return BFP_OK;
+  });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_PluginUnload(bfi_Context* ctx, const bfi_PluginUnloadArguments* args, const bfi_Process_t* process,
+                                                 bfi_PluginUnloadResult** result) {
+  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->PluginUnload(args, process, result); });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_PluginUnloadResultFree(bfi_Context* ctx, bfi_PluginUnloadResult* result) {
+  BIFROST_INJECTOR_CATCH_ALL({
+    if (result) {
+      if (result->Unloaded) delete[] result->Unloaded;
       delete result;
     }
     return BFP_OK;

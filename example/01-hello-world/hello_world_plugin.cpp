@@ -14,7 +14,7 @@
 
 class MyPlugin final : public ::bifrost::Plugin {
  public:
-  virtual void SetUp() override {}
+  virtual void SetUp() override { Log(Plugin::LogLevel::Error, "Damn son!"); }
   virtual void TearDown() override {}
 };
 
