@@ -23,12 +23,12 @@ TEST_F(ModuleLoaderTest, Loader) {
 
   // Load library
   HMODULE module = NULL;
-  ASSERT_NO_THROW(module = loader.GetModule("user32.dll"));
+  ASSERT_NO_THROW(module = loader.GetOrLoadModule("user32.dll", {L"user32.dll"}));
   ASSERT_TRUE(module != NULL);
   ASSERT_EQ(module, loader.GetModule("user32.dll"));
 
   // Check names
-  EXPECT_STREQ(L"user32.dll" , loader.GetModuleName(module).c_str());
+  EXPECT_STREQ(L"user32.dll", loader.GetModuleName(module).c_str());
 
   // Check handle
   EXPECT_EQ(module, loader.GetModule("user32.dll"));
