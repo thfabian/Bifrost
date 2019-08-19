@@ -9,15 +9,16 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
+#pragma once
 
-#include <windows.h>
-#include <iostream>
+namespace injector {
 
-int hello_world(int bar) { return bar + 1; }
+struct TerminalInfo {
+  int Columns;
+  int Rows;
+};
 
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
-}
+/// Get the size of the terminal
+extern TerminalInfo GetTerminalInfo();
+
+}  // namespace injector

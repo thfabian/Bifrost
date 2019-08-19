@@ -9,15 +9,23 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
+#pragma once
 
-#include <windows.h>
-#include <iostream>
+#include "bifrost/core/common.h"
 
-int hello_world(int bar) { return bar + 1; }
+namespace bifrost {
 
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
-}
+#pragma pack(push)
+#pragma pack(1)
+
+template <std::size_t SizeInBytes>
+struct Padding {
+  u8 Data[SizeInBytes];
+};
+
+template <>
+struct Padding<0> {};
+
+#pragma pack(pop)
+
+}  // namespace bifrost

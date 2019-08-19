@@ -9,15 +9,12 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
+#include <Windows.h>
 
-#include <windows.h>
-#include <iostream>
-
-int hello_world(int bar) { return bar + 1; }
-
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
+extern "C" {
+__declspec(dllexport) DWORD WINAPI MockDllInit(LPVOID lpThreadParameter);
 }
+
+DWORD WINAPI MockDllInit(LPVOID lpThreadParameter) { return 0; }
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

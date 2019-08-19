@@ -9,15 +9,15 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
+#include "bifrost/core/test/test.h"
+#include "bifrost/core/injector_param.h"
 
-#include <windows.h>
-#include <iostream>
+namespace {
 
-int hello_world(int bar) { return bar + 1; }
+using namespace bifrost;
 
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
-}
+class BufferedLoggerTest : public TestBaseNoSharedMemory {};
+
+TEST_F(BufferedLoggerTest, Flush) {}
+
+}  // namespace

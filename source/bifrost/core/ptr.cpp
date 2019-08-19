@@ -9,15 +9,12 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
-
-#include <windows.h>
+#include "bifrost/core/common.h"
+#include "bifrost/core/ptr.h"
 #include <iostream>
 
-int hello_world(int bar) { return bar + 1; }
+namespace bifrost::internal {
 
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
-}
+std::ostream& StreamOffset(std::ostream& os, u64 offset) noexcept { return (os << offset); }
+
+}  // namespace bifrost::internal

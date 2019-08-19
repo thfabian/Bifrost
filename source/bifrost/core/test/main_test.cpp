@@ -9,15 +9,10 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
+#include "bifrost/core/test/test.h"
 
-#include <windows.h>
-#include <iostream>
-
-int hello_world(int bar) { return bar + 1; }
-
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  ::testing::AddGlobalTestEnvironment(new bifrost::TestEnviroment);
+  return RUN_ALL_TESTS();
 }

@@ -9,15 +9,14 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
+#pragma once
 
-#include <windows.h>
-#include <iostream>
+#include "bifrost/core/common.h"
+#include <json.hpp>
 
-int hello_world(int bar) { return bar + 1; }
+namespace bifrost {
 
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
-}
+using Json = ::nlohmann::json;
+using JsonError = ::nlohmann::json::parse_error;
+
+}  // namespace bifrost

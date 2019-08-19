@@ -9,15 +9,10 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
-
-#include <windows.h>
-#include <iostream>
-
-int hello_world(int bar) { return bar + 1; }
+#include <Windows.h>
+#include <cstdlib>
 
 int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
+  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 0);
+  return argc > 1 ? std::atoi(argv[1]) : 0;
 }
