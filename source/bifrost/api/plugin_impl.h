@@ -89,7 +89,7 @@ class PluginContext {
     std::string name = m_bufferedLogger->GetModule();
 
     try {
-      m_ctx->Logger().InfoFormat("Setting up plugin: %s", name.c_str());
+      m_ctx->Logger().InfoFormat("Tearing down plugin: %s", name.c_str());
 
       // Call tear-down
       plugin->_TearDownImpl(param->NoFail);

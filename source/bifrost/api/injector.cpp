@@ -97,9 +97,12 @@ class InjectorContext {
 
       PluginLoadParam loadParam;
       for (u32 i = 0; i < args->NumPlugins; ++i) {
-        loadParam.Plugins.emplace_back(PluginLoadParam::Plugin{args->Plugins[i].Name ? args->Plugins[i].Name : "",
-                                                               args->Plugins[i].Path ? args->Plugins[i].Path : L"",
-                                                               args->Plugins[i].Arguments ? args->Plugins[i].Arguments : ""});
+        loadParam.Plugins.emplace_back(PluginLoadParam::Plugin{
+          args->Plugins[i].Name ? args->Plugins[i].Name : "",
+          args->Plugins[i].Path ? args->Plugins[i].Path : L"",
+          args->Plugins[i].Arguments ? args->Plugins[i].Arguments : "" ,
+          static_cast<bool>(args->Plugins[i].ForceLoad) }
+        );
       }
       param.CustomArgument = loadParam.Serialize();
 

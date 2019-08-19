@@ -71,13 +71,6 @@ typedef struct bfi_Executable_t {
   const wchar_t* Name;              ///< Name of the process to connect to (requires `Mode == BFI_CONNECT_VIA_NAME`)
 } bfi_ExecutableArguments;
 
-/// @brief Plugin description
-typedef struct bfi_Plugin_t {
-  const char* Name;       ///< Name of the plugin
-  const wchar_t* Path;    ///< Absolute path to the DLL to load
-  const char* Arguments;  ///< Arguments passed to the plugin
-} bfi_Plugin;
-
 #define BIFROST_INJECTOR_DEFAULT_InjectorArguments_SharedMemorySizeInBytes (1 << 22)
 #define BIFROST_INJECTOR_DEFAULT_InjectorArguments_TimeoutInS (5)
 
@@ -90,11 +83,21 @@ typedef struct bfi_InjectorArguments_t {
   const wchar_t* VSSolution;         ///< Connect to the Visual Studio instance which has `VSolution` open - if set to NULL any of them is used
 } bfi_InjectorArguments;
 
+#define BIFROST_INJECTOR_DEFAULT_PluginLoadDesc_ForceLoad 0
+
+/// @brief Plugin description
+typedef struct bfi_PluginLoadDesc_t {
+  const char* Name;       ///< Name of the plugin
+  const wchar_t* Path;    ///< Absolute path to the DLL to load
+  const char* Arguments;  ///< Arguments passed to the plugin
+  uint32_t ForceLoad;     ///< Set to 1 to force the plugin to be loaded even if it has already been loaded. Meaning, the plugin will be unloaded first.
+} bfi_PluginLoadDesc;
+
 /// @brief Plugin load arguments
 typedef struct bfi_PluginLoadArguments_t {
   bfi_ExecutableArguments* Executable;         ///< Executable to launch or connect
   bfi_InjectorArguments_t* InjectorArguments;  ///< Arguments to the injector process
-  bfi_Plugin* Plugins;                         ///< Plugins to load
+  bfi_PluginLoadDesc_t* Plugins;               ///< Plugins to load
   uint32_t NumPlugins;                         ///< Number of plugins
 } bfi_PluginLoadArguments;
 
@@ -105,11 +108,19 @@ typedef struct bfi_PluginLoadResult_t {
   uint32_t RemoteProcessPid;     ///< Process identifier of the launched or connected process
 } bfi_PluginLoadResult;
 
+/// @brief Plugin description
+typedef struct bfi_PluginUnloadDesc_t {
+  const char* Name;  ///< Name of the plugin
+} bfi_PluginUnloadDesc;
+
+#define BIFROST_INJECTOR_DEFAULT_PluginUnloadArguments_UnloadAll 0
+
 /// @brief Plugin load arguments
 typedef struct bfi_PluginUnloadArguments_t {
   bfi_InjectorArguments_t* InjectorArguments;  ///< Arguments to the injector process
-  bfi_Plugin* Plugins;                         ///< Plugins to unload
+  bfi_PluginUnloadDesc* Plugins;               ///< Plugins to unload
   uint32_t NumPlugins;                         ///< Number of plugins
+  uint32_t UnloadAll;                          ///< Set to 1 to unload all plugins (ignores `Plugins` argument)
 } bfi_PluginUnloadArguments;
 
 /// @brief Result of unloading plugins

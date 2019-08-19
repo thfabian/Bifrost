@@ -22,6 +22,7 @@ struct PluginLoadParam {
     std::string Identifier;  ///< Identifier of the Plugin
     std::wstring Path;       ///< Path to the DLL
     std::string Arguments;   ///< Plugin arguments
+    bool ForceLoad;          ///< Load the plugin even if it's already loaded?
   };
   std::vector<Plugin> Plugins;
 
@@ -35,7 +36,7 @@ struct PluginLoadParam {
 /// Parameter for unloading plugin
 struct PluginUnloadParam {
   std::vector<std::string> Plugins;  ///< List of plugins to unload
-  bool UnloadAll;                    ///< Unload all plugins (ignores `Plugins`)?
+  bool UnloadAll;                    ///< Unload all plugins (ignores `Plugins` vector)?
 
   /// Serialize the parameters to a JSON string
   std::string Serialize() const;
@@ -45,7 +46,7 @@ struct PluginUnloadParam {
 };
 
 struct PluginMessageParam {
-  std::string Identifier;  ///< Identifier of the plugin
+  std::string Identifier;  ///< Identifier of the plugin (as passed in `PluginLoadParam`)
   std::string Message;     ///< Message to send
 
   /// Serialize the parameters to a JSON string

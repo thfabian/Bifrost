@@ -215,7 +215,7 @@ int main(int argc, const char* argv[]) {
     args::Flag json(generalGroup, "json", "Print output JSON formatted to stdout.", {"json"}, args::Options::HiddenFromUsage);
     args::ValueFlag<std::string> logFile(generalGroup, "file", "Log to <file> (default: " INJECTOR_LOG_FILE ")", {"log-file"}, INJECTOR_LOG_FILE,
                                          args::Options::HiddenFromUsage);
-    
+
     Context bfCtx;
     ModuleLoader bfLoader(&bfCtx);
 
@@ -257,6 +257,11 @@ int main(int argc, const char* argv[]) {
               {"plugin"});
           args::ValueFlagList<std::string> pluginArgs(launchParser, "name:args", "Pass <args> to the plugin <name>. This option can be repeated.",
                                                       {"plugin-arg"}, {}, args::Options::HiddenFromUsage);
+          args::ValueFlagList<std::string> pluginForceLoad(
+              launchParser, "name",
+              StringFormat("Force load the plugin <name> by unloading it first, in case it has already been loaded, and load it again (default: %s).",
+                           BIFROST_INJECTOR_DEFAULT_PluginLoadDesc_ForceLoad ? "on" : "off"),
+              {"plugin-force"}, {}, args::Options::HiddenFromUsage);
 
           auto injectorOptions = InjectorOptions(launchParser);
           ParseCommand(launchParser);
@@ -306,10 +311,14 @@ int main(int argc, const char* argv[]) {
               bfiPluginArguments.emplace(std::move(name), std::move(args));
             }
           }
-          std::unordered_set<std::string> seenPlugins;
+
+          // Parse force load arguments
+          std::unordered_set<std::string> bfiForceLoad;
+          for (const auto& p : pluginForceLoad) bfiForceLoad.emplace(p);
 
           // Construct the plugins
-          std::vector<bfi_Plugin> bfiPlugins;
+          std::unordered_set<std::string> seenPlugins;
+          std::vector<bfi_PluginLoadDesc> bfiPluginDescs;
           for (const auto& p : plugins) {
             std::string name, args;
 
@@ -338,18 +347,23 @@ int main(int argc, const char* argv[]) {
             }
 
             // Associate arguments
-            auto it = bfiPluginArguments.find(name);
-            if (it != bfiPluginArguments.end()) {
+            if (auto it = bfiPluginArguments.find(name); it != bfiPluginArguments.end()) {
               args = it->second;
               seenPlugins.emplace(name);
             }
 
-            bfi_Plugin plugin;
-            plugin.Name = name.empty() ? NULL : mem.CopyString(name);
-            plugin.Path = path.empty() ? NULL : mem.CopyString(path.native());
-            plugin.Arguments = args.empty() ? NULL : mem.CopyString(args);
+            bfi_PluginLoadDesc desc;
+            desc.Name = name.empty() ? NULL : mem.CopyString(name);
+            desc.Path = path.empty() ? NULL : mem.CopyString(path.native());
+            desc.Arguments = args.empty() ? NULL : mem.CopyString(args);
 
-            bfiPlugins.emplace_back(plugin);
+            if (auto it = bfiForceLoad.find(name); it != bfiForceLoad.end()) {
+              desc.ForceLoad = true;
+            } else {
+              desc.ForceLoad = BIFROST_INJECTOR_DEFAULT_PluginLoadDesc_ForceLoad;
+            }
+
+            bfiPluginDescs.emplace_back(desc);
           }
 
           // Warn about arguments which were not used
@@ -363,8 +377,8 @@ int main(int argc, const char* argv[]) {
 
           pluginLoadArguments.Executable = &exeArguments;
           pluginLoadArguments.InjectorArguments = &injectorArguments;
-          pluginLoadArguments.Plugins = bfiPlugins.data();
-          pluginLoadArguments.NumPlugins = (u32)bfiPlugins.size();
+          pluginLoadArguments.Plugins = bfiPluginDescs.data();
+          pluginLoadArguments.NumPlugins = (u32)bfiPluginDescs.size();
 
           bfi_Process* bfiProcess = nullptr;
           bfi_PluginLoadResult* bfiPluginLoadResult = nullptr;
@@ -389,6 +403,7 @@ int main(int argc, const char* argv[]) {
           });
         });
 
+    // Unload command
     args::Command unloadCommand(
         commandGroup, "unload", "Connect to the executable <pid> or <name> and unload the plugin(s).", [&](args::Subparser& launchParser) {
           auto connectOptions = ConnectOptions(launchParser);
@@ -419,10 +434,12 @@ int main(int argc, const char* argv[]) {
           bfi_InjectorArguments injectorArguments = injectorOptions.GetInjectorArguments(mem);
 
           //// Setup plugin arguments
-          //std::unordered_map<std::string, std::string> bfiPluginArguments;
-          //for (const auto& p : pluginArgs) {
+
+          // std::unordered_map<std::string, std::string> bfiPluginArguments;
+          // for (const auto& p : pluginArgs) {
           //  auto idx = p.find_first_of(':');
-          //  if (idx == -1) throw std::runtime_error(StringFormat("Invalid format of --plugin-arg=\"%s\": expected <name>:<args> pair, missing ':'", p.c_str()));
+          //  if (idx == -1) throw std::runtime_error(StringFormat("Invalid format of --plugin-arg=\"%s\": expected <name>:<args> pair, missing ':'",
+          //  p.c_str()));
 
           //  auto name = p.substr(0, idx);
           //  auto args = p.substr(idx + 1);
@@ -434,11 +451,11 @@ int main(int argc, const char* argv[]) {
           //    bfiPluginArguments.emplace(std::move(name), std::move(args));
           //  }
           //}
-          //std::unordered_set<std::string> seenPlugins;
+          // std::unordered_set<std::string> seenPlugins;
 
           //// Construct the plugins
-          //std::vector<bfi_Plugin> bfiPlugins;
-          //for (const auto& p : plugins) {
+          // std::vector<bfi_Plugin> bfiPlugins;
+          // for (const auto& p : plugins) {
           //  std::string name, args;
 
           //  std::wstring pathStr;
@@ -481,44 +498,41 @@ int main(int argc, const char* argv[]) {
           //}
 
           //// Warn about arguments which were not used
-          //for (const auto& p : bfiPluginArguments) {
+          // for (const auto& p : bfiPluginArguments) {
           //  if (seenPlugins.count(p.first) == 0) Warn(StringFormat("Arguments of plugin \"%s\" were not used", p.first.c_str()));
           //}
 
           //// Launch/connect to the executable and inject the plugins
-          //bfi_PluginLoadArguments pluginLoadArguments;
-          //ZeroMemory(&pluginLoadArguments, sizeof(pluginLoadArguments));
+          // bfi_PluginLoadArguments pluginLoadArguments;
+          // ZeroMemory(&pluginLoadArguments, sizeof(pluginLoadArguments));
 
-          //pluginLoadArguments.Executable = &exeArguments;
-          //pluginLoadArguments.InjectorArguments = &injectorArguments;
-          //pluginLoadArguments.Plugins = bfiPlugins.data();
-          //pluginLoadArguments.NumPlugins = (u32)bfiPlugins.size();
+          // pluginLoadArguments.Executable = &exeArguments;
+          // pluginLoadArguments.InjectorArguments = &injectorArguments;
+          // pluginLoadArguments.Plugins = bfiPlugins.data();
+          // pluginLoadArguments.NumPlugins = (u32)bfiPlugins.size();
 
-          //bfi_Process* bfiProcess = nullptr;
-          //bfi_PluginLoadResult* bfiPluginLoadResult = nullptr;
+          // bfi_Process* bfiProcess = nullptr;
+          // bfi_PluginLoadResult* bfiPluginLoadResult = nullptr;
 
-          //INJECTOR_CHECK(bfi_PluginLoad(ctx.get(), &pluginLoadArguments, &bfiProcess, &bfiPluginLoadResult))
+          // INJECTOR_CHECK(bfi_PluginLoad(ctx.get(), &pluginLoadArguments, &bfiProcess, &bfiPluginLoadResult))
 
-          //std::shared_ptr<bfi_Process> process(bfiProcess, [&](bfi_Process* p) { INJECTOR_CHECK(bfi_ProcessFree(ctx.get(), p)); });
-          //std::shared_ptr<bfi_PluginLoadResult> pluginLoadResult(bfiPluginLoadResult,
+          // std::shared_ptr<bfi_Process> process(bfiProcess, [&](bfi_Process* p) { INJECTOR_CHECK(bfi_ProcessFree(ctx.get(), p)); });
+          // std::shared_ptr<bfi_PluginLoadResult> pluginLoadResult(bfiPluginLoadResult,
           //                                                       [&](bfi_PluginLoadResult* p) { INJECTOR_CHECK(bfi_PluginLoadResultFree(ctx.get(), p)); });
 
-          //int32_t exitCode = STILL_ACTIVE;
-          //if (!noWait) {
+          // int32_t exitCode = STILL_ACTIVE;
+          // if (!noWait) {
           //  INJECTOR_CHECK(bfi_ProcessWait(ctx.get(), process.get(), exeTimeout ? exeTimeout.Get() : 0, &exitCode));
           //  LogCallback((u32)ILogger::LogLevel::Debug, program.c_str(), StringFormat("Exit code of remote process: %i", exitCode).c_str());
           //}
 
-          //Success({
+          // Success({
           //    {"SharedMemoryName", bfiPluginLoadResult->SharedMemoryName},
           //    {"SharedMemorySize", bfiPluginLoadResult->SharedMemorySize},
           //    {"RemoteProcessPid", bfiPluginLoadResult->RemoteProcessPid},
           //    {"RemoteProcessExitCode", exitCode},
           //});
         });
-
-
-    // Unload command
 
     // Launch command
 
@@ -568,7 +582,7 @@ int main(int argc, const char* argv[]) {
   } catch (SuccessException& e) {
     if (generalOptions.Json) {
       PrintJsonOutput(true, e.Output, "");
-    } else if(!generalOptions.Quiet) {
+    } else if (!generalOptions.Quiet) {
       PrintOutput(e.Output);
     }
     return 0;

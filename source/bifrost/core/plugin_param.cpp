@@ -25,6 +25,7 @@ std::string PluginLoadParam::Serialize() const {
     jPlugin["Identifier"] = p.Identifier;
     jPlugin["Path"] = p.Path;
     jPlugin["Arguments"] = p.Arguments;
+    jPlugin["ForceLoad"] = p.ForceLoad;
 
     j["Plugins"].emplace_back(std::move(jPlugin));
   }
@@ -42,7 +43,12 @@ PluginLoadParam PluginLoadParam::Deserialize(const std::string& jStr) {
     if (!j["Plugins"].is_null()) {
       for (const auto& p : j["Plugins"]) {
         param.Plugins.emplace_back(
-            PluginLoadParam::Plugin{p["Identifier"].get<std::string>(), p["Path"].get<std::wstring>(), p["Arguments"].get<std::string>()});
+            PluginLoadParam::Plugin{
+            p["Identifier"].get<std::string>(), 
+            p["Path"].get<std::wstring>(), 
+            p["Arguments"].get<std::string>(),
+            p["ForceLoad"].get<bool>(),
+          });
       }
     }
 

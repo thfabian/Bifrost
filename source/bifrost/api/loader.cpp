@@ -34,6 +34,8 @@ __declspec(dllexport) DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter);
 
 namespace {
 
+/// This is a singleton instance - there will only be 1 bifrost_loader.dll per process. This class holds information about all the loaded plugins and knows how
+/// to interact with them.
 class LoaderContext {
  public:
   struct Storage {
@@ -55,7 +57,20 @@ class LoaderContext {
     std::unique_ptr<ModuleLoader> ModuleLoader;
   };
 
+  struct Plugin {
+    HMODULE Handle;
+  };
+
   LoaderContext(LPVOID lpThreadParameter) { m_storage = InitStorage(lpThreadParameter); }
+
+  ~LoaderContext() {
+    try {
+      if (m_storage) {
+        SafeExec(m_storage.get(), "library tear down", [&]() { UnloadPluginsImpl(m_storage->Context.get(), {{}, true}); });
+      }
+    } catch (...) {
+    }
+  }
 
   /// Parse InjectorParam given by `lpThreadParameter` and setup context and shared memory
   std::unique_ptr<Storage> InitStorage(LPVOID lpThreadParameter) {
@@ -87,6 +102,40 @@ class LoaderContext {
     return storage;
   }
 
+  bool LoadPluginImpl(Context* ctx, const PluginLoadParam::Plugin& p) {
+    auto it = m_pluginMap.find(p.Identifier);
+    bool loaded = it != m_pluginMap.end();
+
+    if (p.ForceLoad && loaded) {
+      UnloadPluginsImpl(ctx, PluginUnloadParam{{p.Identifier}, false});
+    } else if (loaded) {
+      ctx->Logger().InfoFormat("Plugin \"%s\" has already been loaded. Skipping.", p.Identifier);
+      return true;
+    }
+
+    // Load the library
+    HMODULE handle = m_storage->ModuleLoader->GetOrLoadModule(p.Identifier, {p.Path});
+    BIFROST_CHECK_WIN_CALL_CTX(ctx, ::DisableThreadLibraryCalls(handle) != 0);
+
+    // Get the init procedure
+    auto bifrost_PluginSetUp = (BIFROST_PLUGIN_SETUP_PROC_TYPE)::GetProcAddress(handle, BIFROST_PLUGIN_SETUP_PROC_NAME_STRING);
+    if (!bifrost_PluginSetUp) {
+      ctx->Logger().WarnFormat("Failed to load plugin \"%s\": Failed to get set up procedure \"%s\": %s", p.Identifier, BIFROST_PLUGIN_SETUP_PROC_NAME_STRING,
+                               GetLastWin32Error().c_str());
+      return true;
+    }
+
+    PluginContext::SetUpParam param;
+    param.SharedMemoryName = m_storage->Memory->GetName();
+    param.SharedMemorySize = m_storage->Memory->GetSizeInBytes();
+    bool success = bifrost_PluginSetUp((void*)&param) == 0;
+    if (success) {
+      // Add the plugin to loaded plugin map
+      m_pluginMap.emplace(p.Identifier, Plugin{handle});
+    }
+    return success;
+  }
+
   DWORD LoadPlugins(LPVOID lpThreadParameter) {
     bool success;
     SafeExec(m_storage.get(), "loading", [&lpThreadParameter, &success, this]() {
@@ -94,29 +143,61 @@ class LoaderContext {
       auto param = CheckSharedMemory(lpThreadParameter);
       auto loadParam = PluginLoadParam::Deserialize(param.CustomArgument);
 
-      for (const auto& p : loadParam.Plugins) {
-        // Load the library
-        HMODULE handle = m_storage->ModuleLoader->GetOrLoadModule(p.Identifier, {p.Path});
-        BIFROST_CHECK_WIN_CALL_CTX(ctx, ::DisableThreadLibraryCalls(handle) != 0);
-
-        // Get the init procedure
-        auto bifrost_PluginSetUp = (BIFROST_PLUGIN_SETUP_PROC_TYPE)::GetProcAddress(handle, BIFROST_PLUGIN_SETUP_PROC_NAME_STRING);
-        if (!bifrost_PluginSetUp) {
-          ctx->Logger().WarnFormat("Failed to load plugin \"%s\": Failed to get set up procedure \"%s\": %s", p.Identifier,
-                                   BIFROST_PLUGIN_SETUP_PROC_NAME_STRING, GetLastWin32Error().c_str());
-          continue;
-        }
-
-        PluginContext::SetUpParam param;
-        param.SharedMemoryName = m_storage->Memory->GetName();
-        param.SharedMemorySize = m_storage->Memory->GetSizeInBytes();
-        success &= bifrost_PluginSetUp((void*)&param) == 0;
-      }
+      for (const auto& p : loadParam.Plugins) success &= LoadPluginImpl(ctx, p);
     });
     return success;
   }
 
-  DWORD UnloadPlugins(LPVOID lpThreadParameter) { return 0; }
+  bool UnloadPluginImpl(Context* ctx, std::string identifier, const Plugin& p) {
+    // Get the tear-down procedure
+    auto bifrost_PluginTearDown = (BIFROST_PLUGIN_TEARDOWN_PROC_TYPE)::GetProcAddress(p.Handle, BIFROST_PLUGIN_TEARDOWN_PROC_NAME_STRING);
+    if (!bifrost_PluginTearDown) {
+      ctx->Logger().WarnFormat("Failed to unload plugin \"%s\": Failed to get tear down procedure \"%s\": %s", identifier,
+                               BIFROST_PLUGIN_TEARDOWN_PROC_NAME_STRING, GetLastWin32Error().c_str());
+      return true;
+    }
+
+    PluginContext::TearDownParam param;
+    param.NoFail = false;
+    return bifrost_PluginTearDown((void*)&param) == 0;
+  }
+
+  bool UnloadPluginsImpl(Context* ctx, const PluginUnloadParam& p) {
+    std::vector<std::pair<std::string, Plugin>> pluginsToUnload;
+    bool success = true;
+
+    if (p.UnloadAll) {
+      for (const auto& pair : m_pluginMap) {
+        pluginsToUnload.emplace_back(pair);
+      }
+    } else {
+      for (const auto& plugin : p.Plugins) {
+        auto it = m_pluginMap.find(plugin);
+
+        // Check if the plugin is loaded
+        if (it != m_pluginMap.end()) {
+          pluginsToUnload.emplace_back(plugin, it->second);
+        } else {
+          ctx->Logger().WarnFormat("Failed to unload plugin \"%s\": plugin is not loaded", plugin);
+        }
+      }
+    }
+
+    for (const auto& plugin : pluginsToUnload) success &= UnloadPluginImpl(ctx, plugin.first, plugin.second);
+    return success;
+  }
+
+  DWORD UnloadPlugins(LPVOID lpThreadParameter) {
+    bool success;
+    SafeExec(m_storage.get(), "unloading", [&lpThreadParameter, &success, this]() {
+      auto ctx = m_storage->Context.get();
+      auto param = CheckSharedMemory(lpThreadParameter);
+      auto unloadParam = PluginUnloadParam::Deserialize(param.CustomArgument);
+
+      success &= UnloadPluginsImpl(ctx, unloadParam);
+    });
+    return success;
+  }
 
   DWORD MessagePlugin(LPVOID lpThreadParameter) { return 0; }
 
@@ -183,6 +264,7 @@ class LoaderContext {
 
  private:
   std::unique_ptr<Storage> m_storage;
+  std::unordered_map<std::string, Plugin> m_pluginMap;
 };
 
 // Singleton context

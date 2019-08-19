@@ -15,7 +15,7 @@
 class MyPlugin final : public ::bifrost::Plugin {
  public:
   virtual void SetUp() override { Log(Plugin::LogLevel::Error, "Damn son!"); }
-  virtual void TearDown() override {}
+  virtual void TearDown() override { Log(Plugin::LogLevel::Error, "Doneso!");}
 };
 
 BIFROST_REGISTER_PLUGIN(MyPlugin)
