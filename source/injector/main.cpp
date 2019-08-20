@@ -90,7 +90,7 @@ void PrintJsonOutput(bool success, const Json& output, const char* error) {
   jOutput["Success"] = success;
   jOutput["Output"] = output;
   jOutput["Error"] = error;
-  std::cout << jOutput.dump(2) << std::endl;
+  std::cout << jOutput.dump() << std::endl;
 }
 
 /// Print output to stdout
@@ -286,7 +286,7 @@ int main(int argc, const char* argv[]) {
               exeArguments.ExecutableArguments = mem.CopyString(exeOptions.GetValue<std::string>(ExecutableOptions::Arguments));
           } else if (connectOptions.GetFlag(ConnectOptions::Pid)->Matched()) {
             exeArguments.Mode = BFI_CONNECT_VIA_PID;
-            exeArguments.Pid = connectOptions.GetValue<u32>(ConnectOptions::Pid);
+            exeArguments.Pid = connectOptions.GetValue<i32>(ConnectOptions::Pid);
           } else if (connectOptions.GetFlag(ConnectOptions::Name)->Matched()) {
             exeArguments.Mode = BFI_CONNECT_VIA_NAME;
             exeArguments.Name = mem.CopyString(StringToWString(connectOptions.GetValue<std::string>(ConnectOptions::Name)));

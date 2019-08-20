@@ -251,14 +251,25 @@ workspace "bifrost"
   -- *
 
   -- *** Hello World ***
-  project "01-hello-world"
-    kind "ConsoleApp"
+  project "01_hello_world_dll"
+    kind "SharedLib"
+    targetname "01-hello-world"
     files { 
       "example/01-hello-world/hello_world.h", 
       "example/01-hello-world/hello_world.cpp",
     }
+    
+  project "01_hello_world_executable"
+    kind "ConsoleApp"
+    targetname "01-hello-world"
+    files { 
+      "example/01-hello-world/hello_world.h", 
+      "example/01-hello-world/hello_world_main.cpp",
+    }
+    links "01_hello_world_dll"
+    dependson "01_hello_world_dll"
   
-  project "01-hello-world-plugin"
+  project "01_hello_world_plugin"
     kind "SharedLib"
     includedirs { "source" }
     files { 

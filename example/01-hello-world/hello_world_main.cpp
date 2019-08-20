@@ -9,7 +9,15 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#pragma once
+#include "hello_world.h"
 
-/// Add `a` and `b`
-extern "C" __declspec(dllexport) int hello_world_add(int a, int b);
+#include <Windows.h>
+#include <iostream>
+
+int main(int argc, const char* argv[]) {
+  ::Sleep(argc > 1 ? std::atoi(argv[1]) : 3000);
+
+  const int a = 1;
+  const int b = 2;
+  return ::hello_world_add(a, b) == (a + b);
+}

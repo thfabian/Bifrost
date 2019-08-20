@@ -8,12 +8,12 @@ if not errorlevel 1 set interactive=0
 
 :: ===================
 
-:: Get all the thirdpary env variables
-call "%~dp0\thirdparty\init.bat"
+set build_mode=Debug
+if _%1_ neq __ set build_mode=%1 
+set bin_path="%~dp0..\build-vs2017\bin\%build_mode%"
 
-:: Call preamke
-set BIFROST_BUILD_DIR=build-vs2017
-"%BIFROST_PREMAKE_DIR%\premake5.exe" vs2017
+call "%~dp0\..\thirdparty\init.bat"
+"%BIFROST_PYTHON_DIR%\python.exe" bifrost-test.py test_and_load "%bin_path%"
 
 :: ===================
 
