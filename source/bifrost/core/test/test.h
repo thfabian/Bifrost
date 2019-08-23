@@ -11,35 +11,14 @@
 
 #pragma once
 
-#include "bifrost/core/common.h"
-#include "bifrost/core/context.h"
-#include "bifrost/core/ilogger.h"
-#include "bifrost/core/shared_memory.h"
+#include "bifrost/core/test/test_shared.h"
 #include "bifrost/core/module_loader.h"
-#include <gtest/gtest.h>
+#include "bifrost/core/shared_memory.h"
 
 namespace bifrost {
 
-class TestLogger final : public ILogger {
+class TestEnviroment final : public ::testing::Environment, public BaseTestEnviroment {
  public:
-  virtual void SetModule(const char* module) override;
-
-  virtual void Sink(LogLevel level, const char* module, const char* msg) override;
-  virtual void Sink(LogLevel level, const char* msg) override;
-
- private:
-  std::mutex m_mutex;
-  std::string m_module;
-};
-
-class TestEnviroment final : public ::testing::Environment {
- public:
-  /// Name of the current test-case
-  std::string TestCaseName() const;
-
-  /// Name of the current test
-  std::string TestName() const;
-
   /// Get the full path to the mock executable
   std::wstring GetMockExecutable() const;
 
@@ -50,9 +29,6 @@ class TestEnviroment final : public ::testing::Environment {
 
   virtual void SetUp() override { s_instance = std::make_unique<TestEnviroment>(); }
   virtual void TearDown() override { s_instance.reset(); }
-
- private:
-  std::wstring GetMockFile(std::wstring type, std::wstring filename) const;
 
  private:
   static std::unique_ptr<TestEnviroment> s_instance;

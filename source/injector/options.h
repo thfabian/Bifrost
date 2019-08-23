@@ -58,7 +58,13 @@ class OptionCollection {
   T GetValue(u32 id) {
     std::any result;
     GetOption(id).GetValue(result);
-    return std::any_cast<T>(result);
+
+    try {
+      return std::any_cast<T>(result);
+    } catch (std::bad_any_cast& e) {
+      throw std::runtime_error(StringFormat("Cannot convert type \"%s\" to \"%s\": %s", result.type().name(), typeid(T).name(), e.what()));
+    }
+    return T();
   }
 
   args::FlagBase* GetFlag(u32 id) { return GetOption(id).GetFlag(); }

@@ -2,10 +2,11 @@
 setlocal EnableDelayedExpansion
 pushd %~dp0
 
-:: Check if we are called from within a cmd.exe or double clicked
 set interactive=1
 echo %cmdcmdline% | find /i "%~0" >nul
 if not errorlevel 1 set interactive=0
+
+:: ===================
 
 :: Get all the thirdpary env variables
 call "%~dp0\thirdparty\init.bat"
@@ -13,8 +14,10 @@ call "%~dp0\thirdparty\init.bat"
 :: Call preamke
 set BIFROST_BUILD_DIR=build-vs2017
 "%BIFROST_PREMAKE_DIR%\premake5.exe" vs2017
-set EXIT_CODE=%errorlevel%
 
+:: ===================
+
+set EXIT_CODE=%errorlevel%
 if _%interactive%_==_0_ pause
 
 popd

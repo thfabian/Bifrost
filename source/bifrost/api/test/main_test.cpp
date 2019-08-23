@@ -9,7 +9,10 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#pragma once
+#include "bifrost/api/test/test.h"
 
-/// Add `a` and `b`
-extern "C" __declspec(dllexport) int hello_world_add(int a, int b);
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  ::testing::AddGlobalTestEnvironment(new bifrost::TestEnviroment);
+  return RUN_ALL_TESTS();
+}

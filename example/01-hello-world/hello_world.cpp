@@ -11,13 +11,8 @@
 
 #include "hello_world.h"
 
-#include <windows.h>
-#include <iostream>
+#include <Windows.h>
 
-int hello_world(int bar) { return bar + 1; }
+int hello_world_add(int a, int b) { return a + b; }
 
-int main(int argc, const char* argv[]) {
-  int bar = hello_world(argc > 1 ? std::atoi(argv[1]) : -1);
-  ::Sleep(2000);
-  return bar;
-}
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

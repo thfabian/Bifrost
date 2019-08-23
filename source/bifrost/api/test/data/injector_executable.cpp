@@ -9,7 +9,10 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#pragma once
+#include <Windows.h>
+#include <cstdlib>
 
-/// Add `a` and `b`
-extern "C" __declspec(dllexport) int hello_world_add(int a, int b);
+int main(int argc, const char* argv[]) {
+  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 0);
+  return argc > 1 ? std::atoi(argv[1]) : 0;
+}

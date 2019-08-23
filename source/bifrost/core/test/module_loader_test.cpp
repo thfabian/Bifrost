@@ -28,7 +28,7 @@ TEST_F(ModuleLoaderTest, Loader) {
   ASSERT_EQ(module, loader.GetModule("user32.dll"));
 
   // Check names
-  EXPECT_STREQ(L"user32.dll", loader.GetModuleName(module).c_str());
+  EXPECT_TRUE(StringCompareCaseInsensitive(L"user32.dll", loader.GetModuleName(module).c_str()));
 
   // Check handle
   EXPECT_EQ(module, loader.GetModule("user32.dll"));
