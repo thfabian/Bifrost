@@ -95,10 +95,10 @@ typedef struct bfi_PluginLoadDesc_t {
 
 /// @brief Plugin load arguments
 typedef struct bfi_PluginLoadArguments_t {
-  bfi_ExecutableArguments* Executable;         ///< Executable to launch or connect
-  bfi_InjectorArguments_t* InjectorArguments;  ///< Arguments to the injector process
-  bfi_PluginLoadDesc_t* Plugins;               ///< Plugins to load
-  uint32_t NumPlugins;                         ///< Number of plugins
+  bfi_ExecutableArguments* Executable;       ///< Executable to launch or connect
+  bfi_InjectorArguments* InjectorArguments;  ///< Arguments to the injector process
+  bfi_PluginLoadDesc* Plugins;               ///< Plugins to load
+  uint32_t NumPlugins;                       ///< Number of plugins
 } bfi_PluginLoadArguments;
 
 /// @brief Result of loading plugins
@@ -117,10 +117,10 @@ typedef struct bfi_PluginUnloadDesc_t {
 
 /// @brief Plugin load arguments
 typedef struct bfi_PluginUnloadArguments_t {
-  bfi_InjectorArguments_t* InjectorArguments;  ///< Arguments to the injector process
-  bfi_PluginUnloadDesc* Plugins;               ///< Plugins to unload
-  uint32_t NumPlugins;                         ///< Number of plugins
-  uint32_t UnloadAll;                          ///< Set to 1 to unload all plugins (ignores `Plugins` argument)
+  bfi_InjectorArguments* InjectorArguments;  ///< Arguments to the injector process
+  bfi_PluginUnloadDesc* Plugins;             ///< Plugins to unload
+  uint32_t NumPlugins;                       ///< Number of plugins
+  uint32_t UnloadAll;                        ///< Set to 1 to unload all plugins (ignores `Plugins` argument)
 } bfi_PluginUnloadArguments;
 
 /// @brief Result of unloading plugins

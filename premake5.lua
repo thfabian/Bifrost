@@ -38,7 +38,7 @@ workspace "bifrost"
   filter { "configurations:Release" }
     optimize "On"
     
-  -- *****
+  -- *
   -- *** External ***
   -- *
   
@@ -105,7 +105,7 @@ workspace "bifrost"
       links "external_gtest"
     end
     
-  -- *****
+  -- *
   -- *** Bifrost ***
   -- *
     
@@ -166,7 +166,7 @@ workspace "bifrost"
     end
     
     
-  -- *** Bifrost Injector ***
+  -- *** Injector ***
   project "bifrost_injector"
     kind "SharedLib"
     includedirs { "source" }
@@ -226,9 +226,39 @@ workspace "bifrost"
 	
     bifrost_add_external_gtest()
     bifrost_add_bifrost_core()
-    dependson { "bifrost_core_test_mock_executable", "bifrost_core_test_mock_dll" } 
+    dependson { "bifrost_core_test_mock_executable", "bifrost_core_test_mock_dll" }
     
-  -- *****
+  -- *** Bifrost API Test (injector executable) ***
+  project "bifrost_api_test_injector_executable"
+    kind "ConsoleApp"
+    targetname "test-bifrost-api-injector-executable"
+    files { "source/bifrost/api/test/data/injector_executable.cpp" }
+    
+  -- *** Bifrost API Test (injector plugin) ***
+  project "bifrost_api_test_injector_plugin"
+    kind "SharedLib"
+    includedirs { "source" }
+    targetname "test-bifrost-api-injector-plugin"
+    files { "source/bifrost/api/test/data/injector_plugin.cpp" } 
+    
+  -- *** Bifrost API Test ***
+  project "bifrost_api_test"
+    kind "ConsoleApp"
+    includedirs { "source" }
+    targetname "test-bifrost-api"
+    
+    pchheader "bifrost/api/test/test.h"
+    pchsource "source/bifrost/api/test/test.cpp"
+    
+    files { "source/bifrost/api/test/*" }
+	
+    bifrost_add_external_gtest()
+    bifrost_add_bifrost_core()
+    bifrost_add_bifrost_injector()
+
+    dependson { "bifrost_api_test_injector_executable", "bifrost_api_test_injector_plugin" }
+    
+  -- *
   -- *** Injector ***
   -- *
     
@@ -246,7 +276,7 @@ workspace "bifrost"
     bifrost_add_external_args()
     bifrost_add_external_spdlog()
     
-  -- *****
+  -- *
   -- *** Example ***
   -- *
 
