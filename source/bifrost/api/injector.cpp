@@ -81,43 +81,21 @@ class InjectorContext {
 
     std::unique_ptr<Process> proc = nullptr;
     try {
-      smName = args->InjectorArguments->SharedMemoryName ? args->InjectorArguments->SharedMemoryName : UUID(m_ctx.get());
-      smSize = args->InjectorArguments->SharedMemorySizeInBytes;
-
-      // Create shared memory
-      m_memory = std::make_unique<SharedMemory>(m_ctx.get(), smName, smSize);
-      m_ctx->SetMemory(m_memory.get());
-      SetUpLogConsumer();
+      // Create or reuse the existing shared memory
+      CreateOrReuseExistingSharedMemory(args->InjectorArguments);
 
       // Setup the injector arguments for bifrost_loader.dll
-      InjectorParam param;
-      param.Pid = ::GetCurrentProcessId();
-      param.SharedMemoryName = m_ctx->Memory().GetName();
-      param.SharedMemorySize = (u32)m_ctx->Memory().GetSizeInBytes();
-
       PluginLoadParam loadParam;
       for (u32 i = 0; i < args->NumPlugins; ++i) {
-        loadParam.Plugins.emplace_back(PluginLoadParam::Plugin{
-          args->Plugins[i].Name ? args->Plugins[i].Name : "",
-          args->Plugins[i].Path ? args->Plugins[i].Path : L"",
-          args->Plugins[i].Arguments ? args->Plugins[i].Arguments : "" ,
-          static_cast<bool>(args->Plugins[i].ForceLoad) }
-        );
+        loadParam.Plugins.emplace_back(
+            PluginLoadParam::Plugin{args->Plugins[i].Name ? args->Plugins[i].Name : "", args->Plugins[i].Path ? args->Plugins[i].Path : L"",
+                                    args->Plugins[i].Arguments ? args->Plugins[i].Arguments : "", static_cast<bool>(args->Plugins[i].ForceLoad)});
       }
-      param.CustomArgument = loadParam.Serialize();
-
-      std::wstring cwd(2 * MAX_PATH, '\0');
-      DWORD len = (u32)cwd.size();
-      BIFROST_ASSERT_CALL_CTX(m_ctx.get(), (len = ::GetCurrentDirectory(len, (wchar_t*)cwd.data())) != 0);
-      param.WorkingDirectory = cwd.substr(0, len);
-      m_ctx->Logger().DebugFormat(L"Using working directory: \"%s\"", param.WorkingDirectory.c_str());
-
-      auto handle = m_loader->GetOrLoadModule("bifrost_loader", {L"bifrost_loader.dll"});
-      BIFROST_CHECK_WIN_CALL_CTX(m_ctx.get(), ::DisableThreadLibraryCalls(handle) != 0);
+      auto param = MakeInjectorParam(loadParam.Serialize());
 
       // Prepare bifrost_loader.dll to be injected
       Process::InjectArguments injectArguments;
-      injectArguments.DllPath = m_loader->GetModulePath(handle);
+      injectArguments.DllPath = GetPathOfBifrostLoader();
       injectArguments.InitProcArg = param.Serialize();
       injectArguments.InitProcName = "bfl_LoadPlugins";
       injectArguments.TimeoutInMs = args->InjectorArguments->TimeoutInS * 1000;
@@ -145,15 +123,9 @@ class InjectorContext {
       rpPid = proc->GetPid();
 
       // Attach a debugger?
-      if (args->InjectorArguments->Debugger) {
-        m_debugger = std::make_unique<Debugger>(m_ctx.get());
-        m_debugger->Attach(proc->GetPid(), args->InjectorArguments->VSSolution);
+      if (args->InjectorArguments->Debugger) AttachDebugger(args->InjectorArguments, proc.get(), injectArguments);
 
-        // Wait forever
-        injectArguments.TimeoutInMs = INFINITE;
-      }
-
-      // Inject the plugins
+      // Inject and load the plugins
       proc->Inject(std::move(injectArguments));
 
       // Resume execution..
@@ -183,26 +155,48 @@ class InjectorContext {
   }
 
   // Unload the plugins
-  bfi_Status PluginUnload(const bfi_PluginUnloadArguments* args, const bfi_Process_t* process, bfi_PluginUnloadResult** result) {
-    m_ctx->Logger().Info("Unloading plugins into remote process ...");
+  bfi_Status PluginUnload(const bfi_PluginUnloadArguments* args, Process* process, bfi_PluginUnloadResult** result) {
+    m_ctx->Logger().Info("Unloading plugins from remote process ...");
 
-    if (!args->InjectorArguments) throw Exception("bfi_PluginLoadArguments.InjectorArguments is NULL");
+    if (!args->InjectorArguments) throw Exception("bfi_PluginUnloadArguments.InjectorArguments is NULL");
 
     *result = NULL;
-
     try {
-      std::string smName = args->InjectorArguments->SharedMemoryName ? args->InjectorArguments->SharedMemoryName : UUID(m_ctx.get());
-      u64 smSize = (u64)args->InjectorArguments->SharedMemorySizeInBytes;
+      // Create or reuse the existing shared memory
+      CreateOrReuseExistingSharedMemory(args->InjectorArguments);
 
-      //// Create shared memory
-      //m_memory = std::make_unique<SharedMemory>(m_ctx.get(), smName, smSize);
-      //m_ctx->SetMemory(m_memory.get());
-      //SetUpLogConsumer();
-  
+      // Setup the injector arguments for bifrost_loader.dll
+      PluginUnloadParam loadParam;
+      loadParam.UnloadAll = args->UnloadAll;
+      if (!loadParam.UnloadAll) {
+        for (u32 i = 0; i < args->NumPlugins; ++i) loadParam.Plugins.emplace_back(args->Plugins[i].Name);
+      }
+      auto param = MakeInjectorParam(loadParam.Serialize());
+
+      // Prepare bifrost_loader.dll to be injected
+      Process::InjectArguments injectArguments;
+      injectArguments.DllPath = GetPathOfBifrostLoader();
+      injectArguments.InitProcArg = param.Serialize();
+      injectArguments.InitProcName = "bfl_UnloadPlugins";
+      injectArguments.TimeoutInMs = args->InjectorArguments->TimeoutInS * 1000;
+
+      // Attach a debugger?
+      if (args->InjectorArguments->Debugger) AttachDebugger(args->InjectorArguments, process, injectArguments);
+
+      // Inject and unload the plugins
+      process->Inject(std::move(injectArguments));
+
     } catch (...) {
       m_ctx->Logger().Error("Failed to unload plugins");
       throw;
     }
+
+    // Assemble the result
+    *result = new bfi_PluginUnloadResult;
+    (*result)->Unloaded = new int32_t[args->NumPlugins];
+    std::memset((*result)->Unloaded, 1, args->NumPlugins * sizeof(int32_t));
+
+    // TODO: Get a way to check if the plugin has been unloaded (requires communication back)
 
     m_ctx->Logger().Info("Successfully unloaded plugins");
     return BFP_OK;
@@ -211,7 +205,7 @@ class InjectorContext {
   // Wait for the process to complete, kill it if we time out
   bfi_Status ProcessWait(Process* process, uint32_t timeout, int32_t* exitCode) {
     m_ctx->Logger().InfoFormat("Waiting for %s seconds for remote process to complete ...", timeout == 0 ? "infinite" : std::to_string(timeout).c_str());
-    u32 reason = process->Wait(timeout);
+    u32 reason = process->Wait(timeout * 1000);
 
     if (reason == WAIT_TIMEOUT || reason == WAIT_ABANDONED) {
       m_ctx->Logger().Warn("Process timed out or wait was abandoned. Killing process ...");
@@ -242,6 +236,58 @@ class InjectorContext {
   bfi_Status ProcessKill(Process* process) {
     KillProcess(m_ctx.get(), process->GetPid());
     return BFP_OK;
+  }
+
+  // Get the path of the of the bifrost loader library so we can find it again from the remote process
+  std::wstring GetPathOfBifrostLoader() {
+    auto handle = m_loader->GetOrLoadModule("bifrost_loader", {L"bifrost_loader.dll"});
+    BIFROST_CHECK_WIN_CALL_CTX(m_ctx.get(), ::DisableThreadLibraryCalls(handle) != 0);
+    return m_loader->GetModulePath(handle);
+  }
+
+  // Create the injector parameters
+  InjectorParam MakeInjectorParam(const std::string& customArgs) {
+    InjectorParam param;
+    param.Pid = ::GetCurrentProcessId();
+    param.SharedMemoryName = m_ctx->Memory().GetName();
+    param.SharedMemorySize = (u32)m_ctx->Memory().GetSizeInBytes();
+    param.CustomArgument = customArgs;
+
+    std::wstring cwd(2 * MAX_PATH, '\0');
+    DWORD len = (u32)cwd.size();
+    BIFROST_ASSERT_CALL_CTX(m_ctx.get(), (len = ::GetCurrentDirectory(len, (wchar_t*)cwd.data())) != 0);
+    param.WorkingDirectory = cwd.substr(0, len);
+    m_ctx->Logger().DebugFormat(L"Using working directory: \"%s\"", param.WorkingDirectory.c_str());
+    return param;
+  }
+
+  // Create/Connect to shared memory
+  void CreateOrReuseExistingSharedMemory(const bfi_InjectorArguments* args) {
+    std::unique_ptr<SharedMemory> memory;
+
+    // Reuse existing memory if it's the same name/size specification
+    if (!m_memory || (args->SharedMemoryName != nullptr && std::string_view(args->SharedMemoryName) != std::string_view(m_memory->GetName())) ||
+        (args->SharedMemorySizeInBytes != 0 && args->SharedMemorySizeInBytes != memory->GetSizeInBytes())) {
+      std::string smName = args->SharedMemoryName ? args->SharedMemoryName : UUID(m_ctx.get());
+      u64 smSize = (u64)args->SharedMemorySizeInBytes;
+      memory = std::make_unique<SharedMemory>(m_ctx.get(), smName, smSize);
+    }
+
+    if (memory) {
+      m_memory = std::move(memory);
+      m_ctx->SetMemory(m_memory.get());
+      SetUpLogConsumer();
+    }
+  }
+
+  void AttachDebugger(const bfi_InjectorArguments* args, Process* proc, Process::InjectArguments& injectArguments) {
+    if (!m_debugger) {
+      m_debugger = std::make_unique<Debugger>(m_ctx.get());
+      m_debugger->Attach(proc->GetPid(), args->VSSolution);
+    }
+
+    // Wait forever in the injection process
+    injectArguments.TimeoutInMs = INFINITE;
   }
 
   // Error stash
@@ -291,6 +337,7 @@ class InjectorContext {
 
 InjectorContext* Get(bfi_Context* ctx) { return (InjectorContext*)ctx->_Internal; }
 Process* Get(bfi_Process* process) { return (Process*)process->_Internal; }
+Process* Get(const bfi_Process* process) { return (Process*)process->_Internal; }
 
 }  // namespace
 
@@ -395,7 +442,7 @@ BIFROST_INJECTOR_API bfi_Status bfi_PluginLoadResultFree(bfi_Context* ctx, bfi_P
 
 BIFROST_INJECTOR_API bfi_Status bfi_PluginUnload(bfi_Context* ctx, const bfi_PluginUnloadArguments* args, const bfi_Process_t* process,
                                                  bfi_PluginUnloadResult** result) {
-  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->PluginUnload(args, process, result); });
+  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->PluginUnload(args, Get(process), result); });
 }
 
 BIFROST_INJECTOR_API bfi_Status bfi_PluginUnloadResultFree(bfi_Context* ctx, bfi_PluginUnloadResult* result) {
