@@ -49,6 +49,7 @@ class PluginContext {
   struct SetUpParam {
     std::string SharedMemoryName;
     u64 SharedMemorySize;
+    std::string Arguments;
   };
 
   bfp_Status SetUp(bfp_PluginContext* ctx, const char* name, void* bfPlugin, void* setUpParam) {
@@ -68,6 +69,9 @@ class PluginContext {
       m_sharedLogger->SetModule(name);
       m_ctx->SetLogger(m_sharedLogger.get());
       m_bufferedLogger->Flush(m_sharedLogger.get());
+
+      // Set the arguments
+      plugin->_SetArguments(param->Arguments.empty() ? "" : param->Arguments.c_str());
 
       // Call the setup method
       plugin->_SetUpImpl((bfp_PluginContext_t*)ctx);

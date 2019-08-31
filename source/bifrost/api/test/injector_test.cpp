@@ -42,6 +42,17 @@ class TestInjector : public ::testing::Test {
 
   bfi_Context* GetContext() const { return m_ctx.get(); }
 
+  Context* GetBifrostContext() const { return m_bfCtx.get(); }
+
+  std::string GetTmpFile() { return TestEnviroment::Get().GetTmpFile(m_bfCtx.get()); }
+
+  /// Get the content of ``file``
+  std::string GetContent(std::string file) {
+    if (!std::filesystem::exists(file)) throw std::runtime_error("File does not exist: \"" + file + "\"");
+    std::ifstream ifs(file);
+    return {std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>()};
+  }
+
   /// Create bfi_PluginLoadArguments
   std::shared_ptr<bfi_InjectorArguments> MakeInjectorArguments(std::string sharedMemoryName = "") {
     auto args = std::make_shared<bfi_InjectorArguments>();
@@ -150,6 +161,13 @@ class TestInjector : public ::testing::Test {
     return exitCode;
   }
 
+  /// Get plugin help
+  std::shared_ptr<char> Help() {
+    char* help = nullptr;
+    BIFROST_EXPECT_OK(bfi_PluginHelp(GetContext(), TestEnviroment::Get().GetInjectorPlugin().c_str(), &help));
+    return std::shared_ptr<char>(help, [&](char* p) { bfi_PluginHelpFree(GetContext(), p); });
+  }
+
  private:
   MemoryPool m_mem;
   std::shared_ptr<bfi_Context> m_ctx;
@@ -157,19 +175,24 @@ class TestInjector : public ::testing::Test {
 };
 
 TEST_F(TestInjector, LoadAndWait) {
+  auto tmpFile = GetTmpFile();
+
   auto launchArgs = MakeExecutableArgumentsForLaunch();
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile);
 
   // Load & Wait
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   ASSERT_EQ(Wait(Load(loadArgs).Process), 0);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:TearDown:") << "File: " << tmpFile;
 }
 
 TEST_F(TestInjector, LoadAndUnload) {
+  auto tmpFile = GetTmpFile();
+
   auto launchArgs = MakeExecutableArgumentsForLaunch();
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile);
 
   // Load
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
@@ -181,9 +204,63 @@ TEST_F(TestInjector, LoadAndUnload) {
   auto unloadArgs = MakePluginUnloadArguments(injectorArgs, pluginUnloadDesc);
   auto unloadResult = Unload(unloadArgs, process);
   ASSERT_TRUE(unloadResult.Result->Unloaded[0]);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:TearDown:") << "File: " << tmpFile;
 
   // Wait
   ASSERT_EQ(Wait(loadResult.Process), 0);
+}
+
+TEST_F(TestInjector, LoadLoad) {
+  auto tmpFile = GetTmpFile();
+
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile);
+
+  // Load
+  auto launchArgs = MakeExecutableArgumentsForLaunch();
+  auto loadArgs1 = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult1 = Load(loadArgs1);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:") << "File: " << tmpFile;
+
+  // Load
+  auto connectArgs = MakeExecutableArgumentsForConnect(loadResult1.Result->RemoteProcessPid);
+  auto loadArgs2 = MakePluginLoadArguments(connectArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult2 = Load(loadArgs2);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:") << "File: " << tmpFile;  // Skip load as it has already been loaded
+
+  // Wait
+  ASSERT_EQ(Wait(loadResult2.Process), 0);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:TearDown:") << "File: " << tmpFile;
+}
+
+TEST_F(TestInjector, ForceLoadLoad) {
+  auto tmpFile = GetTmpFile();
+
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile);
+  pluginLoadDesc[0].ForceLoad = true;
+
+  // Load
+  auto launchArgs = MakeExecutableArgumentsForLaunch();
+  auto loadArgs1 = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult1 = Load(loadArgs1);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:") << "File: " << tmpFile;
+
+  // Load
+  auto connectArgs = MakeExecutableArgumentsForConnect(loadResult1.Result->RemoteProcessPid);
+  auto loadArgs2 = MakePluginLoadArguments(connectArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult2 = Load(loadArgs2);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:TearDown:SetUp:") << "File: " << tmpFile;  // Plugin is already loaded, unload it and reload it
+
+  // Wait
+  ASSERT_EQ(Wait(loadResult2.Process), 0);
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:TearDown:SetUp:TearDown:") << "File: " << tmpFile;
+}
+
+TEST_F(TestInjector, Help) {
+  // Help
+  auto helpStr = Help();
+  ASSERT_STREQ(helpStr.get(), "Help");
 }
 
 }  // namespace

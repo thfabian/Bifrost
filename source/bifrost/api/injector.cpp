@@ -26,6 +26,8 @@
 #include "bifrost/core/sm_log_stash.h"
 #include "bifrost/debugger/debugger.h"
 
+#include "bifrost/template/plugin_decl.h"
+
 using namespace bifrost;
 using namespace bifrost::api;
 
@@ -82,7 +84,7 @@ class InjectorContext {
     std::unique_ptr<Process> proc = nullptr;
     try {
       // Create or reuse the existing shared memory
-      CreateOrReuseExistingSharedMemory(args->InjectorArguments);
+      CreateOrReuseExistingSharedMemory(args->InjectorArguments->SharedMemoryName, args->InjectorArguments->SharedMemorySizeInBytes);
 
       // Setup the injector arguments for bifrost_loader.dll
       PluginLoadParam loadParam;
@@ -163,7 +165,7 @@ class InjectorContext {
     *result = NULL;
     try {
       // Create or reuse the existing shared memory
-      CreateOrReuseExistingSharedMemory(args->InjectorArguments);
+      CreateOrReuseExistingSharedMemory(args->InjectorArguments->SharedMemoryName, args->InjectorArguments->SharedMemorySizeInBytes);
 
       // Setup the injector arguments for bifrost_loader.dll
       PluginUnloadParam loadParam;
@@ -199,6 +201,45 @@ class InjectorContext {
     // TODO: Get a way to check if the plugin has been unloaded (requires communication back)
 
     m_ctx->Logger().Info("Successfully unloaded plugins");
+    return BFP_OK;
+  }
+
+  // Message the plugin
+  bfi_Status PluginMessage(const bfi_PluginMessageArguments* args, Process* process) {
+    m_ctx->Logger().Info("Unloading plugins from remote process ...");
+
+    if (!args->InjectorArguments) throw Exception("bfi_PluginUnloadArguments.InjectorArguments is NULL");
+
+    try {
+      // Create or reuse the existing shared memory
+      CreateOrReuseExistingSharedMemory(args->InjectorArguments->SharedMemoryName, args->InjectorArguments->SharedMemorySizeInBytes);
+    } catch (...) {
+      m_ctx->Logger().Error("Failed to send message");
+      throw;
+    }
+    m_ctx->Logger().Info("Successfully send message ");
+    return BFP_OK;
+  }
+
+  // Get help message of the plugin
+  bfi_Status PluginHelp(const wchar_t* path, char** help) {
+    const char* helpStr = "";
+
+    auto handle = m_loader->GetOrLoadModule(std::filesystem::path(path).filename().string(), {path});
+    auto bifrost_PluginHelp = (BIFROST_PLUGIN_HELP_PROC_TYPE)::GetProcAddress(handle, BIFROST_PLUGIN_HELP_PROC_NAME_STRING);
+    if (!bifrost_PluginHelp) {
+      m_ctx->Logger().WarnFormat("Failed to get help of plugin \"%s\": failed to get help procedure \"%s\": %s", WStringToString(path),
+                                 BIFROST_PLUGIN_HELP_PROC_NAME_STRING, GetLastWin32Error().c_str());
+    } else {
+      helpStr = bifrost_PluginHelp();
+    }
+
+    // Make a copy of the memory so we can deallocate it again
+    std::size_t len = std::strlen(helpStr);
+    (*help) = new char[len + 1];
+    std::memcpy((*help), helpStr, len + 1);
+    (*help)[len] = '\0';
+
     return BFP_OK;
   }
 
@@ -262,14 +303,14 @@ class InjectorContext {
   }
 
   // Create/Connect to shared memory
-  void CreateOrReuseExistingSharedMemory(const bfi_InjectorArguments* args) {
+  void CreateOrReuseExistingSharedMemory(const char* sharedMemoryName, u64 sharedMemorySizeInBytes) {
     std::unique_ptr<SharedMemory> memory;
 
     // Reuse existing memory if it's the same name/size specification
-    if (!m_memory || (args->SharedMemoryName != nullptr && std::string_view(args->SharedMemoryName) != std::string_view(m_memory->GetName())) ||
-        (args->SharedMemorySizeInBytes != 0 && args->SharedMemorySizeInBytes != memory->GetSizeInBytes())) {
-      std::string smName = args->SharedMemoryName ? args->SharedMemoryName : UUID(m_ctx.get());
-      u64 smSize = (u64)args->SharedMemorySizeInBytes;
+    if (!m_memory || (sharedMemoryName != nullptr && std::string_view(sharedMemoryName) != std::string_view(m_memory->GetName())) ||
+        (sharedMemorySizeInBytes != 0 && sharedMemorySizeInBytes != m_memory->GetSizeInBytes())) {
+      std::string smName = sharedMemoryName ? sharedMemoryName : UUID(m_ctx.get());
+      u64 smSize = (u64)sharedMemorySizeInBytes;
       memory = std::make_unique<SharedMemory>(m_ctx.get(), smName, smSize);
     }
 
@@ -451,6 +492,21 @@ BIFROST_INJECTOR_API bfi_Status bfi_PluginUnloadResultFree(bfi_Context* ctx, bfi
       if (result->Unloaded) delete[] result->Unloaded;
       delete result;
     }
+    return BFP_OK;
+  });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_PluginMessage(bfi_Context* ctx, const bfi_PluginMessageArguments* args, const bfi_Process_t* process) {
+  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->PluginMessage(args, Get(process)); });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_PluginHelp(bfi_Context* ctx, const wchar_t* path, char** help) {
+  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->PluginHelp(path, help); });
+}
+
+BIFROST_INJECTOR_API bfi_Status bfi_PluginHelpFree(bfi_Context* ctx, char* help) {
+  BIFROST_INJECTOR_CATCH_ALL({
+    if (help) delete help;
     return BFP_OK;
   });
 }

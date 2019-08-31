@@ -12,10 +12,34 @@
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
+#include <fstream>
+#include <string_view>
+
 class InjectorTestPlugin final : public ::bifrost::Plugin {
  public:
-  virtual void SetUp() override { Log(Plugin::LogLevel::Error, "Damn son!"); }
-  virtual void TearDown() override { Log(Plugin::LogLevel::Error, "Doneso!"); }
+  // Write the message to the file provided by the arguments to the plugin
+  void WriteToFile(std::string_view msg) {
+    std::string file = GetArguments();
+    std::string m{msg.data(), msg.size()};
+    m += ":";
+
+    std::FILE* fp = std::fopen(file.c_str(), "a");
+    if (!fp) FatalError(("Failed to open file: \"" + file + "\"").c_str());
+    if (std::fwrite(m.c_str(), sizeof(char), m.size(), fp) != m.size()) FatalError(("Failed to write \"" + m + "\" to \"" + file + "\"").c_str());
+    if (std::fclose(fp) != 0) FatalError(("Failed to flush and close file: \"" + file + "\"").c_str());
+  }
+
+  virtual void SetUp() override { WriteToFile("SetUp"); }
+
+  virtual void TearDown() override { WriteToFile("TearDown"); }
+
+  virtual bool HandleMessage(const void* data, int sizeInBytes) override {
+    WriteToFile({(const char*)data, (std::size_t)sizeInBytes});
+    return true;
+  }
+
+  static const char* Help() { return "Help"; }
 };
 
 BIFROST_REGISTER_PLUGIN(InjectorTestPlugin)
+BIFROST_REGISTER_PLUGIN_HELP(InjectorTestPlugin::Help)

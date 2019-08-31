@@ -45,7 +45,7 @@ typedef struct bfp_Version_t {
 } bfp_Version;
 
 /// @brief Injector context
-typedef struct bfp_Plugin_t {
+typedef struct bfp_PluginContext_t {
   void* _Internal;  ///< Internal pointer, do not use
 } bfp_PluginContext;
 

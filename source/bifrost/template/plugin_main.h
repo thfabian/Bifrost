@@ -79,10 +79,10 @@ class BifrostPluginApi {
   BifrostPluginApi() {
     HMODULE hModule = NULL;
     Check("LoadLibrary: bifrost_plugin.dll", (hModule = ::LoadLibraryW(L"bifrost_plugin.dll")) != NULL);
-    BIFROST_PLUGIN_API_DEF(bfp_PluginInit)
-    BIFROST_PLUGIN_API_DEF(bfp_PluginLog)
     BIFROST_PLUGIN_API_DEF(bfp_PluginFree)
     BIFROST_PLUGIN_API_DEF(bfp_PluginGetLastError)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginInit)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginLog)
     BIFROST_PLUGIN_API_DEF(bfp_PluginSetUp)
     BIFROST_PLUGIN_API_DEF(bfp_PluginTearDown)
 
@@ -158,16 +158,36 @@ static BifrostPluginApi& GetApi() {
 
 #pragma region Plugin Interface
 
+Plugin::~Plugin() {
+  if (m_arguments) delete m_arguments;
+}
+
 Plugin* Plugin::s_instance = nullptr;
 
 bfp_PluginContext_t* Plugin::_GetPlugin() { return m_plugin; }
 
-void Plugin::Log(Plugin::LogLevel level, const char* msg) {
+void Plugin::Log(Plugin::LogLevel level, const char* msg, bool ignoreErrors) const {
   auto& api = GetApi();
   if (api.bfp_PluginLog((bfp_PluginContext*)m_plugin, (uint32_t)level, GetName(), msg) != BFP_OK) {
-    throw std::runtime_error(api.bfp_PluginGetLastError((bfp_PluginContext*)m_plugin));
+    if (!ignoreErrors) {
+      FatalError(api.bfp_PluginGetLastError((bfp_PluginContext*)m_plugin));
+    }
   }
 }
+
+const char* Plugin::GetArguments() const {
+  if (!m_arguments) FatalError("Failed to set arguments during startup");
+  return m_arguments;
+}
+
+void Plugin::FatalError(const char* msg) const {
+  Log(LogLevel::Error, msg, true);
+  throw std::runtime_error(msg);
+}
+
+const char* Plugin::GetName() const { return s_name; }
+
+bool Plugin::HandleMessage(const void* data, int sizeInBytes) { return true; }
 
 #pragma endregion
 
@@ -200,9 +220,18 @@ BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
   if (api.bfp_PluginTearDown(ctx, (void*)plugin, param) != BFP_OK) {
     throw std::runtime_error(api.bfp_PluginGetLastError(ctx));
   }
-  
+
   api.bfp_PluginFree(ctx);
   return 0;
+}
+
+BIFROST_PLUGIN_MESSAGE_PROC_DECL
+
+BIFROST_PLUGIN_MESSAGE_PROC_DEF {
+  using namespace bifrost;
+
+  Plugin* plugin = &Plugin::Get();
+  return plugin->HandleMessage(data, sizeInBytes) ? 1 : 0;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

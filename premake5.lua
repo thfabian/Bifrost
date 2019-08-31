@@ -240,7 +240,8 @@ workspace "bifrost"
     includedirs { "source" }
     targetname "test-bifrost-api-injector-plugin"
     files { "source/bifrost/api/test/data/injector_plugin.cpp" } 
-    
+    defines { "_CRT_SECURE_NO_WARNINGS" }
+
   -- *** Bifrost API Test ***
   project "bifrost_api_test"
     kind "ConsoleApp"

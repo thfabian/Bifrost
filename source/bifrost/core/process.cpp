@@ -208,13 +208,10 @@ u32 Process::Wait(u32 timeout) {
 bool Process::Poll() { return GetExitCode() != nullptr; }
 
 std::shared_ptr<void> Process::AllocateRemoteMemory(const void* data, u32 sizeInBytes, DWORD protectionFlag, const char* reason) {
-  Logger().DebugFormat("Allocating %u bytes in remote process memory for %s", sizeInBytes, reason);
-
   void* ptr = nullptr;
   BIFROST_ASSERT_WIN_CALL((ptr = ::VirtualAllocEx(m_hProcess, NULL, sizeInBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) != NULL);
   std::shared_ptr<void> remoteMem(ptr, [this](void* p) { BIFROST_CHECK_WIN_CALL(::VirtualFreeEx(m_hProcess, p, 0, MEM_RELEASE) != NULL); });
 
-  Logger().DebugFormat("Copying %s to remote process memory", reason);
   SIZE_T numBytesWritten = 0;
   BIFROST_ASSERT_WIN_CALL_MSG(::WriteProcessMemory(m_hProcess, remoteMem.get(), data, sizeInBytes, &numBytesWritten) != FALSE,
                               "Failed to write remote process memory");
