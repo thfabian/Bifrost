@@ -281,30 +281,31 @@ workspace "bifrost"
   -- *** Example ***
   -- *
 
-  -- *** Hello World ***
-  project "01_hello_world_dll"
+  -- *** saxpy ***
+  project "example_01_saxpy_dll"
     kind "SharedLib"
-    targetname "01-hello-world"
+    targetname "example-saxpy"
     files { 
-      "example/01-hello-world/hello_world.h", 
-      "example/01-hello-world/hello_world.cpp",
+      "example/01-saxpy/saxpy.h", 
+      "example/01-saxpy/saxpy.cpp",
     }
     
-  project "01_hello_world_executable"
+  project "example_01_saxpy_executable"
     kind "ConsoleApp"
-    targetname "01-hello-world"
+    targetname "example-saxpy"
     files { 
-      "example/01-hello-world/hello_world.h", 
-      "example/01-hello-world/hello_world_main.cpp",
+      "example/01-saxpy/saxpy.h", 
+      "example/01-saxpy/saxpy_main.cpp",
     }
-    links "01_hello_world_dll"
-    dependson "01_hello_world_dll"
+    links "example_01_saxpy_dll"
+    dependson "example_01_saxpy_dll"
   
-  project "01_hello_world_plugin"
+  project "example_01_saxpy_plugin"
     kind "SharedLib"
+    targetname "example-saxpy-plugin"
     includedirs { "source" }
     files { 
-      "example/01-hello-world/hello_world_plugin.cpp", 
+      "example/01-saxpy/saxpy_plugin.cpp",
 
       "source/bifrost/template/plugin_main.h",
       "source/bifrost/template/plugin_decl.h"
