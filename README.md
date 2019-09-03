@@ -1,5 +1,4 @@
-![Alt text](Bifrost)
-<img src="./docs/images/Logo.svg"> <br/> <a target="_blank" href="http://semver.org">![Version][Version.Badge]</a> <a target="_blank" href="https://github.com/thfabian/Bifrost/blob/master/LICENSE.txt">![License][License.Badge]</a> <a target="_blank" href="https://ci.appveyor.com/project/thfabian/bifrost/branch/master">![Appveyor status][Appveyor.Badge]</a>
+<img src="./docs/images/Logo.svg" align="left"> <br/> <a target="_blank" href="http://semver.org">![Version][Version.Badge]</a> <a target="_blank" href="https://github.com/thfabian/Bifrost/blob/master/LICENSE.txt">![License][License.Badge]</a> <a target="_blank" href="https://ci.appveyor.com/project/thfabian/bifrost/branch/master">![Appveyor status][Appveyor.Badge]</a>
 =======
 
 > This project is still in very early development!
