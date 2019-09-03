@@ -77,13 +77,13 @@
 #define bf_arg_10 _bf_arg(10)
 #define bf_arg_11 _bf_arg(11)
 #define bf_arg_12 _bf_arg(12)
-#define bf_arg_12 _bf_arg(13)
-#define bf_arg_13 _bf_arg(14)
-#define bf_arg_14 _bf_arg(15)
-#define bf_arg_15 _bf_arg(16)
-#define bf_arg_16 _bf_arg(17)
-#define bf_arg_17 _bf_arg(18)
-#define bf_arg_18 _bf_arg(19)
+#define bf_arg_13 _bf_arg(13)
+#define bf_arg_14 _bf_arg(14)
+#define bf_arg_15 _bf_arg(15)
+#define bf_arg_16 _bf_arg(16)
+#define bf_arg_17 _bf_arg(17)
+#define bf_arg_18 _bf_arg(18)
+#define bf_arg_19 _bf_arg(19)
 #define bf_arg_20 _bf_arg(20)
 #define bf_arg_21 _bf_arg(21)
 #define bf_arg_22 _bf_arg(22)
@@ -157,7 +157,7 @@ bf_override(my_saxpy2) {
 //
 // 3) Here we are going to access and modify arguments.
 //
-bf_override(my_saxpy2) {
+bf_override(my_saxpy3) {
   // There are several ways of accessing the arguments. You can either call them directly by the name ...
   auto a1 = a + 1;
 
