@@ -11,6 +11,9 @@
 
 #pragma once
 
+#include <cstdint>
+
+#include "bifrost/template/plugin_dsl.h"
 #include "bifrost/template/plugin_decl.h"
 
 #ifdef BIFROST_PLUGIN

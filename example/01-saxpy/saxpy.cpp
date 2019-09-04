@@ -13,7 +13,9 @@
 #include <Windows.h>
 
 void saxpy(int n, float a, float* x, float* y) {
-  for (int i = 0; i < n; ++i) y[i] = a * x[i] + y[i];
+  // Oh no.. there is a bug here!
+  int upper_bound = n / 2;
+  for (int i = 0; i < upper_bound; ++i) y[i] = a * x[i] + y[i];
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

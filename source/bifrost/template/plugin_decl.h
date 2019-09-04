@@ -21,6 +21,13 @@ class Plugin {
     return *(T*)&Get();
   }
 
+	/// Hook description
+  struct Hook {
+    void* Orignal;  ///< Pointer to the original function/method
+    void* Current;  ///< Pointer to the override of the original function/method
+    bool Active;    ///< Is the hook currently active (meaning `Current` is called instead of `Original`)
+  };
+
   //
   // INTERFACE
   //
@@ -49,8 +56,14 @@ class Plugin {
   ///
   /// @param[in] msg   Error message which has to be '\0' terminated
   virtual void FatalError(const char* msg) const;
+	
+	//
+	// HOOKING
+	//
 
-  //
+	Hook* Hook(Identifer identifer, void* Override, bool activate = true);
+  
+	//
   // HELPER
   //
 
@@ -67,7 +80,9 @@ class Plugin {
   /// @param[in] ignoreErrors  Don't call `FatalError` if something goes wrong
   void Log(LogLevel level, const char* msg, bool ignoreErrors = false) const;
 
-  /// --- Internal use only ---
+	//
+  // Internal use only
+  //
   void _SetUpImpl(bfp_PluginContext_t*);
   void _TearDownImpl(bool);
   void _SetArguments(const char*);

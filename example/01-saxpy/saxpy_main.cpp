@@ -12,13 +12,14 @@
 #include "saxpy.h"
 
 #include <vector>
+#include <iostream>
 
 int main(int argc, const char* argv[]) {
   int n = argc > 1 ? std::atoi(argv[1]) : 1 << 20;
 
   // Allocate the two vectors
   std::vector<float> x(n, 1.0f);
-  std::vector<float> y(n, 1.0f);
+  std::vector<float> y(n, 2.0f);
   float a = 3.0f;
 
   // Call saxpy
@@ -27,8 +28,14 @@ int main(int argc, const char* argv[]) {
   // Check the result
   int numFailed = 0;
   for (int i = 0; i < n; ++i) {
-    if (y[i] != 4.0f) numFailed++;
+    if (y[i] != 5.0f) numFailed++;
   }
 
-  return numFailed == 0 ? 0 : 1;
+  if (numFailed != 0) {
+    std::cout << "FAILED - " << numFailed << "/" << n << " values are wrong!";
+    return 1;
+  }
+
+  std::cout << "SUCCESS!";
+  return 0;
 }
