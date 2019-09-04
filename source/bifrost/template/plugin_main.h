@@ -20,6 +20,46 @@
 $BIFROST_PLUGIN_HEADER$
 #endif
 
+
+#pragma region Implementation
+#if defined(BIFROST_IMPLEMENTATION) || defined(__INTELLISENSE__)
+
+#include <stdexcept>
+#include <string>
+#include <cstdlib>
+
+namespace bifrost {
+
+void Plugin::_SetUpImpl(bfp_PluginContext_t* plugin) {
+  m_plugin = plugin;
+  if (m_init) throw std::runtime_error("Plugin already set up");
+  SetUp();
+  m_init = true;
+}
+
+void Plugin::_TearDownImpl(bool noFail) {
+  if (noFail && !m_init) return;
+  if (!m_init) throw std::runtime_error("Plugin not set up");
+  TearDown();
+  m_init = false;
+}
+
+void Plugin::_SetArguments(const char* arguments) {
+  std::string str(arguments);
+
+  try {
+    m_arguments = new char[str.size() + 1];
+    std::memcpy((void*)m_arguments, str.c_str(), str.size() + 1);
+  } catch (...) {
+    m_arguments = nullptr;
+  }
+}
+
+}  // namespace bifrost
+
+#endif
+#pragma endregion
+
 #pragma region Implementation
 #if defined(BIFROST_IMPLEMENTATION) || defined(__INTELLISENSE__)
 

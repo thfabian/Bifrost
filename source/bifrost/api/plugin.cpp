@@ -9,7 +9,7 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "bifrost/api/plugin_impl.h"
+#include "bifrost/api/plugin_context.h"
 
 using namespace bifrost;
 using namespace bifrost::api;
