@@ -41,12 +41,20 @@ const char* bfp_GetVersionString(void) {
 
 bfp_PluginContext* bfp_PluginInit(void) { return Init<bfp_PluginContext, PluginContext>(); }
 
-bfp_Status bfp_PluginSetUp(bfp_PluginContext* ctx, const char* name, void* plugin, void* param) {
-  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->SetUp(ctx, name, plugin, param); });
+bfp_Status bfp_PluginSetUpStart(bfp_PluginContext* ctx, const char* name, const void* param, bfp_PluginSetUpArguments** args) {
+  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->SetUpStart(ctx, name, param, args); });
 }
 
-bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* plugin, void* param) {
-  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->TearDown(ctx, plugin, param); });
+bfp_Status bfp_PluginSetUpEnd(bfp_PluginContext* ctx, const char* name, const void* param, const bfp_PluginSetUpArguments* args) {
+  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->SetUpEnd(ctx, name, param, args); });
+}
+
+bfp_Status bfp_PluginTearDownStart(bfp_PluginContext* ctx, const void* param, bfp_PluginTearDownArguments** args) {
+  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->TearDownStart(ctx, param, args); });
+}
+
+bfp_Status bfp_PluginTearDownEnd(bfp_PluginContext* ctx, const void* param, const bfp_PluginTearDownArguments* args) {
+  BIFROST_PLUGIN_CATCH_ALL({ return Get(ctx)->TearDownEnd(ctx, param, args); });
 }
 
 bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* module, const char* msg) {

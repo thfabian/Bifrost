@@ -49,6 +49,16 @@ typedef struct bfp_PluginContext_t {
   void* _Internal;  ///< Internal pointer, do not use
 } bfp_PluginContext;
 
+/// @brief Arguments required during SetUp
+typedef struct bfp_PluginSetUpArguments_t {
+  const char* Arguments;  ///< Arguments passed to the SetUp method
+} bfp_PluginSetUpArguments;
+
+/// @brief Arguments required during SetUp
+typedef struct bfp_PluginTearDownArguments_t {
+  bool NoFail;  ///< Allow the tear-down to fail?
+} bfp_PluginTearDownArguments;
+
 #pragma endregion
 
 #pragma region Version
@@ -75,18 +85,31 @@ BIFROST_PLUGIN_API const char* bfp_GetVersionString(void);
 /// @brief Initialize the plugin
 BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(void);
 
-/// @brief Set-up the plugin
+/// @brief Start the set-up process of the plugin
 /// @param[in] ctx      Plugin context description
 /// @param[in] name     Name of the plugin
-/// @param[in] plugin   Plugin instance
-/// @param[in] param    Plugin set up parameter
-BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUp(bfp_PluginContext* ctx, const char* name, void* plugin, void* param);
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::SetUpParam and is constructed by the loader
+/// @param[out] args    Extracted arguments from `param`
+BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUpStart(bfp_PluginContext* ctx, const char* name, const void* param, bfp_PluginSetUpArguments** args);
 
-/// @brief Tear-down the plugin
+/// @brief Finalize the set-up process of the plugin
 /// @param[in] ctx      Plugin context description
-/// @param[in] plugin   Plugin instance
-/// @param[in] param    Plugin set up parameter
-BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* plugin, void* param);
+/// @param[in] name     Name of the plugin
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::SetUpParam and is constructed by the loader
+/// @param[in] args     Arguments allocated by bfp_PluginSetUpStart (will free the memory)
+BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUpEnd(bfp_PluginContext* ctx, const char* name, const void* param, const bfp_PluginSetUpArguments* args);
+
+/// @brief Start the tear-down process of the plugin
+/// @param[in] ctx      Plugin context description
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::TearDownParam and is constructed by the loader
+/// @param[out] args    Extracted arguments from `param`
+BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDownStart(bfp_PluginContext* ctx, const void* param, bfp_PluginTearDownArguments** args);
+
+/// @brief Finalize the tear-down process of the plugin
+/// @param[in] ctx      Plugin context description
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::TearDownParam and is constructed by the loader
+/// @param[in] args     Arguments allocated by bfp_PluginTearDownStart (will free the memory)
+BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDownEnd(bfp_PluginContext* ctx, const void* param, const bfp_PluginTearDownArguments* args);
 
 /// @brief Log the message
 /// @param[in] ctx       Plugin context description

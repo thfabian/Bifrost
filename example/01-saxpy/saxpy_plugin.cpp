@@ -18,7 +18,7 @@
 #define BIFROST_NAMESPACE saxpy
 
 #define BIFROST_IMPLEMENTATION
-#include "bifrost/template/plugin_main.h"
+#include "bifrost/template/plugin.h"
 
 #define _bf_func_decl_ret_saxpy__saxpy void
 #define _bf_func_decl_args_saxpy__saxpy int n, float a, float *x, float *y

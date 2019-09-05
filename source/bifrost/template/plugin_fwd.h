@@ -1,4 +1,9 @@
-#pragma region Plugin Procedure
+//
+// (!) Changing the signature of these function requires bumping the major version in bifrost/api/plugin.h, as well as bifrost/api/injector.h as well as
+// adjusting bifrost/api/loader.cpp - changing the implementation significantly requires changing the minor version (otherwise just increase the patch version)
+//
+
+#pragma region Plugin Forward Declaration
 
 #define BIFROST_PLUGIN_SETUP_PROC_NAME bifrost_PluginSetUp
 #define BIFROST_PLUGIN_SETUP_PROC_NAME_STRING "bifrost_PluginSetUp"

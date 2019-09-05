@@ -257,7 +257,14 @@ workspace "bifrost"
     bifrost_add_bifrost_core()
     bifrost_add_bifrost_injector()
 
-    dependson { "bifrost_api_test_injector_executable", "bifrost_api_test_injector_plugin" }
+    dependson { 
+      "bifrost_api_test_injector_executable", 
+      "bifrost_api_test_injector_plugin",
+      "bifrost_api_test_injector_plugin",
+      "bifrost_plugin",
+      "bifrost_injector",
+      "bifrost_loader"
+    }
     
   -- *
   -- *** Injector ***

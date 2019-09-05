@@ -17,15 +17,12 @@
 #include "bifrost/api/plugin.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
-#include "bifrost/core/error.h"
-#include "bifrost/core/exception.h"
-#include "bifrost/core/macros.h"
 #include "bifrost/core/module_loader.h"
 #include "bifrost/core/shared_memory.h"
 
 namespace bifrost::api {
 
-/// Context of each plugin
+/// Context of each plugin (this is the implementation of bfp_Plugin)
 class PluginContext {
  public:
   PluginContext();
@@ -39,14 +36,16 @@ class PluginContext {
   };
 
   /// Setup the plugin
-  bfp_Status SetUp(bfp_PluginContext* ctx, const char* name, void* bfPlugin, void* setUpParam);
+  bfp_Status SetUpStart(bfp_PluginContext* ctx, const char* name, const void* setUpParam, bfp_PluginSetUpArguments** args);
+  bfp_Status SetUpEnd(bfp_PluginContext* ctx, const char* name, const void* setUpParam, const bfp_PluginSetUpArguments* args);
 
   struct TearDownParam {
     bool NoFail;
   };
 
   /// Tear-down the plugin
-  bfp_Status TearDown(bfp_PluginContext* ctx, void* bfPlugin, void* tearDownParam);
+  bfp_Status TearDownStart(bfp_PluginContext* ctx, const void* tearDownParam, bfp_PluginTearDownArguments** args);
+  bfp_Status TearDownEnd(bfp_PluginContext* ctx, const void* tearDownParam, const bfp_PluginTearDownArguments* args);
 
   /// Log from the plugin
   bfp_Status Log(uint32_t level, const char* module, const char* msg);

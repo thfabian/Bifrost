@@ -15,15 +15,9 @@
 
 #include "bifrost/api/plugin_context.h"
 
-#include "bifrost/template/plugin_namespace.h"
-#include "bifrost/template/plugin_interface.h"
-#include "bifrost/template/plugin_interface_priv.h"
-#include "bifrost/template/plugin_procedure.h"
-
 namespace bifrost::api {
 
-bfp_Status PluginContext::SetUp(bfp_PluginContext* ctx, const char* name, void* bfPlugin, void* setUpParam) {
-  Plugin* plugin = (Plugin*)bfPlugin;
+bfp_Status PluginContext::SetUpStart(bfp_PluginContext* ctx, const char* name, const void* setUpParam, bfp_PluginSetUpArguments** args) {
   SetUpParam* param = (SetUpParam*)setUpParam;
   try {
     // Set the module
@@ -40,11 +34,15 @@ bfp_Status PluginContext::SetUp(bfp_PluginContext* ctx, const char* name, void* 
     m_ctx->SetLogger(m_sharedLogger.get());
     m_bufferedLogger->Flush(m_sharedLogger.get());
 
-    // Set the arguments
-    plugin->_SetArguments(param->Arguments.empty() ? "" : param->Arguments.c_str());
+    // Allocate arguments
+    (*args) = new bfp_PluginSetUpArguments;
+    (*args)->Arguments = param->Arguments.empty() ? "" : param->Arguments.c_str();
 
-    // Call the setup method
-    plugin->_SetUpImpl((bfp_PluginContext_t*)ctx);
+    //// Set the arguments
+    // plugin->_SetArguments(param->Arguments.empty() ? "" : param->Arguments.c_str());
+
+    //// Call the setup method
+    // plugin->_SetUpImpl((bfp_PluginContext_t*)ctx);
 
   } catch (...) {
     m_ctx->Logger().ErrorFormat("Failed to set up plugin: %s", name);
@@ -53,16 +51,46 @@ bfp_Status PluginContext::SetUp(bfp_PluginContext* ctx, const char* name, void* 
   return BFP_OK;
 }
 
-bfp_Status PluginContext::TearDown(bfp_PluginContext* ctx, void* bfPlugin, void* tearDownParam) {
-  Plugin* plugin = (Plugin*)bfPlugin;
+bfp_Status PluginContext::SetUpEnd(bfp_PluginContext* ctx, const char* name, const void* setUpParam, const bfp_PluginSetUpArguments* args) {
+  try {
+    // Free allocated arguments
+    if (args) delete args;
+
+  } catch (...) {
+    m_ctx->Logger().ErrorFormat("Failed to set up plugin: %s", name);
+    throw;
+  }
+  return BFP_OK;
+}
+
+bfp_Status PluginContext::TearDownStart(bfp_PluginContext* ctx, const void* tearDownParam, bfp_PluginTearDownArguments** args) {
   TearDownParam* param = (TearDownParam*)tearDownParam;
   std::string name = m_bufferedLogger->GetModule();
 
   try {
     m_ctx->Logger().InfoFormat("Tearing down plugin: %s", name.c_str());
 
-    // Call tear-down
-    plugin->_TearDownImpl(param->NoFail);
+    // Allocate arguments
+    (*args) = new bfp_PluginTearDownArguments;
+    (*args)->NoFail = param->NoFail;
+
+    //// Call tear-down
+    // plugin->_TearDownImpl(param->NoFail);
+
+  } catch (...) {
+    m_ctx->Logger().ErrorFormat("Failed to tear down plugin: %s", name.c_str());
+    throw;
+  }
+  return BFP_OK;
+}
+
+bfp_Status PluginContext::TearDownEnd(bfp_PluginContext* ctx, const void* tearDownParam, const bfp_PluginTearDownArguments* args) {
+  TearDownParam* param = (TearDownParam*)tearDownParam;
+  std::string name = m_bufferedLogger->GetModule();
+
+  try {
+    // Free allocated arguments
+    if (args) delete args;
 
     // Remove the shared logger
     m_sharedLogger.reset();

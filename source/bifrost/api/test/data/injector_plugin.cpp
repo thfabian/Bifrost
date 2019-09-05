@@ -10,7 +10,7 @@
 // See LICENSE.txt for details.
 
 #define BIFROST_IMPLEMENTATION
-#include "bifrost/template/plugin_main.h"
+#include "bifrost/template/plugin.h"
 
 #include <fstream>
 #include <string_view>
