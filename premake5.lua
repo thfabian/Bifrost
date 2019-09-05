@@ -308,6 +308,7 @@ workspace "bifrost"
       "example/01-saxpy/saxpy_plugin.cpp",
 
       "source/bifrost/template/plugin_main.h",
-      "source/bifrost/template/plugin_decl.h"
+      "source/bifrost/template/plugin_decl.h",
+      "source/bifrost/template/plugin_dsl.h"
     }
     

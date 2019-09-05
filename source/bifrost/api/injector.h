@@ -9,9 +9,9 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#pragma once
-
 /// @file Injector routines.
+
+#pragma once
 
 #include <stdint.h>
 

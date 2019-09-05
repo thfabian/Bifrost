@@ -9,27 +9,31 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#define BIFROST_IMPLEMENTATION
-#include "bifrost/template/plugin_main.h"
+#include <cstdint>
 
 // ---------------
 
-enum class identifer { saxpy };
+#define BIFROST_DEBUG
+#define BIFROST_PLUGIN_TEST
+#define BIFROST_NAMESPACE saxpy
 
-static std::uint64_t s_OriginalAddresses[1];
+#define BIFROST_IMPLEMENTATION
+#include "bifrost/template/plugin_main.h"
 
-// saxpy
-#define _bf_func_decl_ret_saxpy void
-#define _bf_func_decl_args_saxpy int n, float a, float *x, float *y
+#define _bf_func_decl_ret_saxpy__saxpy void
+#define _bf_func_decl_args_saxpy__saxpy int n, float a, float *x, float *y
 
-#define _bf_func_saxpy ((void (*)(int, float, float *, float *))::s_OriginalAddresses[(std::uint64_t)::identifer::saxpy])
+#define _bf_func_saxpy__saxpy                                                           \
+  ((void (*)(int, float, float *, float *))BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Get)() \
+       ._GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::saxpy)>()             \
+       ->Original())
 
-#define _bf_args_saxpy n, a, x, y
+#define _bf_args_saxpy__saxpy n, a, x, y
 
-#define _bf_arg_1_saxpy n
-#define _bf_arg_2_saxpy a
-#define _bf_arg_3_saxpy x
-#define _bf_arg_4_saxpy y
+#define _bf_arg_1_saxpy__saxpy n
+#define _bf_arg_2_saxpy__saxpy a
+#define _bf_arg_3_saxpy__saxpy x
+#define _bf_arg_4_saxpy__saxpy y
 
 // ---------------
 
@@ -71,17 +75,18 @@ bf_override(my_saxpy3) {
 // 4) Here we define our plugin. The plugin provides functionality to hook functions/methods and utilities such as error handling or logging. The plugin is a
 // singleton and can be accessed via `Get<>()` anywhere.
 //
-class MySaxpyPlugin final : public ::bifrost::Plugin {
+class MySaxpyPlugin final : public BIFROST_PLUGIN {
  public:
   virtual void SetUp() override {
-    // bf_hook(hello_world_add, my_saxpy3)
+    SetHook(Identifer::saxpy, my_saxpy1);
+    SetHook("saxpy", my_saxpy2);
   }
 
   virtual void TearDown() override {}
 };
 
 //
-// 5) Here we register our plugin - bifrost will make sure everything.
+// 5) Here we register our plugin - bifrost will make sure everything is defined properly.
 //
 BIFROST_REGISTER_PLUGIN(MySaxpyPlugin)
 

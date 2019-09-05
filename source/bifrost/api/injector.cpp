@@ -26,7 +26,7 @@
 #include "bifrost/core/sm_log_stash.h"
 #include "bifrost/debugger/debugger.h"
 
-#include "bifrost/template/plugin_decl.h"
+#include "bifrost/template/plugin_procedure.h"
 
 using namespace bifrost;
 using namespace bifrost::api;

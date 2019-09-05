@@ -13,52 +13,14 @@
 
 #include <cstdint>
 
+#include "bifrost/template/plugin_namespace.h"
+#include "bifrost/template/plugin_interface.h"
 #include "bifrost/template/plugin_dsl.h"
-#include "bifrost/template/plugin_decl.h"
+#include "bifrost/template/plugin_procedure.h"
 
-#ifdef BIFROST_PLUGIN
-$BIFROST_PLUGIN_HEADER$
+#ifdef BIFROST_CODEGEN
+$BIFROST_PLUGIN_DSL_DEF$
 #endif
-
-
-#pragma region Implementation
-#if defined(BIFROST_IMPLEMENTATION) || defined(__INTELLISENSE__)
-
-#include <stdexcept>
-#include <string>
-#include <cstdlib>
-
-namespace bifrost {
-
-void Plugin::_SetUpImpl(bfp_PluginContext_t* plugin) {
-  m_plugin = plugin;
-  if (m_init) throw std::runtime_error("Plugin already set up");
-  SetUp();
-  m_init = true;
-}
-
-void Plugin::_TearDownImpl(bool noFail) {
-  if (noFail && !m_init) return;
-  if (!m_init) throw std::runtime_error("Plugin not set up");
-  TearDown();
-  m_init = false;
-}
-
-void Plugin::_SetArguments(const char* arguments) {
-  std::string str(arguments);
-
-  try {
-    m_arguments = new char[str.size() + 1];
-    std::memcpy((void*)m_arguments, str.c_str(), str.size() + 1);
-  } catch (...) {
-    m_arguments = nullptr;
-  }
-}
-
-}  // namespace bifrost
-
-#endif
-#pragma endregion
 
 #pragma region Implementation
 #if defined(BIFROST_IMPLEMENTATION) || defined(__INTELLISENSE__)
@@ -73,17 +35,19 @@ void Plugin::_SetArguments(const char* arguments) {
 
 #include <Windows.h>
 
+#include <cstdlib>
 #include <fstream>
 #include <iostream>
 #include <mutex>
 #include <stdexcept>
 #include <string>
+#include <sstream>
 
 #include "bifrost/api/plugin.h"
 
-namespace bifrost {
+BIFROST_NAMESPACE_BEGIN
 
-#pragma region Bifrost Plugin Dll
+#pragma region Bifrost Plugin Dll Interaction
 
 namespace {
 
@@ -112,6 +76,7 @@ class BifrostPluginApi {
   name##_fn name;
 #define BIFROST_PLUGIN_API_DEF(name) Check("GetProcAddress: " #name, (name = (name##_fn)::GetProcAddress(hModule, #name)) != NULL);
 
+  BIFROST_PLUGIN_API_DECL(bfp_GetVersion)
   BIFROST_PLUGIN_API_DECL(bfp_PluginFree)
   BIFROST_PLUGIN_API_DECL(bfp_PluginGetLastError)
   BIFROST_PLUGIN_API_DECL(bfp_PluginInit)
@@ -122,6 +87,7 @@ class BifrostPluginApi {
   BifrostPluginApi() {
     HMODULE hModule = NULL;
     Check("LoadLibrary: bifrost_plugin.dll", (hModule = ::LoadLibraryW(L"bifrost_plugin.dll")) != NULL);
+    BIFROST_PLUGIN_API_DEF(bfp_GetVersion)
     BIFROST_PLUGIN_API_DEF(bfp_PluginFree)
     BIFROST_PLUGIN_API_DEF(bfp_PluginGetLastError)
     BIFROST_PLUGIN_API_DEF(bfp_PluginInit)
@@ -131,6 +97,22 @@ class BifrostPluginApi {
 
 #undef BIFROST_PLUGIN_API_DECL
 #undef BIFROST_PLUGIN_API_DEF
+
+    // Check the version - this can be critical if we loaded several plugins
+    bfp_Version version = this->bfp_GetVersion();
+    bool majorVersionOk = version.Major == BIFROST_PLUGIN_VERSION_MAJOR;
+    bool minorVersionOk = version.Minor >= BIFROST_PLUGIN_VERSION_MINOR;
+
+    if (!majorVersionOk || !minorVersionOk) {
+      std::stringstream ss;
+      ss << "The loaded version of bifrost_plugin.dll (" << version.Major << "." << version.Minor << "." << version.Patch
+         << ") is incompatible with the requested version (" << BIFROST_PLUGIN_VERSION_MAJOR << "." << BIFROST_PLUGIN_VERSION_MINOR << "."
+         << BIFROST_PLUGIN_VERSION_PATCH << "."
+         << ")\n";
+      if (!majorVersionOk) ss << " > Major versions do not match\n";
+      if (!minorVersionOk) ss << " > Minor version of loaded bifrost_plugin.dll is less than requested\n";
+      Check(ss.str().c_str(), false);
+    }
   }
 
  private:
@@ -195,6 +177,24 @@ static BifrostPluginApi& GetApi() {
   return *g_api;
 }
 
+static Plugin::Identifer GetIdentifier(const char* identifer) {
+  static std::unordered_map<std::string, Plugin::Identifer> map{
+#ifdef BIFROST_CODEGEN
+      $BIFROST_PLUGIN_IDENTIFIER_MAP$
+#elif defined(BIFROST_PLUGIN_TEST)
+      {"saxpy", Plugin::Identifer::saxpy},
+#endif
+  };
+
+  auto it = map.find(identifer);
+  if (it != map.end()) {
+    std::stringstream ss;
+    ss << "Identifier \"" << identifer << "\" does not exist";
+    Plugin::Get().FatalError(ss.str().c_str());
+  }
+  return it->second;
+}
+
 #pragma endregion
 
 }  // namespace
@@ -202,6 +202,7 @@ static BifrostPluginApi& GetApi() {
 #pragma region Plugin Interface
 
 Plugin::~Plugin() {
+  DeactivateAllHooks();
   if (m_arguments) delete m_arguments;
 }
 
@@ -228,18 +229,66 @@ void Plugin::FatalError(const char* msg) const {
   throw std::runtime_error(msg);
 }
 
+void Plugin::Hook::Activate() {
+  if(IsActive()) return;
+  if (!TryActivate()) Plugin::Get().FatalError("Failed to hook function ");
+}
+
+bool Plugin::Hook::TryActivate() {
+#ifdef BIFROST_DEBUG
+  Plugin::Get().Log(LogLevel::Debug, "Setting up hook for ...");
+#endif
+  m_isActive = true;
+  return true;
+}
+
+void Plugin::Hook::Deactivate() {
+  if (!IsActive()) return;
+#ifdef BIFROST_DEBUG
+  Plugin::Get().Log(LogLevel::Debug, "Removing hook from ...");
+#endif
+}
+
+void Plugin::Hook::_SetOverride(void* override) noexcept { m_override = override; }
+void Plugin::Hook::_SetOriginal(void* original) noexcept { m_original = original; }
+
+Plugin::Hook* Plugin::SetHook(const char* identifier, void* override, bool activate) { return SetHook(GetIdentifier(identifier), override, activate); }
+
+Plugin::Hook* Plugin::SetHook(Plugin::Identifer identifier, void* override, bool activate) { return nullptr; }
+
+Plugin::Hook* Plugin::GetHook(Plugin::Identifer identifier) noexcept { return nullptr; }
+
+Plugin::Hook* Plugin::GetHook(const char* identifier) { return GetHook(GetIdentifier(identifier)); }
+
+bool Plugin::HasHook(Plugin::Identifer identifier) noexcept { return GetHook(identifier) != nullptr; }
+
+bool Plugin::HasHook(const char* identifier) { return HasHook(GetIdentifier(identifier)); }
+
+void Plugin::DeactivateAllHooks() noexcept {
+  for (std::uint64_t i = 0; i < (std::uint64_t)Identifer::NumIdentifier; ++i) {
+    if (m_hooks[i].Override() != nullptr) {
+      try {
+        m_hooks[i].Deactivate();
+      } catch (...) {
+      }
+    }
+  }
+}
+
 const char* Plugin::GetName() const { return s_name; }
 
 bool Plugin::HandleMessage(const void* data, int sizeInBytes) { return true; }
 
 #pragma endregion
 
-}  // namespace bifrost
+BIFROST_NAMESPACE_END
+
+#include "bifrost/template/plugin_interface_priv.h"
 
 BIFROST_PLUGIN_SETUP_PROC_DECL
 
 BIFROST_PLUGIN_SETUP_PROC_DEF {
-  using namespace bifrost;
+  using namespace BIFROST_NAMESPACE;
   auto& api = GetApi();
 
   Plugin* plugin = &Plugin::Get();
@@ -254,7 +303,7 @@ BIFROST_PLUGIN_SETUP_PROC_DEF {
 BIFROST_PLUGIN_TEARDOWN_PROC_DECL
 
 BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
-  using namespace bifrost;
+  using namespace BIFROST_NAMESPACE;
   auto& api = GetApi();
 
   Plugin* plugin = &Plugin::Get();
@@ -271,7 +320,7 @@ BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
 BIFROST_PLUGIN_MESSAGE_PROC_DECL
 
 BIFROST_PLUGIN_MESSAGE_PROC_DEF {
-  using namespace bifrost;
+  using namespace BIFROST_NAMESPACE;
 
   Plugin* plugin = &Plugin::Get();
   return plugin->HandleMessage(data, sizeInBytes) ? 1 : 0;
@@ -279,7 +328,7 @@ BIFROST_PLUGIN_MESSAGE_PROC_DEF {
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
 
-#ifdef BIFROST_PLUGIN
+#ifdef BIFROST_CODEGEN
 $BIFROST_PLUGIN_IMPLEMENTATION$
 #endif
 

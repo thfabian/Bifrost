@@ -3,6 +3,8 @@
 #define _bf_concat_impl(a, b) a##b
 #define _bf_concat(a, b) _bf_concat_impl(a, b)
 
+#define _bf_namespace _bf_concate(BIFROST_NAMESPACE, __)
+
 // Implementation of bf_arg
 #define _bf_indirect_expand(m, args) m args
 
@@ -15,7 +17,7 @@
 #define _bf_var_macro(MACRO, ...) _bf_indirect_expand(_bf_concate, (MACRO, _bf_num_args(__VA_ARGS__)))(__VA_ARGS__)
 
 #define _bf_arg(...) _bf_var_macro(_bf_arg, __VA_ARGS__)
-#define _bf_arg_idx(idx) _bf_concat(_bf_concat(_bf_arg_, idx), _bf_concat(_, bf_id))
+#define _bf_arg_idx(idx) _bf_concat(_bf_concat(_bf_arg_, idx), _bf_concat(_, _bf_concat(_bf_namespace, bf_id)))
 #define _bf_arg1(a1) _bf_arg_idx(a1)
 #define _bf_arg2(a1, a2) _bf_arg1(a1), _bf_arg_idx(a2)
 #define _bf_arg3(a1, a2, a3) _bf_arg2(a1, a2), _bf_arg_idx(a3)
@@ -30,14 +32,14 @@
 #define _bf_arg12(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12) _bf_arg11(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11), _bf_arg_idx(a12)
 
 // Implementation of bf_override
-#define _bf_func_decl_ret _bf_concat(_bf_func_decl_ret_, bf_id)
-#define _bf_func_decl_args _bf_concat(_bf_func_decl_args_, bf_id)
+#define _bf_func_decl_ret _bf_concat(_bf_func_decl_ret_, _bf_concat(_bf_namespace, bf_id))
+#define _bf_func_decl_args _bf_concat(_bf_func_decl_args_, _bf_concat(_bf_namespace, bf_id))
 
 // Implementation of bf_original
-#define _bf_original _bf_concat(_bf_func_, bf_id)
+#define _bf_original _bf_concat(_bf_func_, _bf_concat(_bf_namespace, bf_id))
 
 // Implementation of bf_args
-#define _bf_args _bf_concat(_bf_args_, bf_id)
+#define _bf_args _bf_concat(_bf_args_, _bf_concat(_bf_namespace, bf_id))
 
 /// bf_override
 #define bf_override(name) _bf_func_decl_ret name(_bf_func_decl_args)
@@ -97,15 +99,7 @@
 
 #ifdef __INTELLISENSE__
 #undef bf_original
-#define bf_original(...)
-#endif
-
-#ifndef BIFROST_PLUGIN
-namespace bifrost {
-
-enum class Identifer : std::uint64_t { Unsused = 0, NumIdentifier };
-
-}  // namespace bifrost
+#define bf_original(...) _bf_original(bf_args)
 #endif
 
 #pragma endregion

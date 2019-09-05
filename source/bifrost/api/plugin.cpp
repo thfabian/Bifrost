@@ -9,6 +9,9 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+#include "bifrost/core/common.h"
+
+#include "bifrost/api/helper.h"
 #include "bifrost/api/plugin_context.h"
 
 using namespace bifrost;

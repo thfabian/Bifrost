@@ -12,7 +12,7 @@
 #include "bifrost/core/common.h"
 
 #include "bifrost/api/helper.h"
-#include "bifrost/api/plugin_impl.h"
+#include "bifrost/api/plugin_context.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
 #include "bifrost/core/error.h"
@@ -22,6 +22,8 @@
 #include "bifrost/core/plugin_param.h"
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
+
+#include "bifrost/template/plugin_procedure.h"
 
 using namespace bifrost;
 using namespace bifrost::api;

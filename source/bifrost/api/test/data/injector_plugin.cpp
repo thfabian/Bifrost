@@ -15,7 +15,7 @@
 #include <fstream>
 #include <string_view>
 
-class InjectorTestPlugin final : public ::bifrost::Plugin {
+class InjectorTestPlugin final : public BIFROST_PLUGIN {
  public:
   // Write the message to the file provided by the arguments to the plugin
   void WriteToFile(std::string_view msg) {
