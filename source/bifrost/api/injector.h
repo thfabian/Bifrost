@@ -9,9 +9,9 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#pragma once
-
 /// @file Injector routines.
+
+#pragma once
 
 #include <stdint.h>
 
@@ -127,6 +127,14 @@ typedef struct bfi_PluginUnloadArguments_t {
 typedef struct bfi_PluginUnloadResult_t {
   int32_t* Unloaded;  ///< Set to 1 if the plugin has been successfully unloaded, 0 otherwise - (size `bfi_PluginUnloadArguments.NumPlugins`)
 } bfi_PluginUnloadResult;
+
+/// @brief Plugin message arguments
+typedef struct bfi_PluginMessageArguments_t {
+  bfi_InjectorArguments* InjectorArguments;  ///< Arguments to the injector process
+  const char* PluginName;                    ///< Name of the receiving plugin
+  const void* MessageData;                   ///< Data of the message
+  const void* MessageSizeInBytes;            ///< Size of the message in bytes
+} bfi_PluginMessageArguments;
 
 #pragma endregion
 
@@ -255,6 +263,24 @@ BIFROST_INJECTOR_API bfi_Status bfi_PluginUnload(bfi_Context* ctx, const bfi_Plu
 /// @param[in] ctx      Context description
 /// @param[in] result   Result of the plugin unloading
 BIFROST_INJECTOR_API bfi_Status bfi_PluginUnloadResultFree(bfi_Context* ctx, bfi_PluginUnloadResult* result);
+
+/// @brief Send a message to the plugin
+/// @param[in] ctx    Context description
+/// @param[in] name   Name of the plugin
+/// @param[in] data   Start of message
+/// @param[in] size   Size of message in bytes
+BIFROST_INJECTOR_API bfi_Status bfi_PluginMessage(bfi_Context* ctx, const bfi_PluginMessageArguments* args, const bfi_Process_t* process);
+
+/// @brief Get the help description of the plugin
+/// @param[in] ctx     Context description
+/// @param[in] path    Path to the dll of the plugin
+/// @param[out] help   '\0' terminated help message string, use `bfi_PluginHelpFree` to deallocate it
+BIFROST_INJECTOR_API bfi_Status bfi_PluginHelp(bfi_Context* ctx, const wchar_t* path, char** help);
+
+/// @brief Get the help description of the plugin
+/// @param[in] ctx     Context description
+/// @param[out] help   Help string to deallocate
+BIFROST_INJECTOR_API bfi_Status bfi_PluginHelpFree(bfi_Context* ctx, char* help);
 
 #pragma endregion
 

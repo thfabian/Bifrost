@@ -27,6 +27,7 @@ class ModuleLoader : public Object {
   struct ModuleDesc {
     std::wstring Path;          ///< Module path passed to LoadLibrary (name or full path)
     std::wstring DllDirectory;  ///< Custom DLL load directory (if necessary)
+    bool Unload = true;         ///< Unload the module in the end?
   };
 
   /// Get or load module given by `identifier` or throw std::runtime_error on error
@@ -56,7 +57,7 @@ class ModuleLoader : public Object {
  private:
   struct Module {
     HMODULE Handle;
-    bool Loaded;
+    bool Loaded;  // If Loaded is true, we will unload it in the destructor
   };
 
   std::mutex m_mutex;

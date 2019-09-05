@@ -12,7 +12,7 @@
 #include "bifrost/core/common.h"
 
 #include "bifrost/api/helper.h"
-#include "bifrost/api/plugin_impl.h"
+#include "bifrost/api/plugin_context.h"
 #include "bifrost/core/buffered_logger.h"
 #include "bifrost/core/context.h"
 #include "bifrost/core/error.h"
@@ -22,6 +22,8 @@
 #include "bifrost/core/plugin_param.h"
 #include "bifrost/core/shared_memory.h"
 #include "bifrost/core/sm_log_stash.h"
+
+#include "bifrost/template/plugin_fwd.h"
 
 using namespace bifrost;
 using namespace bifrost::api;
@@ -128,6 +130,8 @@ class LoaderContext {
     PluginContext::SetUpParam param;
     param.SharedMemoryName = m_storage->Memory->GetName();
     param.SharedMemorySize = m_storage->Memory->GetSizeInBytes();
+    param.Arguments = p.Arguments;
+
     bool success = bifrost_PluginSetUp((void*)&param) == 0;
     if (success) {
       // Add the plugin to loaded plugin map
@@ -159,7 +163,12 @@ class LoaderContext {
 
     PluginContext::TearDownParam param;
     param.NoFail = false;
-    return bifrost_PluginTearDown((void*)&param) == 0;
+    bool success = bifrost_PluginTearDown((void*)&param) == 0;
+    if (success) {
+      // Remove the plugin from the loaded plugin map
+      m_pluginMap.erase(identifier);
+    }
+    return success;
   }
 
   bool UnloadPluginsImpl(Context* ctx, const PluginUnloadParam& p) {

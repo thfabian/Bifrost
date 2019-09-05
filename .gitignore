@@ -8,6 +8,7 @@
 *.user
 *.project
 .idea
+.vs
 
 # Build directories
 build*/

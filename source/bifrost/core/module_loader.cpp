@@ -63,7 +63,7 @@ HMODULE ModuleLoader::GetModuleImpl(std::string identifier, ModuleDesc* desc) {
     loaded = true;
   }
 
-  m_modules.emplace(std::move(identifier), Module{hmodule, loaded});
+  m_modules.emplace(std::move(identifier), Module{hmodule, !desc->Unload ? false : loaded});
   return hmodule;
 }
 

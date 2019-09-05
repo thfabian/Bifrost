@@ -9,9 +9,9 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#pragma once
-
 /// @file Plugin routines.
+
+#pragma once
 
 #include <stdint.h>
 
@@ -45,9 +45,19 @@ typedef struct bfp_Version_t {
 } bfp_Version;
 
 /// @brief Injector context
-typedef struct bfp_Plugin_t {
+typedef struct bfp_PluginContext_t {
   void* _Internal;  ///< Internal pointer, do not use
 } bfp_PluginContext;
+
+/// @brief Arguments required during SetUp
+typedef struct bfp_PluginSetUpArguments_t {
+  const char* Arguments;  ///< Arguments passed to the SetUp method
+} bfp_PluginSetUpArguments;
+
+/// @brief Arguments required during SetUp
+typedef struct bfp_PluginTearDownArguments_t {
+  bool NoFail;  ///< Allow the tear-down to fail?
+} bfp_PluginTearDownArguments;
 
 #pragma endregion
 
@@ -73,20 +83,40 @@ BIFROST_PLUGIN_API const char* bfp_GetVersionString(void);
 #pragma region Plugin
 
 /// @brief Initialize the plugin
-BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(void);
+///
+/// @param[out] minHookInitSuccess   Set to 1 if MinHook has been successfully initialized
+BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(int32_t* minHookInitSuccess);
 
-/// @brief Set-up the plugin
+/// @brief Free the plugin
+///
+/// @param[out] minHookFreeSuccess   Set to 1 if MinHook has been successfully uninitialized
+BIFROST_PLUGIN_API void bfp_PluginFree(bfp_PluginContext* ctx, int32_t* minHookFreeSuccess);
+
+/// @brief Start the set-up process of the plugin
 /// @param[in] ctx      Plugin context description
 /// @param[in] name     Name of the plugin
-/// @param[in] plugin   Plugin instance
-/// @param[in] param    Plugin set up parameter
-BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUp(bfp_PluginContext* ctx, const char* name, void* plugin, void* param);
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::SetUpParam and is constructed by the loader
+/// @param[out] args    Extracted arguments from `param`
+BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUpStart(bfp_PluginContext* ctx, const char* name, const void* param, bfp_PluginSetUpArguments** args);
 
-/// @brief Tear-down the plugin
+/// @brief Finalize the set-up process of the plugin
 /// @param[in] ctx      Plugin context description
-/// @param[in] plugin   Plugin instance
-/// @param[in] param    Plugin set up parameter
-BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* plugin, void* param);
+/// @param[in] name     Name of the plugin
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::SetUpParam and is constructed by the loader
+/// @param[in] args     Arguments allocated by bfp_PluginSetUpStart (will free the memory)
+BIFROST_PLUGIN_API bfp_Status bfp_PluginSetUpEnd(bfp_PluginContext* ctx, const char* name, const void* param, const bfp_PluginSetUpArguments* args);
+
+/// @brief Start the tear-down process of the plugin
+/// @param[in] ctx      Plugin context description
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::TearDownParam and is constructed by the loader
+/// @param[out] args    Extracted arguments from `param`
+BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDownStart(bfp_PluginContext* ctx, const void* param, bfp_PluginTearDownArguments** args);
+
+/// @brief Finalize the tear-down process of the plugin
+/// @param[in] ctx      Plugin context description
+/// @param[in] param    Plugin set up parameter, this has to of type PluginContext::TearDownParam and is constructed by the loader
+/// @param[in] args     Arguments allocated by bfp_PluginTearDownStart (will free the memory)
+BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDownEnd(bfp_PluginContext* ctx, const void* param, const bfp_PluginTearDownArguments* args);
 
 /// @brief Log the message
 /// @param[in] ctx       Plugin context description
@@ -95,13 +125,32 @@ BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDown(bfp_PluginContext* ctx, void* p
 /// @param[in] msg       Log message
 BIFROST_PLUGIN_API bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* module, const char* msg);
 
-/// @brief Free the plugin
-/// @param[in] plugin   Plugin context description
-BIFROST_PLUGIN_API void bfp_PluginFree(bfp_PluginContext* ctx);
-
 /// @brief Get the last error message occurred in `plugin`
 /// @param[in] plugin   Plugin context description
 BIFROST_PLUGIN_API const char* bfp_PluginGetLastError(bfp_PluginContext* plugin);
+
+/// @brief Creates a Hook for the specified target function, in disabled state
+/// @param[in] ctx				Plugin context description
+/// @param[in] target			A pointer to the target function, which will be overridden by the detour function
+/// @param[in] detour			A pointer to the detour function, which will override the target function
+/// @param[in] enable			If set to 1, immediately enables the hook
+/// @param[out] original  A pointer to the trampoline function, which will be used to call the original target function. This parameter can be NULL
+BIFROST_PLUGIN_API bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, uint32_t enable, void** original);
+
+/// @brief Removes an already created hook
+/// @param[in] ctx				Plugin context description
+/// @param[in] target			A pointer to the target function
+BIFROST_PLUGIN_API bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, void* target);
+
+/// @brief Enables an already created hook
+/// @param[in] ctx				Plugin context description
+/// @param[in] target			A pointer to the target function
+BIFROST_PLUGIN_API bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void* target);
+
+/// @brief Disables an already created hook
+/// @param[in] ctx				Plugin context description
+/// @param[in] target			A pointer to the target function
+BIFROST_PLUGIN_API bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void* target);
 
 #pragma endregion
 

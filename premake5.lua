@@ -195,6 +195,7 @@ workspace "bifrost"
     defines { "BIFROST_PLUGIN_EXPORTS" }
     
     bifrost_add_bifrost_core()
+    bifrost_add_external_minhook()
 
     function bifrost_add_bifrost_plugin()
       includedirs "source" 
@@ -240,7 +241,8 @@ workspace "bifrost"
     includedirs { "source" }
     targetname "test-bifrost-api-injector-plugin"
     files { "source/bifrost/api/test/data/injector_plugin.cpp" } 
-    
+    defines { "_CRT_SECURE_NO_WARNINGS" }
+
   -- *** Bifrost API Test ***
   project "bifrost_api_test"
     kind "ConsoleApp"
@@ -256,7 +258,14 @@ workspace "bifrost"
     bifrost_add_bifrost_core()
     bifrost_add_bifrost_injector()
 
-    dependson { "bifrost_api_test_injector_executable", "bifrost_api_test_injector_plugin" }
+    dependson { 
+      "bifrost_api_test_injector_executable", 
+      "bifrost_api_test_injector_plugin",
+      "bifrost_api_test_injector_plugin",
+      "bifrost_plugin",
+      "bifrost_injector",
+      "bifrost_loader"
+    }
     
   -- *
   -- *** Injector ***
@@ -280,32 +289,34 @@ workspace "bifrost"
   -- *** Example ***
   -- *
 
-  -- *** Hello World ***
-  project "01_hello_world_dll"
+  -- *** saxpy ***
+  project "example_01_saxpy_dll"
     kind "SharedLib"
-    targetname "01-hello-world"
+    targetname "example-saxpy"
     files { 
-      "example/01-hello-world/hello_world.h", 
-      "example/01-hello-world/hello_world.cpp",
+      "example/01-saxpy/saxpy.h", 
+      "example/01-saxpy/saxpy.cpp",
     }
     
-  project "01_hello_world_executable"
+  project "example_01_saxpy_executable"
     kind "ConsoleApp"
-    targetname "01-hello-world"
+    targetname "example-saxpy"
     files { 
-      "example/01-hello-world/hello_world.h", 
-      "example/01-hello-world/hello_world_main.cpp",
+      "example/01-saxpy/saxpy.h", 
+      "example/01-saxpy/saxpy_main.cpp",
     }
-    links "01_hello_world_dll"
-    dependson "01_hello_world_dll"
+    links "example_01_saxpy_dll"
+    dependson "example_01_saxpy_dll"
   
-  project "01_hello_world_plugin"
+  project "example_01_saxpy_plugin"
     kind "SharedLib"
+    targetname "example-saxpy-plugin"
     includedirs { "source" }
     files { 
-      "example/01-hello-world/hello_world_plugin.cpp", 
+      "example/01-saxpy/saxpy_plugin.cpp",
 
       "source/bifrost/template/plugin_main.h",
-      "source/bifrost/template/plugin_decl.h"
+      "source/bifrost/template/plugin_decl.h",
+      "source/bifrost/template/plugin_dsl.h"
     }
     

@@ -19,6 +19,8 @@ std::wstring TestEnviroment::GetInjectorExecutable() const { return GetFile(L"ex
 
 std::wstring TestEnviroment::GetInjectorPlugin() const { return GetFile(L"plugin", L"test-bifrost-api-injector-plugin.dll"); }
 
+std::string TestEnviroment::GetTmpFile(Context* ctx) const { return (std::filesystem::temp_directory_path() / UUID(ctx)).string(); }
+
 void LogCallback(u32 level, const char* module, const char* msg) { TestEnviroment::Get().GetLogger()->Sink((ILogger::LogLevel)level, module, msg); }
 
 }  // namespace bifrost

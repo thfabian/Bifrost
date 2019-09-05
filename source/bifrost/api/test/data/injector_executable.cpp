@@ -13,6 +13,6 @@
 #include <cstdlib>
 
 int main(int argc, const char* argv[]) {
-  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 0);
+  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 1000);
   return argc > 1 ? std::atoi(argv[1]) : 0;
 }

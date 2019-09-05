@@ -9,15 +9,13 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include "hello_world.h"
-
+#include "saxpy.h"
 #include <Windows.h>
-#include <iostream>
 
-int main(int argc, const char* argv[]) {
-  ::Sleep(argc > 1 ? std::atoi(argv[1]) : 3000);
-
-  const int a = 1;
-  const int b = 2;
-  return ::hello_world_add(a, b) == (a + b);
+void saxpy(int n, float a, float* x, float* y) {
+  // Oh no.. there is a bug here!
+  int upper_bound = n / 2;
+  for (int i = 0; i < upper_bound; ++i) y[i] = a * x[i] + y[i];
 }
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

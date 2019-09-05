@@ -97,9 +97,15 @@ class BaseTestEnviroment {
  protected:
   std::wstring GetFile(std::wstring type, std::wstring filename) const {
     auto curPath = std::filesystem::current_path();
-    std::vector<std::filesystem::path> paths;
 
-    for (auto str : {L"", L"bin\\Debug", L"bin\\Release"}) paths.emplace_back(curPath / std::filesystem::path(str) / filename);
+    std::vector<std::filesystem::path> paths{curPath / filename, curPath / L"bin/Debug" / filename, curPath / L"bin/Release" / filename};
+    for (auto& p : std::filesystem::directory_iterator(curPath)) {
+      if (p.is_directory()) {
+        for (const auto subPath : {L"bin/Debug", L"bin/Release"}) {
+          paths.emplace_back(p / std::filesystem::path(subPath) / filename);
+        }
+      }
+    }
 
     for (const auto& p : paths) {
       if (std::filesystem::exists(p)) return p.native();

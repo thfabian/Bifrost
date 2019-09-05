@@ -25,6 +25,9 @@ class TestEnviroment final : public ::testing::Environment, public BaseTestEnvir
   /// Get the full path to the injector test plugin
   std::wstring GetInjectorPlugin() const;
 
+  /// Create a temporary file
+  std::string GetTmpFile(Context* ctx) const;
+
   /// Get the test logger
   ILogger* GetLogger() { return m_logger.get(); }
 
