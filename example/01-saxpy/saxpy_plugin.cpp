@@ -78,8 +78,8 @@ bf_override(my_saxpy3) {
 class MySaxpyPlugin final : public BIFROST_PLUGIN {
  public:
   virtual void SetUp() override {
-    SetHook(Identifer::saxpy, my_saxpy1);
-    SetHook("saxpy", my_saxpy2);
+    CreateHook(Identifer::saxpy, my_saxpy1);
+    CreateHook("saxpy", my_saxpy2);
   }
 
   virtual void TearDown() override {}

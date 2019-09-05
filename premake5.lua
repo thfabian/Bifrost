@@ -195,6 +195,7 @@ workspace "bifrost"
     defines { "BIFROST_PLUGIN_EXPORTS" }
     
     bifrost_add_bifrost_core()
+    bifrost_add_external_minhook()
 
     function bifrost_add_bifrost_plugin()
       includedirs "source" 

@@ -36,13 +36,8 @@ bfp_Status PluginContext::SetUpStart(bfp_PluginContext* ctx, const char* name, c
 
     // Allocate arguments
     (*args) = new bfp_PluginSetUpArguments;
-    (*args)->Arguments = param->Arguments.empty() ? "" : param->Arguments.c_str();
-
-    //// Set the arguments
-    // plugin->_SetArguments(param->Arguments.empty() ? "" : param->Arguments.c_str());
-
-    //// Call the setup method
-    // plugin->_SetUpImpl((bfp_PluginContext_t*)ctx);
+    (*args)->Arguments = new char[param->Arguments.size() + 1];
+    std::memcpy((void*)(*args)->Arguments, param->Arguments.c_str(), param->Arguments.size() + 1);
 
   } catch (...) {
     m_ctx->Logger().ErrorFormat("Failed to set up plugin: %s", name);
@@ -54,6 +49,7 @@ bfp_Status PluginContext::SetUpStart(bfp_PluginContext* ctx, const char* name, c
 bfp_Status PluginContext::SetUpEnd(bfp_PluginContext* ctx, const char* name, const void* setUpParam, const bfp_PluginSetUpArguments* args) {
   try {
     // Free allocated arguments
+		if(args->Arguments) delete args->Arguments;
     if (args) delete args;
 
   } catch (...) {
@@ -73,9 +69,6 @@ bfp_Status PluginContext::TearDownStart(bfp_PluginContext* ctx, const void* tear
     // Allocate arguments
     (*args) = new bfp_PluginTearDownArguments;
     (*args)->NoFail = param->NoFail;
-
-    //// Call tear-down
-    // plugin->_TearDownImpl(param->NoFail);
 
   } catch (...) {
     m_ctx->Logger().ErrorFormat("Failed to tear down plugin: %s", name.c_str());
