@@ -84,13 +84,18 @@ BIFROST_PLUGIN_API const char* bfp_GetVersionString(void);
 
 /// @brief Initialize the plugin
 ///
-/// @param[out] minHookInitSuccess   Set to 1 if MinHook has been successfully initialized
-BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(int32_t* minHookInitSuccess);
+/// @param[out] errMsg   Set to NULL if no error occurred in initializing the hooking mechanism, otherwise contains the error message
+BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(const char** errMsg);
 
 /// @brief Free the plugin
 ///
-/// @param[out] minHookFreeSuccess   Set to 1 if MinHook has been successfully uninitialized
-BIFROST_PLUGIN_API void bfp_PluginFree(bfp_PluginContext* ctx, int32_t* minHookFreeSuccess);
+/// @param[out] errMsg   Set to NULL if no error occurred in uninitializing the hooking mechanism, otherwise contains the error message
+BIFROST_PLUGIN_API void bfp_PluginFree(bfp_PluginContext* ctx, const char** errMsg);
+
+/// @brief Free the allocated string
+///
+/// @param[in] str		String to free
+BIFROST_PLUGIN_API void bfp_StringFree(const char* str);
 
 /// @brief Start the set-up process of the plugin
 /// @param[in] ctx      Plugin context description

@@ -121,6 +121,9 @@ workspace "bifrost"
     disablewarnings { "4267", "4146" }
     
     bifrost_add_external_json()
+    bifrost_add_external_minhook()
+    
+    links { "DbgHelp" }
 
     function bifrost_add_bifrost_core()
       includedirs "source" 
@@ -195,7 +198,6 @@ workspace "bifrost"
     defines { "BIFROST_PLUGIN_EXPORTS" }
     
     bifrost_add_bifrost_core()
-    bifrost_add_external_minhook()
 
     function bifrost_add_bifrost_plugin()
       includedirs "source" 

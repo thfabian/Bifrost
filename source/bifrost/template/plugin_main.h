@@ -15,10 +15,6 @@
 
 #pragma region Namespace
 
-#ifndef BIFROST_NAMESPACE
-#define BIFROST_NAMESPACE bifrost
-#endif
-
 #define BIFROST_NAMESPACE_BEGIN namespace BIFROST_NAMESPACE {
 #define BIFROST_NAMESPACE_END }
 
@@ -51,7 +47,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// Access the singleton instance
   static Plugin& Get();
 
-	/// Constructor
+  /// Constructor
   Plugin();
 
   /// Virtual destructor
@@ -460,9 +456,10 @@ class BifrostPluginApi {
 #define BIFROST_PLUGIN_API_DEF(name) Check("GetProcAddress: " #name, (name = (name##_fn)::GetProcAddress(hModule, #name)) != NULL, true);
 
   BIFROST_PLUGIN_API_DECL(bfp_GetVersion)
-  BIFROST_PLUGIN_API_DECL(bfp_PluginFree)
-  BIFROST_PLUGIN_API_DECL(bfp_PluginGetLastError)
   BIFROST_PLUGIN_API_DECL(bfp_PluginInit)
+  BIFROST_PLUGIN_API_DECL(bfp_PluginFree)
+  BIFROST_PLUGIN_API_DECL(bfp_StringFree)
+  BIFROST_PLUGIN_API_DECL(bfp_PluginGetLastError)
   BIFROST_PLUGIN_API_DECL(bfp_PluginLog)
   BIFROST_PLUGIN_API_DECL(bfp_PluginSetUpStart)
   BIFROST_PLUGIN_API_DECL(bfp_PluginSetUpEnd)
@@ -473,9 +470,10 @@ class BifrostPluginApi {
     HMODULE hModule = NULL;
     Check("LoadLibrary: bifrost_plugin.dll", (hModule = ::LoadLibraryW(L"bifrost_plugin.dll")) != NULL, true);
     BIFROST_PLUGIN_API_DEF(bfp_GetVersion)
-    BIFROST_PLUGIN_API_DEF(bfp_PluginFree)
-    BIFROST_PLUGIN_API_DEF(bfp_PluginGetLastError)
     BIFROST_PLUGIN_API_DEF(bfp_PluginInit)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginFree)
+    BIFROST_PLUGIN_API_DEF(bfp_StringFree)
+    BIFROST_PLUGIN_API_DEF(bfp_PluginGetLastError)
     BIFROST_PLUGIN_API_DEF(bfp_PluginLog)
     BIFROST_PLUGIN_API_DEF(bfp_PluginSetUpStart)
     BIFROST_PLUGIN_API_DEF(bfp_PluginSetUpEnd)
@@ -572,9 +570,7 @@ BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
   std::string Arguments;
 };
 
-BIFROST_NAMESPACE::Plugin::Plugin() {
-	m_impl = new PluginImpl;
-}
+BIFROST_NAMESPACE::Plugin::Plugin() { m_impl = new PluginImpl; }
 
 Plugin::~Plugin() {
   RemoveAllHooks();
@@ -605,18 +601,12 @@ void Plugin::Hook::Enable() {
 }
 
 bool Plugin::Hook::TryEnable() {
-#ifdef BIFROST_DEBUG
-  Plugin::Get().Log(LogLevel::Debug, "Setting up hook for ...");
-#endif
   m_enabled = true;
   return true;
 }
 
 void Plugin::Hook::Disable() {
   if (!IsEnabled()) return;
-#ifdef BIFROST_DEBUG
-  Plugin::Get().Log(LogLevel::Debug, "Removing hook from ...");
-#endif
 }
 
 void Plugin::Hook::_SetTarget(void* target) noexcept { m_target = target; }
@@ -685,21 +675,24 @@ BIFROST_PLUGIN_SETUP_PROC_DEF {
 
   Plugin* plugin = &Plugin::Get();
 
-  int32_t minHookInitSuccess = 0;
-  bfp_PluginContext* ctx = api.bfp_PluginInit(&minHookInitSuccess);
-  if (minHookInitSuccess != 1) {
-    std::stringstream ss;
-    ss << "Failed to initialize MinHook: " << api.bfp_PluginGetLastError(ctx);
-    plugin->FatalError(ss.str().c_str());
+  const char* errMsg = nullptr;
+
+  // Initialize the plugin & the internal hooking mechanism
+  bfp_PluginContext* ctx = api.bfp_PluginInit(&errMsg);
+  if (!ctx || errMsg != nullptr) {
+    std::string errMsgStr = errMsg ? errMsg : "Unknown error in " BIFROST_PLUGIN_SETUP_PROC_NAME_STRING;
+    api.bfp_StringFree(errMsg);
+    Check(errMsgStr.c_str(), false, false);
   }
 
+  // Setup the plugin (parse the arguments and connect to shared memory/set up logging)
   bfp_PluginSetUpArguments* args;
   if (api.bfp_PluginSetUpStart(ctx, plugin->GetName(), param, &args) != BFP_OK) plugin->FatalError(api.bfp_PluginGetLastError(ctx));
 
   plugin->_SetArguments(args->Arguments);
   plugin->_SetUpImpl((bfp_PluginContext_t*)ctx);
 
-  if (api.bfp_PluginSetUpEnd(ctx, plugin->GetName(), param, args) != BFP_OK) plugin->FatalError(api.bfp_PluginGetLastError(ctx));
+  if (api.bfp_PluginSetUpEnd(plugin->_GetPlugin(), plugin->GetName(), param, args) != BFP_OK) plugin->FatalError(api.bfp_PluginGetLastError(ctx));
   return 0;
 }
 
@@ -719,10 +712,13 @@ BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
 
   if (api.bfp_PluginTearDownEnd(ctx, param, args) != BFP_OK) plugin->FatalError(api.bfp_PluginGetLastError(ctx));
 
-  int32_t minHookFreeSuccess = 0;
-  api.bfp_PluginFree(ctx, &minHookFreeSuccess);
-  Check("Failed to free MinHook", minHookFreeSuccess == 1, false);
-
+  const char* errMsg = nullptr;
+  api.bfp_PluginFree(ctx, &errMsg);
+  if (errMsg != nullptr) {
+    std::string errMsgStr = errMsg;
+    api.bfp_StringFree(errMsg);
+    Check(errMsgStr.c_str(), false, false);
+  }
   return 0;
 }
 

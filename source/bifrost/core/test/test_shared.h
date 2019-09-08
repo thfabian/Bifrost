@@ -60,9 +60,8 @@ class TestLogger final : public ILogger {
     }
 
     auto moduleStr = std::string_view(module);
-    if (!moduleStr.empty()) {
-      ss << " [" << moduleStr << "]";
-    }
+    if (!moduleStr.empty()) ss << StringFormat("[%-20s]", moduleStr.data());
+
     ss << ": " << msg << std::endl;
 
     auto outMsg = ss.str();

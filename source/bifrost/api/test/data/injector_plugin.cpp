@@ -9,8 +9,10 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+#define BIFROST_NAMESPACE bifrost
+
 #define BIFROST_IMPLEMENTATION
-#include "bifrost/template/plugin.h"
+#include "bifrost/template/plugin_main.h"
 
 #include <fstream>
 #include <string_view>
