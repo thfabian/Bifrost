@@ -282,7 +282,8 @@ workspace "bifrost"
   project "injector"
     kind "ConsoleApp"
     includedirs { "source" }
-    
+    targetname "bfi"
+
     pchheader "injector/common.h"
     pchsource "source/injector/common.cpp"
     
@@ -313,6 +314,9 @@ workspace "bifrost"
     links { 
       "System",
       "System.Core",
+    }
+    postbuildcommands {
+      '{COPY} "$(ProjectDir)bin/$(Configuration)/*" "$(SolutionDir)bin/$(Configuration)/"'
     }
 
   -- *

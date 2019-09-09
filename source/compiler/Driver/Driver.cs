@@ -58,9 +58,9 @@ namespace Bifrost.Compiler.Driver
                             AutoVersion = false,
                             MaximumDisplayWidth = Console.WindowWidth,
                         };
-                        helpTxt.AddPreOptionsText("bfc - Bifrost Compiler (0.0.1)\n\nOptions:");
+                        helpTxt.AddPreOptionsText("Bifrost Compiler (0.0.1) - Parse and extract hooks from C++ files.\n\nOPTIONS:");
                         helpTxt.AddOptions(result);
-                        helpTxt.AddPostOptionsText("Example:\n  bfc.exe --help");
+                        helpTxt.AddPostOptionsText("EXAMPLES:\n  bfc.exe --help");
 
                         Console.WriteLine(helpTxt.ToString());
                     }
