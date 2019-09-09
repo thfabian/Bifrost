@@ -29,6 +29,7 @@ workspace "bifrost"
   language "C++"
   architecture "x86_64"
   cppdialect "C++17"
+  dotnetframework "4.6"
   
   flags { "MultiProcessorCompile" }
 
@@ -280,13 +281,35 @@ workspace "bifrost"
     pchheader "injector/common.h"
     pchsource "source/injector/common.cpp"
     
-    files { "source/injector/*.cpp", "source/injector/*.h" }
+    files {"source/injector/*.cpp", "source/injector/*.h" }
     
     bifrost_add_bifrost_core()
     bifrost_add_bifrost_injector()
     bifrost_add_external_args()
     bifrost_add_external_spdlog()
     
+  -- *
+  -- *** Compiler ***
+  -- *
+  project "compiler"
+    kind "ConsoleApp"
+    language "C#"
+    targetname "bfc"
+    
+    location "source/compiler"
+    files {"source/compiler/**.cs" }
+    excludes { "**/bin/**", "**/obj/**" }
+    
+    namespace "Bifrost.Compiler"
+    nuget { 
+      "CommandLineParser:2.6.0" 
+    }
+    
+    links { 
+      "System",
+      "System.Core",
+    }
+
   -- *
   -- *** Example ***
   -- *
