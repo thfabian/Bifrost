@@ -9,20 +9,17 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#define BIFROST_NAMESPACE bifrost
+#define BIFROST_NAMESPACE hook_plugin_1
 
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
 #include "shared.h"
 
-class InjectorTestPlugin final : public BIFROST_PLUGIN {
+class HookTestPlugin1 final : public BIFROST_PLUGIN {
  public:
-  virtual void SetUp() override { WriteToFile(GetArguments(), "SetUp", this); }
-  virtual void TearDown() override { WriteToFile(GetArguments(), "TearDown", this); }
-
-  static const char* Help() { return "Help"; }
+  virtual void SetUp() override {}
+  virtual void TearDown() override {}
 };
 
-BIFROST_REGISTER_PLUGIN(InjectorTestPlugin)
-BIFROST_REGISTER_PLUGIN_HELP(InjectorTestPlugin::Help)
+BIFROST_REGISTER_PLUGIN(HookTestPlugin1)

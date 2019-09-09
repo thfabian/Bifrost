@@ -5,6 +5,7 @@
 
 local os = require "os"
 local io = require "io"
+local string = require "string"
 
 -- Report an error message
 function bifrost_error(msg)
@@ -232,19 +233,23 @@ workspace "bifrost"
     bifrost_add_bifrost_core()
     dependson { "bifrost_core_test_mock_executable", "bifrost_core_test_mock_dll" }
     
-  -- *** Bifrost API Test (injector executable) ***
-  project "bifrost_api_test_injector_executable"
-    kind "ConsoleApp"
-    targetname "test-bifrost-api-injector-executable"
-    files { "source/bifrost/api/test/data/injector_executable.cpp" }
-    
-  -- *** Bifrost API Test (injector plugin) ***
-  project "bifrost_api_test_injector_plugin"
-    kind "SharedLib"
-    includedirs { "source" }
-    targetname "test-bifrost-api-injector-plugin"
-    files { "source/bifrost/api/test/data/injector_plugin.cpp" } 
-    defines { "_CRT_SECURE_NO_WARNINGS" }
+  -- *** Bifrost API Test (plugins) ***
+  for p, k in pairs({ 
+      injector_plugin="SharedLib", 
+      injector_executable="ConsoleApp", 
+      hook_plugin_1="SharedLib", 
+      hook_plugin_2="SharedLib", 
+      hook_executable="ConsoleApp"
+    }) 
+  do
+    project ("bifrost_api_test_" .. p)
+      kind(k)
+      includedirs { "source" }
+      
+      targetname("test-bifrost-api-" .. string.gsub(p, "_", "-"))
+      files { "source/bifrost/api/test/data/" .. p .. ".cpp", "source/bifrost/api/test/data/*.h" } 
+      defines { "_CRT_SECURE_NO_WARNINGS" }
+  end
 
   -- *** Bifrost API Test ***
   project "bifrost_api_test"

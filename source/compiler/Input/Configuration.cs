@@ -19,7 +19,6 @@ using System.Threading.Tasks;
 
 namespace Bifrost.Compiler.Input
 {
-
     public class Configuration
     {
         [Option('v', "verbose", Required = false, HelpText = "Enable verbose logging.")]

@@ -12,6 +12,7 @@
 #pragma once
 
 #include "bifrost/core/common.h"
+
 #include "bifrost/core/context.h"
 #include "bifrost/core/ilogger.h"
 #include "bifrost/core/util.h"

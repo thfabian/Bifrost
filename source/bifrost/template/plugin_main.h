@@ -89,13 +89,6 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// Get the name of the plugin - by default returns the class name of the plugin i.e name passed to `BIFROST_REGISTER_PLUGIN`
   virtual const char* GetName() const;
 
-  /// Handle incoming messages to this plugin - by default does nothing
-  ///
-  /// @param[in] data  Start of the message
-  /// @param[in] size  Size of the message in bytes
-  /// @return `true` if the message was handled successfully, `false` otherwise
-  virtual bool HandleMessage(const void* data, int sizeInBytes);
-
   /// Called if a fatal exception occurred - by default logs to Error and throws std::runtime_error
   ///
   /// Note that this function may be called *before* `SetUp` has been invoked.
@@ -644,8 +637,6 @@ void Plugin::RemoveAllHooks() noexcept {
 
 const char* Plugin::GetName() const { return s_name; }
 
-bool Plugin::HandleMessage(const void* data, int sizeInBytes) { return true; }
-
 void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
   m_impl->Context = ctx;
   if (m_impl->Init) throw std::runtime_error("Plugin already set up");
@@ -720,15 +711,6 @@ BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
     Check(errMsgStr.c_str(), false, false);
   }
   return 0;
-}
-
-BIFROST_PLUGIN_MESSAGE_PROC_DECL
-
-BIFROST_PLUGIN_MESSAGE_PROC_DEF {
-  using namespace BIFROST_NAMESPACE;
-
-  Plugin* plugin = &Plugin::Get();
-  return plugin->HandleMessage(data, sizeInBytes) ? 1 : 0;
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

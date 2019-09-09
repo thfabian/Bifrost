@@ -9,17 +9,16 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <cstdint>
-
-// ---------------
+// ---------------------------------------------------------------------------------------------------
+#define BIFROST_NAMESPACE saxpy
+#define BIFROST_PLUGIN_TEST
+// ---------------------------------------------------------------------------------------------------
 
 #define BIFROST_DEBUG
-#define BIFROST_PLUGIN_TEST
-#define BIFROST_NAMESPACE saxpy
-
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
+// ---------------------------------------------------------------------------------------------------
 #define _bf_func_decl_ret_saxpy__saxpy void
 #define _bf_func_decl_args_saxpy__saxpy int n, float a, float *x, float *y
 
@@ -34,8 +33,7 @@
 #define _bf_arg_2_saxpy__saxpy a
 #define _bf_arg_3_saxpy__saxpy x
 #define _bf_arg_4_saxpy__saxpy y
-
-// ---------------
+// ---------------------------------------------------------------------------------------------------
 
 //
 // 1) First, we need to define bf_id to indicate which function/method we are currently defining an override. In the following, we are going to override the
