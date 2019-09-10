@@ -9,5 +9,21 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+#pragma once
+
+#ifdef BIFROST_HOOK_DLL_EXPORTS
+#define BIFROST_HOOK_DLL_API __declspec(dllexport)
+#else
+#define BIFROST_HOOK_DLL_API __declspec(dllimport)
+#endif
+
+#if __cplusplus
+extern "C" {
+#endif
+
 /// Add `arg1` to `arg2` and return the result
-extern "C" __declspec(dllexport) int bifrost_add(int arg1, int arg2);
+BIFROST_HOOK_DLL_API int bifrost_add(int arg1, int arg2);
+
+#if __cplusplus
+}  // extern "C"
+#endif

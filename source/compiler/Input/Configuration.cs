@@ -21,7 +21,22 @@ namespace Bifrost.Compiler.Input
 {
     public class Configuration
     {
-        [Option('v', "verbose", Required = false, HelpText = "Enable verbose logging.")]
-        public bool Verbose { get; set; }
+        /// <summary>
+        /// General options
+        /// </summary>
+        public class GeneralT
+        {
+            /// <summary>
+            /// Use verbose output
+            /// </summary>
+            public bool Logging = false;
+
+            /// <summary>
+            /// File to log to
+            /// </summary>
+            public string LogFile = "log.{0}.txt";
+
+        };
+        public GeneralT General = new GeneralT();
     }
 }

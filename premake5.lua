@@ -252,9 +252,13 @@ workspace "bifrost"
       files { "source/bifrost/api/test/data/" .. p .. ".cpp", "source/bifrost/api/test/data/*.h" } 
       defines { "_CRT_SECURE_NO_WARNINGS" }
       
+      if (p == "hook_dll") then
+        defines { "BIFROST_HOOK_DLL_EXPORTS" }
+      end
+      
       if (p == "hook_executable") then
-        links(project_name)
-        dependson(project_name)
+        links "bifrost_api_test_hook_dll"
+        dependson "bifrost_api_test_hook_dll"
       end
   end
 
