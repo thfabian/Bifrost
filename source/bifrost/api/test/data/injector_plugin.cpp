@@ -9,12 +9,18 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#define BIFROST_NAMESPACE bifrost
+#define BIFROST_NAMESPACE injector_plugin
+#define BIFROST_PLUGIN_IDENTIFIER 
+#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER 
+#define BIFROST_PLUGIN_IDENTIFIER_TO_STRING
+#define BIFROST_PLUGIN_DSL_DEF
 
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
-#include "shared.h"
+#include "bifrost/api/test/data/shared.h"
+
+using namespace bifrost;
 
 class InjectorTestPlugin final : public BIFROST_PLUGIN {
  public:

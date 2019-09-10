@@ -12,9 +12,24 @@
 #include <Windows.h>
 #include <cstdlib>
 
-#include "shared.h"
+#include "bifrost/api/test/data/hook_dll.h"
+#include "bifrost/api/test/data/shared.h"
+
+using namespace bifrost;
 
 int main(int argc, const char* argv[]) {
-  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 1000);
-  return argc > 1 ? std::atoi(argv[1]) : 0;
+  const char* file = argv[1];
+  int arg1 = std::atoi(argv[2]);
+  int arg2 = std::atoi(argv[3]);
+  int sleep = std::atoi(argv[4]);
+
+  int result1 = bifrost_add(arg1, arg2);
+  WriteToFile(file, std::to_string(result1));
+
+  if (sleep > 0) {
+    ::Sleep(sleep);
+    int result2 = bifrost_add(arg1, arg2);
+    WriteToFile(file, std::to_string(result2));
+  }
+  return 0;
 }

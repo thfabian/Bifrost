@@ -11,7 +11,10 @@
 
 // ---------------------------------------------------------------------------------------------------
 #define BIFROST_NAMESPACE saxpy
-#define BIFROST_PLUGIN_TEST
+#define BIFROST_PLUGIN_IDENTIFIER saxpy,
+#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER {"saxpy", Plugin::Identifer::saxpy},
+#define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "saxpy",
+#define BIFROST_PLUGIN_DSL_DEF
 // ---------------------------------------------------------------------------------------------------
 
 #define BIFROST_DEBUG

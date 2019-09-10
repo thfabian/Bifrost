@@ -63,13 +63,9 @@ BIFROST_CACHE_ALIGN class Plugin {
   // IDENTIFIER
   //
   enum class Identifer : std::uint64_t {
-    Unused = 0,
-#ifdef BIFROST_CODEGEN
-    $BIFROST_PLUGIN_IDENTIFIER$
-#elif defined(BIFROST_PLUGIN_TEST)
-    saxpy,
-#endif
-        NumIdentifier
+			Unused = 0,
+			BIFROST_PLUGIN_IDENTIFIER
+      NumIdentifier
   };
 
   //
@@ -347,9 +343,7 @@ BIFROST_NAMESPACE_END
 #define bf_original(...) _bf_original(bf_args)
 #endif
 
-#ifdef BIFROST_CODEGEN
-$BIFROST_PLUGIN_DSL_DEF$
-#endif
+BIFROST_PLUGIN_DSL_DEF
 
 #pragma endregion
 
@@ -521,11 +515,7 @@ static BifrostPluginApi& GetApi() {
 
 static Plugin::Identifer StringToIdentifier(const char* identifer) {
   static BIFROST_CACHE_ALIGN std::unordered_map<std::string, Plugin::Identifer> map{
-#ifdef BIFROST_CODEGEN
-      $BIFROST_PLUGIN_STRING_TO_IDENTIFIER$
-#elif defined(BIFROST_PLUGIN_TEST)
-      {"saxpy", Plugin::Identifer::saxpy},
-#endif
+      BIFROST_PLUGIN_STRING_TO_IDENTIFIER
   };
 
   auto it = map.find(identifer);
@@ -540,11 +530,7 @@ static Plugin::Identifer StringToIdentifier(const char* identifer) {
 static const char* IdentifierToString(Plugin::Identifer identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
       "Unused",
-#ifdef BIFROST_CODEGEN
-      $BIFROST_PLUGIN_IDENTIFIER_TO_STRING$
-#elif defined(BIFROST_PLUGIN_TEST)
-      "saxpy",
-#endif
+      BIFROST_PLUGIN_IDENTIFIER_TO_STRING
       "NumIdentifier",
   };
   return map[(std::uint64_t)identifier];
@@ -714,10 +700,6 @@ BIFROST_PLUGIN_TEARDOWN_PROC_DEF {
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }
-
-#ifdef BIFROST_CODEGEN
-$BIFROST_PLUGIN_IMPLEMENTATION$
-#endif
 
 #endif
 

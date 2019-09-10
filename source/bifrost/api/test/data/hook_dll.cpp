@@ -9,10 +9,6 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <Windows.h>
-#include <cstdlib>
+#include "bifrost/api/test/data/hook_dll.h"
 
-int main(int argc, const char* argv[]) {
-  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 1000);
-  return argc > 1 ? std::atoi(argv[1]) : 0;
-}
+int bifrost_add(int arg1, int arg2) { return arg1 + arg2; }

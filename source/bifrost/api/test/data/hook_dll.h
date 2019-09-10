@@ -9,10 +9,5 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <Windows.h>
-#include <cstdlib>
-
-int main(int argc, const char* argv[]) {
-  ::Sleep(argc > 2 ? std::atoi(argv[2]) : 1000);
-  return argc > 1 ? std::atoi(argv[1]) : 0;
-}
+/// Add `arg1` to `arg2` and return the result
+extern "C" __declspec(dllexport) int bifrost_add(int arg1, int arg2);

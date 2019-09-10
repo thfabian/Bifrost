@@ -10,11 +10,15 @@
 // See LICENSE.txt for details.
 
 #define BIFROST_NAMESPACE hook_plugin_2
+#define BIFROST_PLUGIN_IDENTIFIER
+#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER
+#define BIFROST_PLUGIN_IDENTIFIER_TO_STRING
+#define BIFROST_PLUGIN_DSL_DEF
 
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
-#include "shared.h"
+#include "bifrost/api/test/data/shared.h"
 
 class HookTestPlugin2 final : public BIFROST_PLUGIN {
  public:

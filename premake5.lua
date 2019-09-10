@@ -239,16 +239,23 @@ workspace "bifrost"
       injector_executable="ConsoleApp", 
       hook_plugin_1="SharedLib", 
       hook_plugin_2="SharedLib", 
-      hook_executable="ConsoleApp"
+      hook_executable="ConsoleApp",
+      hook_dll="SharedLib"
     }) 
   do
-    project ("bifrost_api_test_" .. p)
+    project_name = "bifrost_api_test_" .. p
+    project (project_name)
       kind(k)
       includedirs { "source" }
       
       targetname("test-bifrost-api-" .. string.gsub(p, "_", "-"))
       files { "source/bifrost/api/test/data/" .. p .. ".cpp", "source/bifrost/api/test/data/*.h" } 
       defines { "_CRT_SECURE_NO_WARNINGS" }
+      
+      if (p == "hook_executable") then
+        links(project_name)
+        dependson(project_name)
+      end
   end
 
   -- *** Bifrost API Test ***
