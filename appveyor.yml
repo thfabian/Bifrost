@@ -20,10 +20,10 @@ environment:
       
 
 before_build:
+  - cmd: dotnet --version
   - cmd: "configure-%PREMAKE_GENERATOR%.bat"
 
 build_script:
-  - cmd: nuget restore "build-%PREMAKE_GENERATOR%/bifrost.sln"
   - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration="%CONFIGURATION%" /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
