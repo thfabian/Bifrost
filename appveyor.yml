@@ -42,4 +42,6 @@ test_script:
                 (New-Object System.Net.WebClient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\$i-gtest-result.xml))
             }
         }
-        exit $exitCode;
+        if($exitCode -ne 0) {
+            exit $exitCode;
+        }
