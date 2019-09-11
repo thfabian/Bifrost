@@ -18,6 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="ClangSharp" Version="8.0.0-beta" />
     <PackageReference Include="CommandLineParser" Version="2.6.0" />
   </ItemGroup>
 

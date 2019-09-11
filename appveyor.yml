@@ -27,7 +27,7 @@ build_script:
   - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration="%CONFIGURATION%" /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
-  # Run unit tests
+  # Run C++ unit tests
   - ps: |
         $exitCode = 0;
         Foreach($i in "bifrost-core","bifrost-api") {
