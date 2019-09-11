@@ -125,7 +125,7 @@ namespace Bifrost.Compiler.Driver
             };
             helpTxt.AddPreOptionsText("Bifrost Compiler (0.0.1) - Parse and extract hooks from C/C++ files.\n\nOPTIONS:");
             helpTxt.AddOptions(parserResult);
-            helpTxt.AddPostOptionsText("EXAMPLES:\n  bfc.exe -f input.yaml");
+            helpTxt.AddPostOptionsText("EXAMPLES:\n\n  bfc.exe -f input.yaml");
 
             return helpTxt.ToString();
         }

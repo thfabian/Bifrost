@@ -29,7 +29,7 @@ namespace Bifrost.Compiler.Input
         [Option('l', "logging", Required = false, HelpText = "Enable logging to console.")]
         public bool Logging { get; set; } = false;
 
-        [Option("no-color", Required = false, HelpText = "Disabled colored output.")]
+        [Option("no-color", Required = false, HelpText = "Disable colored output.")]
         public bool DisableColors { get; set; } = false;
 
         /// <summary>

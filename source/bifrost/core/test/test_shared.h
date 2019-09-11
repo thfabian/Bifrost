@@ -66,7 +66,7 @@ class TestLogger final : public ILogger {
     ss << ": " << msg << std::endl;
 
     auto outMsg = ss.str();
-    std::cerr << outMsg;
+    std::cout << outMsg;
     ::OutputDebugStringA(outMsg.c_str());
   }
   virtual void Sink(LogLevel level, const char* msg) override { Sink(level, m_module.empty() ? "" : m_module.c_str(), msg); }
