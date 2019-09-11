@@ -29,4 +29,4 @@ build_script:
 
 test_script:
   # Run C++ unit tests
-  - ps: .\ci\unit_tests.ps1 "$build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)"
+  - ps: .\ci\unit_tests.ps1 "build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)"
