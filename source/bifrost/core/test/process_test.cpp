@@ -27,8 +27,6 @@ class ProcessTest : public TestBaseNoSharedMemory {
 TEST_F(ProcessTest, Wait) {
   auto exe = TestEnviroment::Get().GetMockExecutable();
 
-	ASSERT_TRUE(false);
-
   {
     Process proc(GetContext(), {exe, "0", false});
     ASSERT_NO_THROW(proc.Wait());
