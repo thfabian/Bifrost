@@ -29,16 +29,14 @@ namespace Bifrost.Compiler.Core
         /// </summary>
         public ILogger Logger => m_logger;
 
+        /// <summary>
+        /// Diagnostic reporter
+        /// </summary>
+        public Diagnostics Diagnostics => m_diagnostics ?? new Diagnostics(this);
+        private readonly Diagnostics m_diagnostics = null;
+
         public CompilerContext()
         {
-        }
-
-        /// <summary>
-        /// Register a logger
-        /// </summary>
-        public void RegisterLogger(Logger.Base logger, string identifer = null)
-        {
-            m_logger.Loggers.Add(identifer ?? logger.ToString(), logger);
         }
 
         /// <summary>
@@ -78,6 +76,7 @@ namespace Bifrost.Compiler.Core
             return 0;
         }
 
-        private Logger.Forward m_logger = new Forward();
+        private readonly Logger.Forward m_logger = new Forward();
+
     }
 }

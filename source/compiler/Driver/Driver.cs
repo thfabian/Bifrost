@@ -28,9 +28,7 @@ namespace Bifrost.Compiler.Driver
             var ctx = new Core.CompilerContext();
             ctx.EnableLogBuffering();
 
-            var errorReporter = new Core.ErrorReporter(ctx);
             int exitCode = 0;
-
             try
             {
                 // Parse command-line
@@ -64,14 +62,19 @@ namespace Bifrost.Compiler.Driver
                         }
                         else if (err is MissingRequiredOptionError e)
                         {
-                            throw new Exception($"option --{e.NameInfo.LongName} is required");
+                            var shortOptDesc = "";
+                            if(!string.IsNullOrEmpty(e.NameInfo.ShortName))
+                            {
+                                shortOptDesc = $" or -{e.NameInfo.ShortName}";
+                            }
+                            throw new Exception($"option --{e.NameInfo.LongName}{shortOptDesc} is required");
                         }
                     }
                 });
             }
             catch (Exception e)
             {
-                errorReporter.Error(e);
+                ctx.Diagnostics.Error(e);
                 exitCode = 1;
             }
             return exitCode;
@@ -79,10 +82,7 @@ namespace Bifrost.Compiler.Driver
 
         private static int RunCompiler(Core.CompilerContext ctx, Input.CommandLine cmd)
         {
-            var errorReporter = new Core.ErrorReporter(ctx)
-            {
-                UseColors = !cmd.DisableColors
-            };
+            ctx.Diagnostics.UseColors = !cmd.DisableColors;
 
             try
             {
@@ -108,9 +108,14 @@ namespace Bifrost.Compiler.Driver
                 // 2) Run the configuration
                 return ctx.Run(config);
             }
+            catch (Core.CompilerError e)
+            {
+                ctx.Diagnostics.Error(e);
+                return 1;
+            }
             catch (Exception e)
             {
-                errorReporter.Error(e);
+                ctx.Diagnostics.Error(e);
                 return 1;
             }
         }
@@ -123,9 +128,9 @@ namespace Bifrost.Compiler.Driver
                 AutoVersion = false,
                 MaximumDisplayWidth = Console.WindowWidth,
             };
-            helpTxt.AddPreOptionsText("Bifrost Compiler (0.0.1) - Parse and extract hooks from C/C++ files.\n\nOPTIONS:");
+            helpTxt.AddPreOptionsText($"Bifrost Compiler ({Core.AssemblyInfo.Version}) - Parse and extract hooks from C/C++ files.\n\nOPTIONS:");
             helpTxt.AddOptions(parserResult);
-            helpTxt.AddPostOptionsText("EXAMPLES:\n\n  bfc.exe -f input.yaml");
+            helpTxt.AddPostOptionsText($"EXAMPLES:\n\n  {Core.AssemblyInfo.Name}.exe -f input.yaml");
 
             return helpTxt.ToString();
         }
