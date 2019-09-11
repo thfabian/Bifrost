@@ -11,41 +11,51 @@
 
 #include "bifrost/api/test/test.h"
 
+#include "bifrost/api/test/data/plugin_def.h"
+
 namespace {
 
 using namespace bifrost;
 
-//class TestHook : public TestInjectorBase {
-// public:
-//  std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForLaunch(u32 sleepForMs = 1500, i32 returnCode = 0) {
-//    return MakeExecutableArgumentsForLaunchImpl(TestEnviroment::Get().GetInjectorExecutable(), std::to_string(returnCode) + " " + std::to_string(sleepForMs));
-//  }
-//
-//  std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string arguments = "", bool forceLoad = false) {
-//    return MakePluginLoadDescImpl("InjectorTestPlugin", TestEnviroment::Get().GetInjectorPlugin(), arguments, forceLoad);
-//  }
-//
-//	  std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string arguments = "", bool forceLoad = false) {
-//    return MakePluginLoadDescImpl("InjectorTestPlugin", TestEnviroment::Get().GetInjectorPlugin(), arguments, forceLoad);
-//  }
-//
-//  std::vector<bfi_PluginUnloadDesc> MakePluginUnloadDesc() { return MakePluginUnloadDescImpl("InjectorTestPlugin"); }
-//
-//  std::shared_ptr<char> Help() { return HelpImpl(TestEnviroment::Get().GetInjectorPlugin()); }
-//};
-//
-//TEST_F(TestHook, LoadAndUnload) {
-//  auto tmpFile = GetTmpFile();
-//
-//  auto launchArgs = MakeExecutableArgumentsForLaunch();
-//  auto injectorArgs = MakeInjectorArguments();
-//  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile);
-//
-//  // Load
-//  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
-//  auto loadResult = Load(loadArgs);
-//  ASSERT_EQ(Wait(loadResult.Process), 0);
-//  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp:") << "File: " << tmpFile;
-//}
+class TestHook : public TestInjectorBase {
+ public:
+  std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForLaunch(std::string file, i32 arg1 = 1, i32 arg2 = 2, i32 sleep = 0) {
+    return MakeExecutableArgumentsForLaunchImpl(TestEnviroment::Get().GetHookExecutable(),
+                                                file + " " + std::to_string(arg1) + " " + std::to_string(arg2) + " " + std::to_string(sleep));
+  }
+
+  std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string file, Function function = Function::none, i32 plugin = 1) {
+    return MakePluginLoadDescImpl("InjectorTestPlugin", plugin == 1 ? TestEnviroment::Get().GetHookPlugin1() : TestEnviroment::Get().GetHookPlugin2(),
+                                  file + ";" + std::to_string((int)function), false);
+  }
+};
+
+TEST_F(TestHook, NoHooks) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+TEST_F(TestHook, Original) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::my_bifrost_add__original);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
 
 }  // namespace

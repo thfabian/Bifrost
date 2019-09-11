@@ -10,8 +10,8 @@ Foreach($i in "bifrost-core", "bifrost-api") {
     Write-Host "Running test $path\test-$i.exe ...";
     $outFile = "$path\$i-output.txt";
     $errFile = "$path\$i-err.txt";
-    Remove-Item –path $outFile;
-    Remove-Item –path $errFile;
+    Remove-Item –path $outFile -ErrorAction Ignore;
+    Remove-Item –path $errFile -ErrorAction Ignore;
 
     # Run the tests and print stdout/stderr
     $procArgs = @{

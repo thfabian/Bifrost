@@ -28,5 +28,5 @@ build_script:
   - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration="%CONFIGURATION%" /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
-  # Run C++ unit tests
+  # Run gtest C++ unit tests
   - ps: .\ci\unit_tests.ps1 "build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)"

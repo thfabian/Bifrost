@@ -10,9 +10,15 @@
 // See LICENSE.txt for details.
 
 #define BIFROST_NAMESPACE injector_plugin
-#define BIFROST_PLUGIN_IDENTIFIER 
-#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER 
+#define BIFROST_PLUGIN_IDENTIFIER
+#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER
 #define BIFROST_PLUGIN_IDENTIFIER_TO_STRING
+#define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME
+
+#define BIFROST_PLUGIN_MODULE
+#define BIFROST_PLUGIN_IDENTIFIER_TO_MODULE
+#define BIFROST_PLUGIN_MODULE_TO_STRING
+
 #define BIFROST_PLUGIN_DSL_DEF
 
 #define BIFROST_IMPLEMENTATION
@@ -22,7 +28,7 @@
 
 using namespace bifrost;
 
-class InjectorTestPlugin final : public BIFROST_PLUGIN {
+class InjectorTestPlugin final : public ::injector_plugin::Plugin {
  public:
   virtual void SetUp() override { WriteToFile(GetArguments(), "SetUp", this); }
   virtual void TearDown() override { WriteToFile(GetArguments(), "TearDown", this); }

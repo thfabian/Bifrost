@@ -281,6 +281,10 @@ workspace "bifrost"
       "bifrost_api_test_injector_executable", 
       "bifrost_api_test_injector_plugin",
       "bifrost_api_test_injector_plugin",
+      "bifrost_api_test_hook_plugin_1", 
+      "bifrost_api_test_hook_plugin_2",
+      "bifrost_api_test_hook_executable",
+      "bifrost_api_test_hook_dll",
       "bifrost_plugin",
       "bifrost_injector",
       "bifrost_loader"

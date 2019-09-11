@@ -21,11 +21,12 @@ class TestEnviroment final : public ::testing::Environment, public BaseTestEnvir
  public:
   TestEnviroment() { m_logger = std::make_unique<TestLogger>(); }
 
-  /// Get the full path to the injector test executable
   std::wstring GetInjectorExecutable() const;
-
-  /// Get the full path to the injector test plugin
   std::wstring GetInjectorPlugin() const;
+  std::wstring GetHookExecutable() const;
+  std::wstring GetHookDll() const;
+  std::wstring GetHookPlugin1() const;
+  std::wstring GetHookPlugin2() const;
 
   /// Create a temporary file
   std::string GetTmpFile(Context* ctx) const;

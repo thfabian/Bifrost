@@ -24,12 +24,12 @@ int main(int argc, const char* argv[]) {
   int sleep = std::atoi(argv[4]);
 
   int result1 = bifrost_add(arg1, arg2);
-  WriteToFile(file, std::to_string(result1));
+  WriteToFile(file, "Result=" + std::to_string(result1));
 
   if (sleep > 0) {
     ::Sleep(sleep);
     int result2 = bifrost_add(arg1, arg2);
-    WriteToFile(file, std::to_string(result2));
+    WriteToFile(file, "Result=" + std::to_string(result2));
   }
   return 0;
 }

@@ -14,10 +14,15 @@
 #define BIFROST_PLUGIN_IDENTIFIER saxpy,
 #define BIFROST_PLUGIN_STRING_TO_IDENTIFIER {"saxpy", Plugin::Identifer::saxpy},
 #define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "saxpy",
+#define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "saxpy",
+
+#define BIFROST_PLUGIN_MODULE example_saxpy_dll,
+#define BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::example_saxpy_dll,
+#define BIFROST_PLUGIN_MODULE_TO_STRING L"example-saxpy.dll"
+
 #define BIFROST_PLUGIN_DSL_DEF
 // ---------------------------------------------------------------------------------------------------
 
-#define BIFROST_DEBUG
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
@@ -76,7 +81,7 @@ bf_override(my_saxpy3) {
 // 4) Here we define our plugin. The plugin provides functionality to hook functions/methods and utilities such as error handling or logging. The plugin is a
 // singleton and can be accessed via `Get<>()` anywhere.
 //
-class MySaxpyPlugin final : public BIFROST_PLUGIN {
+class MySaxpyPlugin final : public ::saxpy::Plugin {
  public:
   virtual void SetUp() override {
     CreateHook(Identifer::saxpy, my_saxpy1);
