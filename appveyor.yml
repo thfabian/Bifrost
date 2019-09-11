@@ -32,8 +32,7 @@ test_script:
         $exitCode = 0;
         Foreach($i in "bifrost-core","bifrost-api") {
             $proc = Start-Process -FilePath "build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)/test-$i.exe" -ArgumentList "--gtest_output=xml:$i-gtest-result.xml" `
-                                  -Wait -NoNewWindow -RedirectStandardOutput ".\$i-output.txt" -RedirectStandardOutput ".\$i-output.txt" `
-                                  -RedirectStandardError ".\$i-err.txt";
+                                  -Wait -NoNewWindow -RedirectStandardOutput ".\$i-output.txt" -RedirectStandardError ".\$i-err.txt";
             Get-Content -Path ".\$i-output.txt";
             Get-Content -Path ".\$i-err.txt";
             If($proc.ExitCode -ne 0) {
