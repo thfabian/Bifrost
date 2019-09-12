@@ -126,6 +126,8 @@ inline const char* GetConstCharPtr(const std::string& str) { return str.c_str();
 class HookManager::Impl {
  public:
   void SetUp(Context* ctx) {
+    BIFROST_LOCK_GUARD(m_mutex);
+
     // Allocate the settings
     m_settings = std::make_unique<HookSettings>(ctx);
 
@@ -133,23 +135,63 @@ class HookManager::Impl {
     BIFROST_CHECK_MH(MH_Initialize(), "initialize MinHook");
 
     // Initialize symbol loading
-    if (m_settings->Debug) {
-      BIFROST_CHECK_WIN_CALL_CTX(ctx, SymInitialize(GetCurrentProcess(), NULL, FALSE));
-    }
+    if (m_settings->Debug) EnableDebugImpl(ctx);
 
     m_id = 0;
   }
 
   void TearDown(Context* ctx) {
+    BIFROST_LOCK_GUARD(m_mutex);
+
     // Free MinHook
     BIFROST_CHECK_MH(MH_Uninitialize(), "uninitialize MinHook");
 
     // Cleanup symbol loading
-    if (m_settings->Debug) {
+    if (m_debugMode) {
       BIFROST_CHECK_WIN_CALL_CTX(ctx, SymCleanup(GetCurrentProcess()));
+      m_debugMode = false;
+      m_symbolCache.clear();
     }
   }
 
+  void HookCreate(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original) {
+    BIFROST_LOCK_GUARD(m_mutex);
+    BIFROST_LOG_DEBUG("Creating %s hook from \"%s\" to \"%s\"", enable ? "and enabling" : "", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour));
+    HookCreateImpl(id, ctx, target, detour, enable, original);
+  }
+
+  void HookEnable(u32 id, Context* ctx, void* target) {
+    BIFROST_LOCK_GUARD(m_mutex);
+    BIFROST_LOG_DEBUG("Enabling hook %s", SymbolFromAdress(ctx, target));
+    HookEnableImpl(id, ctx, target);
+  }
+
+  void LoadSymbols(Context* ctx, const wchar_t* library) {
+    if (!m_settings->Debug) return;
+    BIFROST_LOCK_GUARD(m_mutex);
+
+    std::string libname = WStringToString(library);
+    ctx->Logger().DebugFormat("Loading symbols of library \"%s\"", libname.c_str());
+    BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymLoadModule64(GetCurrentProcess(),  // Process handle of the current process
+                                                      NULL,                 // Handle to the module's image file (not needed)
+                                                      libname.c_str(),      // Path/name of the module
+                                                      NULL,                 // User-defined short name of the module (it can be NULL)
+                                                      0,                    // Base address of the module (can be NULL)
+                                                      0                     // Size of the module (can be NULL)
+                                                      ) != 0);
+  }
+
+  void EnableDebug(Context* ctx) {
+    BIFROST_LOCK_GUARD(m_mutex);
+    EnableDebugImpl(ctx);
+  }
+
+  u32 GetId() {
+    BIFROST_LOCK_GUARD(m_mutex);
+    return m_id++;
+  }
+
+ private:
   //
   // FUNCTION HOOKS
   //
@@ -195,14 +237,8 @@ class HookManager::Impl {
     std::list<HookDescPerId> m_perIdDesc;
   };
 
-  void HookCreate(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original) {
-    BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_LOG_DEBUG("Creating %s hook from \"%s\" to \"%s\"", enable ? "and enabling" : "", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour));
-    HookCreateImpl(id, ctx, target, detour, enable, original);
-  }
-
   void HookCreateImpl(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original) {
-    auto desc = GetHookDesc(target);
+    HookDesc* desc = GetHookDesc(target);
     if (!desc) {
       // No other hook exists, create it!
       BIFROST_CHECK_MH(MH_CreateHook(target, detour, original),
@@ -215,24 +251,8 @@ class HookManager::Impl {
     if (enable) HookEnableImpl(id, ctx, target);
   }
 
-  void HookEnable(u32 id, Context* ctx, void* target) {
-    BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_LOG_DEBUG("Enabling hook %s", SymbolFromAdress(ctx, target));
-    HookEnableImpl(id, ctx, target);
-  }
-
   void HookEnableImpl(u32 id, Context* ctx, void* target) {
     BIFROST_CHECK_MH(MH_EnableHook(target), StringFormat("enable hook for \"%s\"", SymbolFromAdress(ctx, target)));
-  }
-
-  //
-  // UNIQUE IDS
-  //
-
-  /// Get a unique identifier
-  u32 GetId() {
-    BIFROST_LOCK_GUARD(m_mutex);
-    return m_id++;
   }
 
   //
@@ -242,7 +262,7 @@ class HookManager::Impl {
   /// Get the name of the symbol pointed to by `addr`
   std::string SymbolFromAdress(Context* ctx, void* addr) { return SymbolFromAdress(ctx, (u64)addr); }
   std::string SymbolFromAdress(Context* ctx, u64 addr) {
-    if (m_settings->Debug) return StringFormat("0x%08x", addr);
+    if (!m_settings->Debug) return StringFormat("0x%08x", addr);
 
     // Is this symbol known?
     auto it = m_symbolCache.find(addr);
@@ -257,7 +277,7 @@ class HookManager::Impl {
     pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
     pSymbol->MaxNameLen = MAX_SYM_NAME;
 
-    BIFROST_CHECK_WIN_CALL_CTX(ctx, SymFromAddr(GetCurrentProcess(), dwAddress, &dwDisplacement, pSymbol) == TRUE);
+    BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymFromAddr(GetCurrentProcess(), dwAddress, &dwDisplacement, pSymbol) == TRUE);
     return m_symbolCache.emplace(addr, std::string{pSymbol->Name, pSymbol->NameLen}).first->second;
   }
 
@@ -272,6 +292,14 @@ class HookManager::Impl {
 
   inline HookDesc* SetHookDesc(void* target, HookDesc desc) { return &m_hookTargetToDesc.emplace((u64)target, std::move(desc)).first->second; }
 
+  void EnableDebugImpl(Context* ctx) {
+    if (!m_debugMode) {
+      BIFROST_CHECK_WIN_CALL_CTX(ctx, SymInitialize(GetCurrentProcess(), NULL, FALSE));
+      m_symbolCache.reserve(512);
+      m_debugMode = true;
+    }
+  }
+
  private:
   SpinMutex m_mutex;
   std::unique_ptr<HookSettings> m_settings;
@@ -284,6 +312,7 @@ class HookManager::Impl {
 
   // Debug
   std::unordered_map<u64, std::string> m_symbolCache;
+  bool m_debugMode = false;
 };
 
 HookManager::HookManager() { m_impl = std::make_unique<HookManager::Impl>(); }
@@ -305,5 +334,9 @@ void HookManager::HookRemove(u32 id, Context* ctx, void* target) {}
 void HookManager::HookEnable(u32 id, Context* ctx, void* target) { m_impl->HookEnable(id, ctx, target); }
 
 void HookManager::HookDisable(u32 id, Context* ctx, void* target) {}
+
+void HookManager::LoadSymbols(Context* ctx, const wchar_t* library) { m_impl->LoadSymbols(ctx, library); }
+
+void HookManager::EnableDebug(Context* ctx) { m_impl->EnableDebug(ctx); }
 
 }  // namespace bifrost

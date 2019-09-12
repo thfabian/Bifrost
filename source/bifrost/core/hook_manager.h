@@ -47,6 +47,12 @@ class HookManager {
   /// Disable the hook
   void HookDisable(u32 id, Context* ctx, void* target);
 
+  /// Load the symbols of library given by `library`
+  void LoadSymbols(Context* ctx, const wchar_t* library);
+
+	/// Enable debug mode
+	void EnableDebug(Context* ctx);
+
  private:
   class Impl;
   std::unique_ptr<Impl> m_impl;

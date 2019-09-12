@@ -129,30 +129,44 @@ bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* mod
 
 const char* bfp_PluginGetLastError(bfp_PluginContext* ctx) { return Get(ctx)->GetLastError(); }
 
-BIFROST_PLUGIN_API bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, uint32_t enable, void** original) {
+bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, uint32_t enable, void** original) {
   BIFROST_PLUGIN_CATCH_ALL({
     g_manager->HookCreate(Get(ctx)->GetId(), Get(ctx)->GetContext(), target, detour, enable, original);
     return BFP_OK;
   });
 }
 
-BIFROST_PLUGIN_API bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void* target) {
+bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void* target) {
   BIFROST_PLUGIN_CATCH_ALL({
     g_manager->HookEnable(Get(ctx)->GetId(), Get(ctx)->GetContext(), target);
     return BFP_OK;
   });
 }
 
-BIFROST_PLUGIN_API bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, void* target) {
+bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, void* target) {
   BIFROST_PLUGIN_CATCH_ALL({
     g_manager->HookRemove(Get(ctx)->GetId(), Get(ctx)->GetContext(), target);
     return BFP_OK;
   });
 }
 
-BIFROST_PLUGIN_API bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void* target) {
+bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void* target) {
   BIFROST_PLUGIN_CATCH_ALL({
     g_manager->HookDisable(Get(ctx)->GetId(), Get(ctx)->GetContext(), target);
+    return BFP_OK;
+  });
+}
+
+bfp_Status bfp_HookEnableDebug(bfp_PluginContext* ctx) {
+  BIFROST_PLUGIN_CATCH_ALL({
+    g_manager->EnableDebug(Get(ctx)->GetContext());
+    return BFP_OK;
+  });
+}
+
+bfp_Status bfp_HookLoadSymbols(bfp_PluginContext* ctx, const wchar_t* library) {
+  BIFROST_PLUGIN_CATCH_ALL({
+    g_manager->LoadSymbols(Get(ctx)->GetContext(), library);
     return BFP_OK;
   });
 }

@@ -157,6 +157,15 @@ BIFROST_PLUGIN_API bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void* targe
 /// @param[in] target			A pointer to the target function
 BIFROST_PLUGIN_API bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void* target);
 
+/// @brief Load the symbols of the library
+/// @param[in] ctx				Plugin context description
+/// @param[in] library		Module name/path
+BIFROST_PLUGIN_API bfp_Status bfp_HookLoadSymbols(bfp_PluginContext* ctx, const wchar_t* library);
+
+/// @brief Enable debug mode
+/// @param[in] ctx				Plugin context description
+BIFROST_PLUGIN_API bfp_Status bfp_HookEnableDebug(bfp_PluginContext* ctx);
+
 #pragma endregion
 
 #if __cplusplus
