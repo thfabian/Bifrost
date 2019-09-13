@@ -98,10 +98,20 @@ class BaseTestEnviroment {
   std::wstring GetFile(std::wstring type, std::wstring filename) const {
     auto curPath = std::filesystem::current_path();
 
-    std::vector<std::filesystem::path> paths{curPath / filename, curPath / L"bin/Debug" / filename, curPath / L"bin/Release" / filename};
+    std::vector<std::filesystem::path> paths{curPath / filename};
+    std::vector<std::filesystem::path> subPaths;
+
+#ifdef BIFROST_CONFIG_DEBUG
+    subPaths.emplace_back(L"bin\\Debug");
+    paths.emplace_back(curPath / L"bin\\Debug" / filename);
+#else
+    subPaths.emplace_back(L"bin\\Release");
+    paths.emplace_back(curPath / L"bin\\Release" / filename);
+#endif
+
     for (auto& p : std::filesystem::directory_iterator(curPath)) {
       if (p.is_directory()) {
-        for (const auto subPath : {L"bin/Debug", L"bin/Release"}) {
+        for (auto& subPath : subPaths) {
           paths.emplace_back(p / std::filesystem::path(subPath) / filename);
         }
       }

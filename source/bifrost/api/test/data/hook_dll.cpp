@@ -12,3 +12,7 @@
 #include "bifrost/api/test/data/hook_dll.h"
 
 int bifrost_add(int arg1, int arg2) { return arg1 + arg2; }
+
+// If the module is too small MinHook can't place a jump. We just define a dummy function here to increase the image size (this is probably never gonna be a
+// problem in the real world)
+BIFROST_HOOK_DLL_API void __dummy__(void) {}

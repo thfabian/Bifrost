@@ -22,6 +22,7 @@
 #pragma warning(push)
 #pragma warning(disable : 4091)
 #include <DbgHelp.h>
+#pragma comment(lib, "dbghelp")
 #pragma warning(pop)
 
 namespace bifrost {
@@ -32,7 +33,10 @@ namespace {
 class HookSettings {
  public:
   /// Debug mode enabled?
-  bool Debug = true;
+  bool Debug = false;
+
+  /// Run DbgHelp in verbose mode?
+  bool VerboseDbgHelp = false;
 
   HookSettings(Context* ctx) {
     // Try to read from hooks.json
@@ -51,6 +55,7 @@ class HookSettings {
 
     ctx->Logger().Debug("Hook settings:");
     Debug = TryParseAsBool(ctx, "Debug", j, "BIFROST_HOOK_DEBUG", Debug);
+    Debug = TryParseAsBool(ctx, "VerboseDbgHelp", j, "BIFROST_HOOK_VERBOSE_DBGHELP", VerboseDbgHelp);
   }
 
  private:
@@ -103,9 +108,22 @@ class HookSettings {
       }
     }
 
-    ctx->Logger().DebugFormat("  %-10s: %s", name, logExtract(value));
+    ctx->Logger().DebugFormat("  %-20s: %s", name, logExtract(value));
     return value;
   }
+};
+
+/// Wrapper for SYMBOL_INFO_PACKAGE structure
+struct SymbolInfoPackage : public ::SYMBOL_INFO_PACKAGE {
+  SymbolInfoPackage() {
+    si.SizeOfStruct = sizeof(::SYMBOL_INFO);
+    si.MaxNameLen = sizeof(name);
+  }
+};
+
+/// Wrapper for IMAGEHLP_LINE64 structure
+struct ImageHlpLine64 : public IMAGEHLP_LINE64 {
+  ImageHlpLine64() { SizeOfStruct = sizeof(IMAGEHLP_LINE64); }
 };
 
 inline const char* GetConstCharPtr(const char* str) { return str; }
@@ -117,7 +135,7 @@ inline const char* GetConstCharPtr(const std::string& str) { return str.c_str();
   }
 
 #define BIFROST_LOG_DEBUG(...)              \
-  if (m_settings->Debug) {                  \
+  if (m_debugMode) {                  \
     ctx->Logger().DebugFormat(__VA_ARGS__); \
   }
 
@@ -148,7 +166,7 @@ class HookManager::Impl {
 
     // Cleanup symbol loading
     if (m_debugMode) {
-      BIFROST_CHECK_WIN_CALL_CTX(ctx, SymCleanup(GetCurrentProcess()));
+      BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymCleanup(GetCurrentProcess()));
       m_debugMode = false;
       m_symbolCache.clear();
     }
@@ -156,7 +174,7 @@ class HookManager::Impl {
 
   void HookCreate(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_LOG_DEBUG("Creating %s hook from \"%s\" to \"%s\"", enable ? "and enabling" : "", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour));
+    BIFROST_LOG_DEBUG("Creating %s hook from %s to %s", enable ? "and enabling" : "", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour));
     HookCreateImpl(id, ctx, target, detour, enable, original);
   }
 
@@ -164,21 +182,6 @@ class HookManager::Impl {
     BIFROST_LOCK_GUARD(m_mutex);
     BIFROST_LOG_DEBUG("Enabling hook %s", SymbolFromAdress(ctx, target));
     HookEnableImpl(id, ctx, target);
-  }
-
-  void LoadSymbols(Context* ctx, const wchar_t* library) {
-    if (!m_settings->Debug) return;
-    BIFROST_LOCK_GUARD(m_mutex);
-
-    std::string libname = WStringToString(library);
-    ctx->Logger().DebugFormat("Loading symbols of library \"%s\"", libname.c_str());
-    BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymLoadModule64(GetCurrentProcess(),  // Process handle of the current process
-                                                      NULL,                 // Handle to the module's image file (not needed)
-                                                      libname.c_str(),      // Path/name of the module
-                                                      NULL,                 // User-defined short name of the module (it can be NULL)
-                                                      0,                    // Base address of the module (can be NULL)
-                                                      0                     // Size of the module (can be NULL)
-                                                      ) != 0);
   }
 
   void EnableDebug(Context* ctx) {
@@ -242,7 +245,7 @@ class HookManager::Impl {
     if (!desc) {
       // No other hook exists, create it!
       BIFROST_CHECK_MH(MH_CreateHook(target, detour, original),
-                       StringFormat("creating hook from \"%s\" to \"%s\"", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, target)));
+                       StringFormat("creating hook from %s to %s", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour)));
       desc = SetHookDesc(target, {id, original});
     }
 
@@ -256,29 +259,49 @@ class HookManager::Impl {
   }
 
   //
-  // DEBUG
+  // SYMBOL DEBUG
   //
 
   /// Get the name of the symbol pointed to by `addr`
-  std::string SymbolFromAdress(Context* ctx, void* addr) { return SymbolFromAdress(ctx, (u64)addr); }
-  std::string SymbolFromAdress(Context* ctx, u64 addr) {
-    if (!m_settings->Debug) return StringFormat("0x%08x", addr);
-
+  const char* SymbolFromAdress(Context* ctx, void* addr) { return SymbolFromAdress(ctx, (u64)addr); }
+  const char* SymbolFromAdress(Context* ctx, u64 addr) {
     // Is this symbol known?
     auto it = m_symbolCache.find(addr);
-    if (it != m_symbolCache.end()) return it->second;
+    if (it != m_symbolCache.end()) return it->second.c_str();
 
-    // Try to get the name of it
-    DWORD64 dwDisplacement = 0;
-    DWORD64 dwAddress = addr;
+    if (m_debugMode) {
+      DWORD64 dwDisplacement = 0;
+      DWORD64 dwAddress = addr;
+      SymbolInfoPackage info;
 
-    char buffer[sizeof(SYMBOL_INFO) + MAX_SYM_NAME * sizeof(TCHAR)];
-    ::PSYMBOL_INFO pSymbol = (::PSYMBOL_INFO)buffer;
-    pSymbol->SizeOfStruct = sizeof(SYMBOL_INFO);
-    pSymbol->MaxNameLen = MAX_SYM_NAME;
+      // Load the symbol from the given address
+      std::string symbolName;
+      if (::SymFromAddr(GetCurrentProcess(), dwAddress, &dwDisplacement, &info.si) == TRUE) {
+        symbolName = std::string{info.si.Name, info.si.NameLen}; 
 
-    BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymFromAddr(GetCurrentProcess(), dwAddress, &dwDisplacement, pSymbol) == TRUE);
-    return m_symbolCache.emplace(addr, std::string{pSymbol->Name, pSymbol->NameLen}).first->second;
+      } else {
+        // Failed to load the symbol -> take address
+        ctx->Logger().WarnFormat("Failed to symbol name of 0x%08x: %s", addr, GetLastWin32Error().c_str());
+        symbolName = StringFormat("0x%08x", addr);
+      }
+      return m_symbolCache.emplace(addr, std::move(symbolName)).first->second.c_str();
+    } else {
+      return m_symbolCache.emplace(addr, StringFormat("0x%08x", addr)).first->second.c_str();
+    }
+  }
+
+  void EnableDebugImpl(Context* ctx) {
+    if (!m_debugMode) {
+      DWORD options = ::SymGetOptions();
+      if (m_settings->VerboseDbgHelp) options |= SYMOPT_DEBUG;
+			options |= SYMOPT_UNDNAME;
+      ::SymSetOptions(options);
+
+      ctx->Logger().Info("Loading symbols ...");
+      BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymInitialize(::GetCurrentProcess(), NULL, TRUE) == TRUE);
+      m_symbolCache.reserve(512);
+      m_debugMode = true;
+    }
   }
 
   //
@@ -291,14 +314,6 @@ class HookManager::Impl {
   }
 
   inline HookDesc* SetHookDesc(void* target, HookDesc desc) { return &m_hookTargetToDesc.emplace((u64)target, std::move(desc)).first->second; }
-
-  void EnableDebugImpl(Context* ctx) {
-    if (!m_debugMode) {
-      BIFROST_CHECK_WIN_CALL_CTX(ctx, SymInitialize(GetCurrentProcess(), NULL, FALSE));
-      m_symbolCache.reserve(512);
-      m_debugMode = true;
-    }
-  }
 
  private:
   SpinMutex m_mutex;
@@ -334,8 +349,6 @@ void HookManager::HookRemove(u32 id, Context* ctx, void* target) {}
 void HookManager::HookEnable(u32 id, Context* ctx, void* target) { m_impl->HookEnable(id, ctx, target); }
 
 void HookManager::HookDisable(u32 id, Context* ctx, void* target) {}
-
-void HookManager::LoadSymbols(Context* ctx, const wchar_t* library) { m_impl->LoadSymbols(ctx, library); }
 
 void HookManager::EnableDebug(Context* ctx) { m_impl->EnableDebug(ctx); }
 

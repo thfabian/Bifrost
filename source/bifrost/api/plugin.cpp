@@ -164,11 +164,4 @@ bfp_Status bfp_HookEnableDebug(bfp_PluginContext* ctx) {
   });
 }
 
-bfp_Status bfp_HookLoadSymbols(bfp_PluginContext* ctx, const wchar_t* library) {
-  BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->LoadSymbols(Get(ctx)->GetContext(), library);
-    return BFP_OK;
-  });
-}
-
 #pragma endregion

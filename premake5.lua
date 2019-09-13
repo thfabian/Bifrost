@@ -30,15 +30,20 @@ workspace "bifrost"
   language "C++"
   architecture "x86_64"
   cppdialect "C++17"
-  dotnetframework "4.6"
   
-  flags { "MultiProcessorCompile" }
+  flags { 
+    "MultiProcessorCompile",
+    "NoIncrementalLink" -- DbgHelp doesn't play nicely with ILT 
+  }
 
   -- Configurations
   configurations { "Debug", "Release" }
       
   filter { "configurations:Release" }
     optimize "On"
+    
+  filter { "configurations:Debug" }
+    defines { "BIFROST_CONFIG_DEBUG" }
     
   -- *
   -- *** External ***

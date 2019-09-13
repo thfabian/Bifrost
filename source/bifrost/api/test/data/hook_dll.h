@@ -24,6 +24,7 @@ extern "C" {
 /// Add `arg1` to `arg2` and return the result
 BIFROST_HOOK_DLL_API int bifrost_add(int arg1, int arg2);
 
+
 #if __cplusplus
 }  // extern "C"
 #endif

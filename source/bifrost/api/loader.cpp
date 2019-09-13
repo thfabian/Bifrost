@@ -31,7 +31,6 @@ using namespace bifrost::api;
 extern "C" {
 __declspec(dllexport) DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter);
 __declspec(dllexport) DWORD WINAPI bfl_UnloadPlugins(LPVOID lpThreadParameter);
-__declspec(dllexport) DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter);
 }
 
 namespace {
@@ -208,8 +207,6 @@ class LoaderContext {
     return success;
   }
 
-  DWORD MessagePlugin(LPVOID lpThreadParameter) { return 0; }
-
   /// Check the requested shared memory is the same as the used shared memory by deserializing InjectorParam
   InjectorParam CheckSharedMemory(LPVOID lpThreadParameter) {
     auto ctx = m_storage->Context.get();
@@ -310,10 +307,6 @@ DWORD WINAPI bfl_LoadPlugins(LPVOID lpThreadParameter) {
 
 DWORD WINAPI bfl_UnloadPlugins(LPVOID lpThreadParameter) {
   BFL_FUNC({ return g_context->UnloadPlugins(lpThreadParameter); });
-}
-
-DWORD WINAPI bfl_MessagePlugin(LPVOID lpThreadParameter) {
-  BFL_FUNC({ return g_context->MessagePlugin(lpThreadParameter); });
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved) { return TRUE; }

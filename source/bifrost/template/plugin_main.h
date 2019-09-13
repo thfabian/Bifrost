@@ -117,9 +117,9 @@ BIFROST_CACHE_ALIGN class Plugin {
 
    private:
     void* _Target() const noexcept;
-		void _SetTarget(void* target) noexcept;
-		void _SetOverride(void* override) noexcept;
-		void _SetOriginal(void* original) noexcept;
+    void _SetTarget(void* target) noexcept;
+    void _SetOverride(void* override) noexcept;
+    void _SetOriginal(void* original) noexcept;
 
    private:
     void* m_target = nullptr;
@@ -217,6 +217,8 @@ BIFROST_CACHE_ALIGN class Plugin {
 BIFROST_NAMESPACE_END
 
 /// Register a plugin
+///
+/// (!) Do not place this macro inside a namespace
 #define BIFROST_REGISTER_PLUGIN(plugin)       \
   BIFROST_NAMESPACE_BEGIN                     \
   Plugin& Plugin::Get() {                     \
@@ -369,7 +371,10 @@ BIFROST_PLUGIN_DSL_DEF
 BIFROST_NAMESPACE_BEGIN
 
 /// Available modules
-enum class Module : std::uint32_t { __bifrost_none__ = 0, BIFROST_PLUGIN_MODULE NumModule, };
+enum class Module : std::uint32_t {
+  __bifrost_none__ = 0,
+  BIFROST_PLUGIN_MODULE NumModule,
+};
 
 namespace {
 
@@ -459,21 +464,19 @@ static HMODULE GetCurrentModule() {
   return hModule;
 }
 
-/// Get the filename of the current module
-static std::string GetCurrentModuleName() {
-  HMODULE hModule = GetCurrentModule();
+/// Get the filename of the module
+static std::string GetModuleName(HMODULE hModule) {
   if (hModule != nullptr) {
-
-		// Extract the full path
+    // Extract the full path
     std::string path(MAX_PATH, '\0');
     DWORD size = 0;
     do {
       path.resize(path.size() * 2);
       size = ::GetModuleFileNameA(hModule, (LPSTR)path.c_str(), (DWORD)path.size());
     } while (size == ERROR_INSUFFICIENT_BUFFER);
-		return path.substr(0, size);
+    return path.substr(0, size);
   }
-  return "plugin";
+  return {};
 }
 
 /// Issue `msg` to stderr and write to disk if `success` is false
@@ -488,10 +491,12 @@ static void Check(const char* msg, bool success, bool isWin32) {
     std::cerr << "[ERROR] " << errMsg << std::endl;
 
     // Extract the filename
-		auto path = GetCurrentModuleName();
+    auto path = GetModuleName(GetCurrentModule());
     if (path.size() > 0) {
       auto idx = path.find_last_of("\\/");
       if (idx != -1) path = path.substr(idx + 1, path.size() - idx - 1);
+    } else {
+      path = "plugin";
     }
 
     // Write to file
@@ -502,9 +507,9 @@ static void Check(const char* msg, bool success, bool isWin32) {
   }
 }
 
-  /// Interaction with bifrost_plugin.dll
-  class BifrostPluginApi {
-   public:
+/// Interaction with bifrost_plugin.dll
+class BifrostPluginApi {
+ public:
 #define BIFROST_PLUGIN_API_DECL(name) \
   using name##_fn = decltype(&name);  \
   name##_fn name;
@@ -524,7 +529,6 @@ static void Check(const char* msg, bool success, bool isWin32) {
   BIFROST_PLUGIN_API_DECL(bfp_HookRemove)
   BIFROST_PLUGIN_API_DECL(bfp_HookEnable)
   BIFROST_PLUGIN_API_DECL(bfp_HookDisable)
-	BIFROST_PLUGIN_API_DECL(bfp_HookLoadSymbols)
   BIFROST_PLUGIN_API_DECL(bfp_HookEnableDebug)
 
   BifrostPluginApi() {
@@ -544,7 +548,6 @@ static void Check(const char* msg, bool success, bool isWin32) {
     BIFROST_PLUGIN_API_DEF(bfp_HookRemove)
     BIFROST_PLUGIN_API_DEF(bfp_HookEnable)
     BIFROST_PLUGIN_API_DEF(bfp_HookDisable)
-    BIFROST_PLUGIN_API_DEF(bfp_HookLoadSymbols)
     BIFROST_PLUGIN_API_DEF(bfp_HookEnableDebug)
 
 #undef BIFROST_PLUGIN_API_DECL
@@ -595,14 +598,11 @@ static BifrostPluginApi& GetApi() {
 
 /// Convert a string to the Identifier enum
 static Plugin::Identifer StringToIdentifier(const char* identifer) {
-  static BIFROST_CACHE_ALIGN std::unordered_map<std::string, Plugin::Identifer> map{
-      BIFROST_PLUGIN_STRING_TO_IDENTIFIER
-  };
+  static BIFROST_CACHE_ALIGN std::unordered_map<std::string, Plugin::Identifer> map{BIFROST_PLUGIN_STRING_TO_IDENTIFIER};
 
   auto it = map.find(identifer);
-  if (it != map.end()) 
-    Plugin::Get().FatalError(StringFormat("Identifier \"%s\" does not exist", identifer).c_str());
-  
+  if (it != map.end()) Plugin::Get().FatalError(StringFormat("Identifier \"%s\" does not exist", identifer).c_str());
+
   return it->second;
 }
 
@@ -610,8 +610,7 @@ static Plugin::Identifer StringToIdentifier(const char* identifer) {
 static const char* IdentifierToString(Plugin::Identifer identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_STRING
-      "<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_STRING "<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
@@ -620,8 +619,7 @@ static const char* IdentifierToString(Plugin::Identifer identifier) {
 static const char* IdentiferToFunctionName(Plugin::Identifer identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME 
-			"<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
@@ -630,8 +628,7 @@ static const char* IdentiferToFunctionName(Plugin::Identifer identifier) {
 static Module IdentifierToModule(Plugin::Identifer identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<Module, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
       Module::__bifrost_none__,
-      BIFROST_PLUGIN_IDENTIFIER_TO_MODULE
-			Module::__bifrost_none__,
+      BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::__bifrost_none__,
   };
   return map[(std::uint64_t)identifier];
 }
@@ -640,8 +637,7 @@ static Module IdentifierToModule(Plugin::Identifer identifier) {
 static const wchar_t* ModuleToString(Module module) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const wchar_t*, (std::uint32_t)Module::NumModule + 1> map{
       L"<invalid>",
-      BIFROST_PLUGIN_MODULE_TO_STRING
-			L"<invalid>",
+      BIFROST_PLUGIN_MODULE_TO_STRING L"<invalid>",
   };
   return map[(std::uint32_t)module];
 }
@@ -667,9 +663,7 @@ BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
   std::string Arguments;
 };
 
-BIFROST_NAMESPACE::Plugin::Plugin() { 
-	m_impl = new PluginImpl; 
-}
+BIFROST_NAMESPACE::Plugin::Plugin() { m_impl = new PluginImpl; }
 
 Plugin::~Plugin() {
   RemoveAllHooks();
@@ -786,15 +780,8 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
   if (m_impl->Init) throw std::runtime_error("Plugin already set up");
 
 #ifdef BIFROST_DEBUG
-  Log(LogLevel::Info, "Running in debug mode");
-
   // Enable debug layer for symbols
   if (api.bfp_HookEnableDebug(ctx) != BFP_OK) {
-    Log(LogLevel::Warn, api.bfp_PluginGetLastError(m_impl->Context));
-  }
-
-  // Load the symbols in this plugin
-  if (api.bfp_HookLoadSymbols(ctx, StringToWString(GetCurrentModuleName()).c_str()) != BFP_OK) {
     Log(LogLevel::Warn, api.bfp_PluginGetLastError(m_impl->Context));
   }
 #endif
@@ -812,11 +799,6 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
       Log(LogLevel::Warn, StringFormat("Failed to load library \"%s\": %s", WStringToString(moduleString).c_str(), GetLastWin32Error().c_str()).c_str());
     }
     m_impl->Modules[moduleIndex] = hModule;
-
-    // Load the symbols if we run in debug mode
-    if (api.bfp_HookLoadSymbols(ctx, moduleString) != BFP_OK) {
-      Log(LogLevel::Warn, api.bfp_PluginGetLastError(m_impl->Context));
-    }
   }
 
   // Load all referenced functions
@@ -875,7 +857,6 @@ BIFROST_PLUGIN_SETUP_PROC_DEF {
   auto& api = GetApi();
 
   Plugin* plugin = &Plugin::Get();
-
   const char* errMsg = nullptr;
 
   // Initialize the plugin & the internal hooking mechanism

@@ -33,8 +33,11 @@ using namespace bifrost;
 #define bf_id bifrost_add
 
 /// Call original function
-bf_override(bifrost_add__original) { return bf_original(bf_args); }
-
+bf_override(bifrost_add__original) { 
+	std::cout << "wtf" << std::endl;
+	return bf_original(bf_args); 
+}
+	
 /// Modify arg1
 
 /// Modify arg2
@@ -67,3 +70,4 @@ class HookTestPlugin1 final : public hook_plugin_1::Plugin {
 };
 
 BIFROST_REGISTER_PLUGIN(HookTestPlugin1)
+
