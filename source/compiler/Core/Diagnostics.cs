@@ -74,7 +74,7 @@ namespace Bifrost.Compiler.Core
                 }
                 Console.Write(severity.ToString().ToLower() + ": ");
                 Console.ForegroundColor = ConsoleColor.White;
-                Console.Write(message);
+                Console.WriteLine(message);
                 Console.ResetColor();
             }
             else

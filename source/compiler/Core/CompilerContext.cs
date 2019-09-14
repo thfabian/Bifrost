@@ -27,7 +27,7 @@ namespace Bifrost.Compiler.Core
         /// <summary>
         /// Logger of the context
         /// </summary>
-        public ILogger Logger => m_logger;
+        public Logger.Forward Logger => m_logger;
 
         /// <summary>
         /// Diagnostic reporter
@@ -40,35 +40,6 @@ namespace Bifrost.Compiler.Core
         }
 
         /// <summary>
-        /// Try to register a logger, does nothing if the logger already exists
-        /// </summary>
-        public void TryRegisterLogger(Logger.Base logger, string identifer = null)
-        {
-            var ident = identifer ?? logger.ToString();
-            if (!m_logger.Loggers.ContainsKey(ident))
-            {
-                m_logger.Loggers.Add(identifer ?? logger.ToString(), logger);
-            }
-        }
-
-        /// <summary>
-        /// Enable buffering of all log messages
-        /// </summary>
-        public void EnableLogBuffering()
-        {
-            m_logger.EnableBuffering(true);
-        }
-
-        /// <summary>
-        /// Disable the buffering of log messages and flush all the buffered logs (if any)
-        /// </summary>
-        public void DisableLogBuffering()
-        {
-            m_logger.FlushBuffer();
-            m_logger.EnableBuffering(false);
-        }
-
-        /// <summary>
         /// Run the given configuration
         /// </summary>
         public int Run(Configuration config)
@@ -77,6 +48,5 @@ namespace Bifrost.Compiler.Core
         }
 
         private readonly Logger.Forward m_logger = new Forward();
-
     }
 }
