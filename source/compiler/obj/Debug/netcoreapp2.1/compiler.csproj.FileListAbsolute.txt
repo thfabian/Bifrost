@@ -1,0 +1,11 @@
+C:\Users\fabian\Desktop\Bifrost\source\compiler\obj\Debug\netcoreapp2.1\compiler.csprojAssemblyReference.cache
+C:\Users\fabian\Desktop\Bifrost\source\compiler\obj\Debug\netcoreapp2.1\compiler.csproj.CoreCompileInputs.cache
+C:\Users\fabian\Desktop\Bifrost\source\compiler\obj\Debug\netcoreapp2.1\compiler.AssemblyInfoInputs.cache
+C:\Users\fabian\Desktop\Bifrost\source\compiler\obj\Debug\netcoreapp2.1\compiler.AssemblyInfo.cs
+C:\Users\fabian\Desktop\Bifrost\source\compiler\bin\Debug\netcoreapp2.1\bfc.deps.json
+C:\Users\fabian\Desktop\Bifrost\source\compiler\bin\Debug\netcoreapp2.1\bfc.runtimeconfig.json
+C:\Users\fabian\Desktop\Bifrost\source\compiler\bin\Debug\netcoreapp2.1\bfc.runtimeconfig.dev.json
+C:\Users\fabian\Desktop\Bifrost\source\compiler\bin\Debug\netcoreapp2.1\bfc.dll
+C:\Users\fabian\Desktop\Bifrost\source\compiler\bin\Debug\netcoreapp2.1\bfc.pdb
+C:\Users\fabian\Desktop\Bifrost\source\compiler\obj\Debug\netcoreapp2.1\bfc.dll
+C:\Users\fabian\Desktop\Bifrost\source\compiler\obj\Debug\netcoreapp2.1\bfc.pdb
