@@ -1,6 +1,7 @@
 version: 1.0.{build}
 
-image: Visual Studio 2017
+image: 
+    - Visual Studio 2019
 
 platform:
   - x64
@@ -13,21 +14,19 @@ environment:
   BUILD_PATH: $(platform)\$(configuration)
   matrix:
     - arch: x64
-      compiler: msvc2017
-      PREMAKE_GENERATOR: vs2017
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      compiler: msvc2019
+      PREMAKE_GENERATOR: vs2019
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2019
+      
 
 before_build:
+  - cmd: dotnet --version
   - cmd: "configure-%PREMAKE_GENERATOR%.bat"
 
 build_script:
+  - cmd: nuget restore "build-%PREMAKE_GENERATOR%/bifrost.sln"
   - cmd: msbuild "build-%PREMAKE_GENERATOR%/bifrost.sln" /p:Configuration="%CONFIGURATION%" /m /logger:"C:\Program Files\AppVeyor\BuildAgent\Appveyor.MSBuildLogger.dll"
 
 test_script:
-  - ps: |
-      Foreach($i in "bifrost-core","bifrost-api") {
-        Start-Process -FilePath "build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)/test-$i.exe" -ArgumentList "--gtest_output=xml:$i-gtest-result.xml" -Wait -NoNewWindow;
-        If (Test-Path .\$i-gtest-result.xml) {
-          (New-Object System.Net.WebClient).UploadFile("https://ci.appveyor.com/api/testresults/junit/$($env:APPVEYOR_JOB_ID)", (Resolve-Path .\$i-gtest-result.xml))
-        }
-      }
+  # Run gtest C++ unit tests
+  - ps: .\ci\unit_tests.ps1 "build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)"

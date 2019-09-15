@@ -204,23 +204,6 @@ class InjectorContext {
     return BFP_OK;
   }
 
-  // Message the plugin
-  bfi_Status PluginMessage(const bfi_PluginMessageArguments* args, Process* process) {
-    m_ctx->Logger().Info("Unloading plugins from remote process ...");
-
-    if (!args->InjectorArguments) throw Exception("bfi_PluginUnloadArguments.InjectorArguments is NULL");
-
-    try {
-      // Create or reuse the existing shared memory
-      CreateOrReuseExistingSharedMemory(args->InjectorArguments->SharedMemoryName, args->InjectorArguments->SharedMemorySizeInBytes);
-    } catch (...) {
-      m_ctx->Logger().Error("Failed to send message");
-      throw;
-    }
-    m_ctx->Logger().Info("Successfully send message ");
-    return BFP_OK;
-  }
-
   // Get help message of the plugin
   bfi_Status PluginHelp(const wchar_t* path, char** help) {
     const char* helpStr = "";
@@ -494,10 +477,6 @@ BIFROST_INJECTOR_API bfi_Status bfi_PluginUnloadResultFree(bfi_Context* ctx, bfi
     }
     return BFP_OK;
   });
-}
-
-BIFROST_INJECTOR_API bfi_Status bfi_PluginMessage(bfi_Context* ctx, const bfi_PluginMessageArguments* args, const bfi_Process_t* process) {
-  BIFROST_INJECTOR_CATCH_ALL({ return Get(ctx)->PluginMessage(args, Get(process)); });
 }
 
 BIFROST_INJECTOR_API bfi_Status bfi_PluginHelp(bfi_Context* ctx, const wchar_t* path, char** help) {

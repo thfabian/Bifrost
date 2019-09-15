@@ -25,7 +25,7 @@
 using namespace bifrost;
 using namespace injector;
 
-#define INJECTOR_LOG_FILE "log.injector.txt"
+#define INJECTOR_LOG_FILE "log.bfi.txt"
 #define INJECTOR_SHORT_PREFIX "-"
 #define INJECTOR_LONG_PREFIX "--"
 
@@ -204,7 +204,7 @@ int main(int argc, const char* argv[]) {
     parser.helpParams.flagindent = 4;
     parser.helpParams.shortPrefix = INJECTOR_SHORT_PREFIX;
     parser.helpParams.longPrefix = INJECTOR_LONG_PREFIX;
-    parser.Prog(argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "injector");
+    parser.Prog(argc > 0 ? std::filesystem::path(argv[0]).filename().string() : "bfi");
     parser.Epilog(StringFormat("\nEXAMPLES:\n  %s --exe=foo.exe --plugin=bar.dll\n  %s --pid=19252 --plugin=\"bar.dll:bar\" --plugin-arg=\"bar:--foo\"\n",
                                program.c_str(), program.c_str()));
 
@@ -534,9 +534,7 @@ int main(int argc, const char* argv[]) {
           //});
         });
 
-    // Launch command
-
-    // Message command
+    // Help command
 
     // Wait command
 

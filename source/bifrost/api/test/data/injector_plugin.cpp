@@ -9,34 +9,29 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+#define BIFROST_NAMESPACE injector_plugin
+#define BIFROST_PLUGIN_IDENTIFIER
+#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER
+#define BIFROST_PLUGIN_IDENTIFIER_TO_STRING
+#define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME
+
+#define BIFROST_PLUGIN_MODULE
+#define BIFROST_PLUGIN_IDENTIFIER_TO_MODULE
+#define BIFROST_PLUGIN_MODULE_TO_STRING
+
+#define BIFROST_PLUGIN_DSL_DEF
+
 #define BIFROST_IMPLEMENTATION
-#include "bifrost/template/plugin.h"
+#include "bifrost/template/plugin_main.h"
 
-#include <fstream>
-#include <string_view>
+#include "bifrost/api/test/data/shared.h"
 
-class InjectorTestPlugin final : public BIFROST_PLUGIN {
+using namespace bifrost;
+
+class InjectorTestPlugin final : public ::injector_plugin::Plugin {
  public:
-  // Write the message to the file provided by the arguments to the plugin
-  void WriteToFile(std::string_view msg) {
-    std::string file = GetArguments();
-    std::string m{msg.data(), msg.size()};
-    m += ":";
-
-    std::FILE* fp = std::fopen(file.c_str(), "a");
-    if (!fp) FatalError(("Failed to open file: \"" + file + "\"").c_str());
-    if (std::fwrite(m.c_str(), sizeof(char), m.size(), fp) != m.size()) FatalError(("Failed to write \"" + m + "\" to \"" + file + "\"").c_str());
-    if (std::fclose(fp) != 0) FatalError(("Failed to flush and close file: \"" + file + "\"").c_str());
-  }
-
-  virtual void SetUp() override { WriteToFile("SetUp"); }
-
-  virtual void TearDown() override { WriteToFile("TearDown"); }
-
-  virtual bool HandleMessage(const void* data, int sizeInBytes) override {
-    WriteToFile({(const char*)data, (std::size_t)sizeInBytes});
-    return true;
-  }
+  virtual void SetUp() override { WriteToFile(GetArguments(), "SetUp", this); }
+  virtual void TearDown() override { WriteToFile(GetArguments(), "TearDown", this); }
 
   static const char* Help() { return "Help"; }
 };

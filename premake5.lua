@@ -5,6 +5,7 @@
 
 local os = require "os"
 local io = require "io"
+local string = require "string"
 
 -- Report an error message
 function bifrost_error(msg)
@@ -30,13 +31,19 @@ workspace "bifrost"
   architecture "x86_64"
   cppdialect "C++17"
   
-  flags { "MultiProcessorCompile" }
+  flags { 
+    "MultiProcessorCompile",
+    "NoIncrementalLink" -- DbgHelp doesn't play nicely with ILT 
+  }
 
   -- Configurations
   configurations { "Debug", "Release" }
       
   filter { "configurations:Release" }
     optimize "On"
+    
+  filter { "configurations:Debug" }
+    defines { "BIFROST_CONFIG_DEBUG" }
     
   -- *
   -- *** External ***
@@ -121,6 +128,9 @@ workspace "bifrost"
     disablewarnings { "4267", "4146" }
     
     bifrost_add_external_json()
+    bifrost_add_external_minhook()
+    
+    links { "DbgHelp" }
 
     function bifrost_add_bifrost_core()
       includedirs "source" 
@@ -195,7 +205,6 @@ workspace "bifrost"
     defines { "BIFROST_PLUGIN_EXPORTS" }
     
     bifrost_add_bifrost_core()
-    bifrost_add_external_minhook()
 
     function bifrost_add_bifrost_plugin()
       includedirs "source" 
@@ -229,19 +238,34 @@ workspace "bifrost"
     bifrost_add_bifrost_core()
     dependson { "bifrost_core_test_mock_executable", "bifrost_core_test_mock_dll" }
     
-  -- *** Bifrost API Test (injector executable) ***
-  project "bifrost_api_test_injector_executable"
-    kind "ConsoleApp"
-    targetname "test-bifrost-api-injector-executable"
-    files { "source/bifrost/api/test/data/injector_executable.cpp" }
-    
-  -- *** Bifrost API Test (injector plugin) ***
-  project "bifrost_api_test_injector_plugin"
-    kind "SharedLib"
-    includedirs { "source" }
-    targetname "test-bifrost-api-injector-plugin"
-    files { "source/bifrost/api/test/data/injector_plugin.cpp" } 
-    defines { "_CRT_SECURE_NO_WARNINGS" }
+  -- *** Bifrost API Test (plugins) ***
+  for p, k in pairs({ 
+      injector_plugin="SharedLib", 
+      injector_executable="ConsoleApp", 
+      hook_plugin_1="SharedLib", 
+      hook_plugin_2="SharedLib", 
+      hook_executable="ConsoleApp",
+      hook_dll="SharedLib"
+    }) 
+  do
+    project_name = "bifrost_api_test_" .. p
+    project (project_name)
+      kind(k)
+      includedirs { "source" }
+      
+      targetname("test-bifrost-api-" .. string.gsub(p, "_", "-"))
+      files { "source/bifrost/api/test/data/" .. p .. ".cpp", "source/bifrost/api/test/data/*.h" } 
+      defines { "_CRT_SECURE_NO_WARNINGS" }
+      
+      if (p == "hook_dll") then
+        defines { "BIFROST_HOOK_DLL_EXPORTS" }
+      end
+      
+      if (p == "hook_executable") then
+        links "bifrost_api_test_hook_dll"
+        dependson "bifrost_api_test_hook_dll"
+      end
+  end
 
   -- *** Bifrost API Test ***
   project "bifrost_api_test"
@@ -262,6 +286,10 @@ workspace "bifrost"
       "bifrost_api_test_injector_executable", 
       "bifrost_api_test_injector_plugin",
       "bifrost_api_test_injector_plugin",
+      "bifrost_api_test_hook_plugin_1", 
+      "bifrost_api_test_hook_plugin_2",
+      "bifrost_api_test_hook_executable",
+      "bifrost_api_test_hook_dll",
       "bifrost_plugin",
       "bifrost_injector",
       "bifrost_loader"
@@ -274,16 +302,26 @@ workspace "bifrost"
   project "injector"
     kind "ConsoleApp"
     includedirs { "source" }
-    
+    targetname "bfi"
+
     pchheader "injector/common.h"
     pchsource "source/injector/common.cpp"
     
-    files { "source/injector/*.cpp", "source/injector/*.h" }
+    files {"source/injector/*.cpp", "source/injector/*.h" }
     
     bifrost_add_bifrost_core()
     bifrost_add_bifrost_injector()
     bifrost_add_external_args()
     bifrost_add_external_spdlog()
+    
+  -- *
+  -- *** Compiler ***
+  -- *
+  externalproject "compiler"
+    kind "ConsoleApp"
+    uuid "EF3CF87A-F30E-4447-B03B-5E4541AA0C50"
+    location "source/compiler"
+    language "C#"
     
   -- *
   -- *** Example ***

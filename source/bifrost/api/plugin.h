@@ -84,13 +84,18 @@ BIFROST_PLUGIN_API const char* bfp_GetVersionString(void);
 
 /// @brief Initialize the plugin
 ///
-/// @param[out] minHookInitSuccess   Set to 1 if MinHook has been successfully initialized
-BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(int32_t* minHookInitSuccess);
+/// @param[out] errMsg   Set to NULL if no error occurred in initializing the hooking mechanism, otherwise contains the error message
+BIFROST_PLUGIN_API bfp_PluginContext* bfp_PluginInit(const char** errMsg);
 
 /// @brief Free the plugin
 ///
-/// @param[out] minHookFreeSuccess   Set to 1 if MinHook has been successfully uninitialized
-BIFROST_PLUGIN_API void bfp_PluginFree(bfp_PluginContext* ctx, int32_t* minHookFreeSuccess);
+/// @param[out] errMsg   Set to NULL if no error occurred in uninitializing the hooking mechanism, otherwise contains the error message
+BIFROST_PLUGIN_API void bfp_PluginFree(bfp_PluginContext* ctx, const char** errMsg);
+
+/// @brief Free the allocated string
+///
+/// @param[in] str		String to free
+BIFROST_PLUGIN_API void bfp_StringFree(const char* str);
 
 /// @brief Start the set-up process of the plugin
 /// @param[in] ctx      Plugin context description
@@ -129,28 +134,35 @@ BIFROST_PLUGIN_API bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t lev
 /// @param[in] plugin   Plugin context description
 BIFROST_PLUGIN_API const char* bfp_PluginGetLastError(bfp_PluginContext* plugin);
 
-/// @brief Creates a Hook for the specified target function, in disabled state
+/// @brief Creates a Hook for the specified target function in disabled state
 /// @param[in] ctx				Plugin context description
 /// @param[in] target			A pointer to the target function, which will be overridden by the detour function
 /// @param[in] detour			A pointer to the detour function, which will override the target function
-/// @param[in] enable			If set to 1, immediately enables the hook
-/// @param[out] original  A pointer to the trampoline function, which will be used to call the original target function. This parameter can be NULL
-BIFROST_PLUGIN_API bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, uint32_t enable, void** original);
+/// @param[out] original  A pointer to the trampoline function, which will be used to call the original target function. This parameter can be NULL.
+BIFROST_PLUGIN_API bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, void** original);
 
 /// @brief Removes an already created hook
 /// @param[in] ctx				Plugin context description
 /// @param[in] target			A pointer to the target function
 BIFROST_PLUGIN_API bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, void* target);
 
-/// @brief Enables an already created hook
-/// @param[in] ctx				Plugin context description
-/// @param[in] target			A pointer to the target function
-BIFROST_PLUGIN_API bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void* target);
+/// @brief Enables created hooks - this operation suspends and resumes all threads and is potentially costly!
+/// @param[in] ctx					Plugin context description
+/// @param[inout] targets		An array of pointer of size `num` to the target functions, on return this will contain pointer to the potentially new
+///												  original functions. If a pointer is NULL, the operation for that hook will be skipped.
+/// @param[in] num					Number of elements in `targets`
+BIFROST_PLUGIN_API bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void** targets, uint32_t num);
 
-/// @brief Disables an already created hook
+/// @brief Disables created hooks - this operation suspends and resumes all threads and is potentially costly!
+/// @param[in] ctx					Plugin context description
+/// @param[inout] targets		An array of pointer of size `num` to the target functions, on return this will contain pointer to the potentially new
+///													original functions. If a pointer is NULL, the operation for that hook will be skipped.
+/// @param[in] num					Number of elements in `targets`
+BIFROST_PLUGIN_API bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void** targets, uint32_t num);
+
+/// @brief Enable debug mode
 /// @param[in] ctx				Plugin context description
-/// @param[in] target			A pointer to the target function
-BIFROST_PLUGIN_API bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void* target);
+BIFROST_PLUGIN_API bfp_Status bfp_HookEnableDebug(bfp_PluginContext* ctx);
 
 #pragma endregion
 

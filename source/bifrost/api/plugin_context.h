@@ -50,11 +50,18 @@ class PluginContext {
   /// Log from the plugin
   bfp_Status Log(uint32_t level, const char* module, const char* msg);
 
-  // Error stash
+  /// Set the unique identifier of this plugin (used by the HookManager)
+  u32 GetId() { return m_id; }
+  void SetId(u32 id) { m_id = id; }
+
+  /// Error stash
   void SetLastError(std::string msg);
   const char* GetLastError();
 
+  Context* GetContext() const { return m_ctx.get(); }
+
  private:
+  u32 m_id;
   std::string m_error;
   std::unique_ptr<Context> m_ctx;
 

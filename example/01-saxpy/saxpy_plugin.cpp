@@ -9,24 +9,31 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#include <cstdint>
-
-// ---------------
-
-#define BIFROST_DEBUG
-#define BIFROST_PLUGIN_TEST
+// ---------------------------------------------------------------------------------------------------
 #define BIFROST_NAMESPACE saxpy
+#define BIFROST_PLUGIN_IDENTIFIER saxpy,
+#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER {"saxpy", Plugin::Identifer::saxpy},
+#define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "saxpy",
+#define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "saxpy",
+
+#define BIFROST_PLUGIN_MODULE example_saxpy_dll,
+#define BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::example_saxpy_dll,
+#define BIFROST_PLUGIN_MODULE_TO_STRING L"example-saxpy.dll"
+
+#define BIFROST_PLUGIN_DSL_DEF
+// ---------------------------------------------------------------------------------------------------
 
 #define BIFROST_IMPLEMENTATION
-#include "bifrost/template/plugin.h"
+#include "bifrost/template/plugin_main.h"
 
+// ---------------------------------------------------------------------------------------------------
 #define _bf_func_decl_ret_saxpy__saxpy void
 #define _bf_func_decl_args_saxpy__saxpy int n, float a, float *x, float *y
 
 #define _bf_func_saxpy__saxpy                                                           \
   ((void (*)(int, float, float *, float *))BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Get)() \
-       ._GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::saxpy)>()             \
-       ->Original())
+       .GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::saxpy)>()             \
+       ->GetOriginal())
 
 #define _bf_args_saxpy__saxpy n, a, x, y
 
@@ -34,8 +41,7 @@
 #define _bf_arg_2_saxpy__saxpy a
 #define _bf_arg_3_saxpy__saxpy x
 #define _bf_arg_4_saxpy__saxpy y
-
-// ---------------
+// ---------------------------------------------------------------------------------------------------
 
 //
 // 1) First, we need to define bf_id to indicate which function/method we are currently defining an override. In the following, we are going to override the
@@ -75,7 +81,7 @@ bf_override(my_saxpy3) {
 // 4) Here we define our plugin. The plugin provides functionality to hook functions/methods and utilities such as error handling or logging. The plugin is a
 // singleton and can be accessed via `Get<>()` anywhere.
 //
-class MySaxpyPlugin final : public BIFROST_PLUGIN {
+class MySaxpyPlugin final : public ::saxpy::Plugin {
  public:
   virtual void SetUp() override {
     CreateHook(Identifer::saxpy, my_saxpy1);
