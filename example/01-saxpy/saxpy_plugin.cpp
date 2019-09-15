@@ -32,8 +32,8 @@
 
 #define _bf_func_saxpy__saxpy                                                           \
   ((void (*)(int, float, float *, float *))BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Get)() \
-       ._GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::saxpy)>()             \
-       ->Original())
+       .GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::saxpy)>()             \
+       ->GetOriginal())
 
 #define _bf_args_saxpy__saxpy n, a, x, y
 

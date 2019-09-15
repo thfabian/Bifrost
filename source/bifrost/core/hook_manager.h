@@ -36,19 +36,19 @@ class HookManager {
   u32 GetId();
 
   /// Create the hook and return the pointer to the original function
-  void HookCreate(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original);
+  void HookCreate(u32 id, Context* ctx, void* target, void* detour, void** original);
 
   /// Remove the hook
   void HookRemove(u32 id, Context* ctx, void* target);
 
   /// Enable the hook
-  void HookEnable(u32 id, Context* ctx, void* target);
+  void HookEnable(u32 id, Context* ctx, void** targets, u32 num);
 
   /// Disable the hook
-  void HookDisable(u32 id, Context* ctx, void* target);
+  void HookDisable(u32 id, Context* ctx, void** targets, u32 num);
 
-	/// Enable debug mode
-	void EnableDebug(Context* ctx);
+  /// Enable debug mode
+  void EnableDebug(Context* ctx);
 
  private:
   class Impl;

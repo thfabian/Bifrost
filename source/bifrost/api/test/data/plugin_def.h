@@ -23,7 +23,7 @@
 #define bifrost_add_func_decl_ret int
 #define bifrost_add_func_decl_args int arg1, int arg2
 #define bifrost_add_func \
-  ((int (*)(int, int))BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Get)()._GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::bifrost_add)>()->Original())
+  ((int (*)(int, int))BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Get)().GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::bifrost_add)>()->GetOriginal())
 
 #define bifrost_add_args arg1, arg2
 #define bifrost_add_arg_1 arg1
@@ -31,6 +31,14 @@
 
 namespace bifrost {
 
-enum class Function : int { none = 0, my_bifrost_add__original = 1 };
+enum class Function : int {
+  none = 0,
+  bifrost_add__original_1,
+  bifrost_add__original_2,
+  bifrost_add__original_3,
+  bifrost_add__modify_1,
+  bifrost_add__modify_2,
+  bifrost_add__modify_3,
+};
 
 }

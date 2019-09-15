@@ -129,16 +129,9 @@ bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* mod
 
 const char* bfp_PluginGetLastError(bfp_PluginContext* ctx) { return Get(ctx)->GetLastError(); }
 
-bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, uint32_t enable, void** original) {
+bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, void** original) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->HookCreate(Get(ctx)->GetId(), Get(ctx)->GetContext(), target, detour, enable, original);
-    return BFP_OK;
-  });
-}
-
-bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void* target) {
-  BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->HookEnable(Get(ctx)->GetId(), Get(ctx)->GetContext(), target);
+    g_manager->HookCreate(Get(ctx)->GetId(), Get(ctx)->GetContext(), target, detour, original);
     return BFP_OK;
   });
 }
@@ -150,9 +143,16 @@ bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, void* target) {
   });
 }
 
-bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void* target) {
+bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void** targets, uint32_t num) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->HookDisable(Get(ctx)->GetId(), Get(ctx)->GetContext(), target);
+    g_manager->HookEnable(Get(ctx)->GetId(), Get(ctx)->GetContext(), targets, num);
+    return BFP_OK;
+  });
+}
+
+bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void** targets, uint32_t num) {
+  BIFROST_PLUGIN_CATCH_ALL({
+    g_manager->HookDisable(Get(ctx)->GetId(), Get(ctx)->GetContext(), targets, num);
     return BFP_OK;
   });
 }

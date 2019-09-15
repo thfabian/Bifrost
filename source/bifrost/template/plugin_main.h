@@ -64,6 +64,9 @@ BIFROST_CACHE_ALIGN class Plugin {
   //
   enum class Identifer : std::uint64_t { __bifrost_none__ = 0, BIFROST_PLUGIN_IDENTIFIER NumIdentifier };
 
+	/// Convert Identifer to string
+	static const char* ToString(Identifer identifer);
+
   //
   // INTERFACE
   //
@@ -98,48 +101,81 @@ BIFROST_CACHE_ALIGN class Plugin {
     friend class Plugin;
 
     /// Get the function pointer to the original function/method
-    inline void* Original() const noexcept { return m_original; }
+    inline void* GetOriginal() const noexcept { return m_original; }
 
     /// Get the function pointer to the override (i.e detour) of the original function/method
-    inline void* Override() const noexcept { return m_override; }
-
-    /// Activates the hook, calls `FatalError` if an error occurred.
-    void Enable();
-
-    /// Tries to activate the hook, returns `true` on success.
-    bool TryEnable();
-
-    /// Deactivate the hook, calls `FatalError` if an error occurred.
-    void Disable();
+    inline void* GetOverride() const noexcept { return m_override; }
 
     /// Query if this hook is currently enabled
     inline bool IsEnabled() const noexcept { return m_enabled; }
 
+		/// Get the associated identifier
+		Identifer GetIdentifier() const noexcept { return m_identifier; }
+
    private:
-    void* _Target() const noexcept;
+    void* _GetTarget() const noexcept;
     void _SetTarget(void* target) noexcept;
     void _SetOverride(void* override) noexcept;
     void _SetOriginal(void* original) noexcept;
+	  void _SetEnabled(bool enabled) noexcept;
+    void _SetIdentifier(Identifer identifier) noexcept;
 
-   private:
+	private:
     void* m_target = nullptr;
     void* m_original = nullptr;
     void* m_override = nullptr;
     bool m_enabled = false;
+		Identifer m_identifier = Identifer::__bifrost_none__;
   };
   using AlignedHook = BIFROST_CACHE_ALIGN struct { Hook hook; };
 
   /// Hook the function given by `identifier` to call `override` instead
   ///
-  /// If the hook has already been created, the hook is first removed and a new Hook object is created.
+  /// If the hook has already been created, the hook is first removed and a new Hook object is created. Note that the hook needs to be enabled `EnableHook`
+  /// before it takes effect.
   /// Calls `FatalError` if an error occurred.
   ///
-  /// @param[in] identifier Identifer of the function to override
+  /// @param[in] identifier Identifier of the function to override
   /// @param[in] override   Function pointer to use for the override (type has to match!)
-  /// @param[in] enable     Immediately enable the hook?
   /// @returns a reference to the hook object
-  Hook* CreateHook(Identifer identifier, void* override, bool enable = true);
-  Hook* CreateHook(const char* identifier, void* override, bool enable = true);
+  Hook* CreateHook(Identifer identifier, void* override);
+  Hook* CreateHook(const char* identifier, void* override);
+
+  /// Enables the registered hook given by `identifier`
+  ///
+  /// Each enable or disable operation of a hook suspends and resumes all threads, use the array version `EnableHooks` for better increased performance.
+  /// Calls `FatalError` if an error occurred.
+  ///
+  /// @param[in] identifier		Identifier of the function to enable
+  void EnableHook(Identifer identifier);
+  void EnableHook(const char* identifier);
+  void EnableHook(Hook* hook);
+
+  /// Like `EnableHook` but perform the operation on the array `identifier` of length `num`
+  void EnableHooks(Identifer* identifiers, std::uint32_t num);
+  void EnableHooks(const char** identifiers, std::uint32_t num);
+  void EnableHooks(Hook** hooks, std::uint32_t num);
+
+  /// Enables all created hooks
+  void EnableAllHooks();
+
+  /// Disables the registered hook given by `identifier`
+  ///
+  /// Each enable or disable operation of a hook suspends and resumes all threads, use the array version `DisableHooks` for better increased performance.
+  /// Calls `FatalError` if an error occurred.
+  ///
+  /// @param[in] identifier		Identifier of the function to enable
+  void DisableHook(Identifer identifier);
+  void DisableHook(const char* identifier);
+  void DisableHook(Hook* hook);
+
+  /// Like `DisableHook` but perform the operation on the array `identifier` of length `num`
+  void DisableHooks(Identifer* identifiers, std::uint32_t num);
+  void DisableHooks(const char** identifiers, std::uint32_t num);
+  void DisableHooks(Hook** hooks, std::uint32_t num);
+
+  /// Disables all created hooks
+  void DisableAllHooks();
 
   /// Removes an already created the hook given by `identifier`
   ///
@@ -163,6 +199,12 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// @returns a reference to the hook object
   Hook* GetHook(Identifer identifier) noexcept;
   Hook* GetHook(const char* identifier);
+
+	template <Identifer identifer>
+  inline constexpr Hook* GetHook() noexcept {
+    return &s_hooks[(std::uint64_t)identifer].hook;
+  }
+
 
   /// Check if there was a hook created for `identifier` (the hook may be disabled)
   ///
@@ -194,12 +236,6 @@ BIFROST_CACHE_ALIGN class Plugin {
   //
   // INTERNAL
   //
-
-  template <Identifer identifer>
-  inline constexpr Hook* _GetHook() noexcept {
-    return &s_hooks[(std::uint64_t)identifer].hook;
-  }
-
   bfp_PluginContext_t* _GetPlugin();
   void _SetUpImpl(bfp_PluginContext_t*);
   void _TearDownImpl(bool);
@@ -688,74 +724,155 @@ void Plugin::FatalError(const char* msg) const {
   throw std::runtime_error(msg);
 }
 
-void Plugin::Hook::Enable() {
-  if (IsEnabled()) return;
-  if (!TryEnable()) Plugin::Get().FatalError("Failed to hook function ");
-}
+void* Plugin::Hook::_GetTarget() const noexcept { return m_target; }
 
-bool Plugin::Hook::TryEnable() {
-  m_enabled = true;
-  return true;
-}
-
-void Plugin::Hook::Disable() {
-  if (!IsEnabled()) return;
-}
-
-void* Plugin::Hook::_Target() const noexcept { return m_target; }
 void Plugin::Hook::_SetTarget(void* target) noexcept { m_target = target; }
+
 void Plugin::Hook::_SetOverride(void* override) noexcept { m_override = override; }
+
 void Plugin::Hook::_SetOriginal(void* original) noexcept { m_original = original; }
 
-Plugin::Hook* Plugin::CreateHook(const char* identifier, void* override, bool activate) {
-  return CreateHook(StringToIdentifier(identifier), override, activate);
+void Plugin::Hook::_SetIdentifier(Identifer identifer) noexcept { m_identifier = identifer; }
+
+void Plugin::Hook::_SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
+
+Plugin::Hook* Plugin::CreateHook(const char* identifier, void* override) {
+  return CreateHook(StringToIdentifier(identifier), override);
 }
 
-Plugin::Hook* Plugin::CreateHook(Plugin::Identifer identifier, void* override, bool enable) {
+Plugin::Hook* Plugin::CreateHook(Plugin::Identifer identifier, void* override) {
   auto& api = GetApi();
   Hook* hook = GetHook(identifier);
 
   // Do we have a target?
-  if (hook->_Target() == nullptr) {
-    FatalError(StringFormat("Cannot create hook for %s: function was not loaded successfully", IdentiferToFunctionName(identifier)).c_str());
+  if (hook->_GetTarget() == nullptr) {
+    FatalError(StringFormat("Failed to create hook for %s: function was not loaded successfully", IdentiferToFunctionName(identifier)).c_str());
   }
 
   // Remove existing hook
-  if (hook->Override()) RemoveHook(hook);
+  if (hook->GetOverride()) RemoveHook(hook);
 
   // Create new hook
-  void* newOriginal = hook->Original();
+  void* newOriginal = hook->GetOriginal();
   void* newOverride = override;
-  if (api.bfp_HookCreate(m_impl->Context, hook->_Target(), newOverride, enable ? 1 : 0, &newOriginal) != BFP_OK) {
+  if (api.bfp_HookCreate(m_impl->Context, hook->_GetTarget(), newOverride, &newOriginal) != BFP_OK) {
     FatalError(api.bfp_PluginGetLastError(m_impl->Context));
   }
 
   hook->_SetOriginal(newOriginal);
   hook->_SetOverride(newOverride);
+  hook->_SetEnabled(false);
+  hook->_SetIdentifier(identifier);
   return hook;
 }
 
-void Plugin::RemoveHook(Identifer identifier) {
+void Plugin::EnableHook(Identifer identifier) { EnableHook(GetHook(identifier)); }
+
+void Plugin::EnableHook(const char* identifier) { EnableHook(StringToIdentifier(identifier)); }
+
+void Plugin::EnableHook(Hook* hook) { EnableHooks(&hook, 1); }
+
+void Plugin::EnableHooks(Identifer* identifers, std::uint32_t num) {
+  Hook** hooks = (Hook**)::_alloca(sizeof(Hook*) * num);
+  for (std::uint32_t i = 0; i < num; ++i) hooks[i] = GetHook(identifers[i]);
+  EnableHooks(hooks, num);
+}
+
+void Plugin::EnableHooks(const char** identifers, std::uint32_t num) {
+  Identifer* identifierEnums = (Identifer*)::_alloca(sizeof(Identifer) * num);
+  for (std::uint32_t i = 0; i < num; ++i) identifierEnums[i] = StringToIdentifier(identifers[i]);
+  EnableHooks(identifierEnums, num);
+}
+
+void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
+  void** targets = (void**)::_alloca(sizeof(void*) * num);
+
+  // Obtain the targets
+  for (std::uint32_t i = 0; i < num; ++i) {
+    if (!hooks[i]->IsEnabled()) {
+      if (hooks[i]->GetOverride() == nullptr) {
+        FatalError(StringFormat("Failed to enable hook %s: hook has not been created", IdentiferToFunctionName(hooks[i]->GetIdentifier())).c_str());
+      }
+      targets[i] = hooks[i]->_GetTarget();
+    } else {
+      targets[i] = nullptr;
+    }
+  }
+
+  // Enable the hooks
   auto& api = GetApi();
-  Hook* hook = GetHook(identifier);
-
-  // Function was not loaded successfully
-  if (hook->_Target() == nullptr) return;
-
-  // No hook has been registered
-  if (hook->Override() == nullptr) return;
-
-  if (api.bfp_HookRemove(m_impl->Context, hook->_Target()) != BFP_OK) {
+  if (api.bfp_HookEnable(m_impl->Context, targets, num) != BFP_OK) {
     FatalError(api.bfp_PluginGetLastError(m_impl->Context));
   }
 
-  hook->_SetOriginal(hook->_Target());
-  hook->_SetOverride(nullptr);
+  // Apply the changes
+  for (std::uint32_t i = 0; i < num; ++i) {
+    if (!targets[i]) continue;
+
+    hooks[i]->_SetEnabled(true);
+    //hooks[i]->_SetOriginal(targets[i]);
+  }
 }
+
+void Plugin::DisableHook(Identifer identifier) { DisableHook(GetHook(identifier)); }
+
+void Plugin::DisableHook(const char* identifier) { DisableHook(StringToIdentifier(identifier)); }
+
+void Plugin::DisableHook(Hook* hook) { DisableHooks(&hook, 1); }
+
+void Plugin::DisableHooks(Identifer* identifers, std::uint32_t num) {
+  Hook** hooks = (Hook**)::_alloca(sizeof(Hook*) * num);
+  for (std::uint32_t i = 0; i < num; ++i) hooks[i] = GetHook(identifers[i]);
+  DisableHooks(hooks, num);
+}
+
+void Plugin::DisableHooks(const char** identifers, std::uint32_t num) {
+  Identifer* identifierEnums = (Identifer*)::_alloca(sizeof(Identifer) * num);
+  for (std::uint32_t i = 0; i < num; ++i) identifierEnums[i] = StringToIdentifier(identifers[i]);
+  DisableHooks(identifierEnums, num);
+}
+
+void Plugin::DisableHooks(Hook** hooks, std::uint32_t num) {
+  void** targets = (void**)::_alloca(sizeof(void*) * num);
+
+  // Obtain the targets
+  for (std::uint32_t i = 0; i < num; ++i) targets[i] = hooks[i]->IsEnabled() ? hooks[i]->_GetTarget() : nullptr;
+
+  // Enable the hooks
+  auto& api = GetApi();
+  if (api.bfp_HookDisable(m_impl->Context, targets, num) != BFP_OK) {
+    FatalError(api.bfp_PluginGetLastError(m_impl->Context));
+  }
+
+  // Apply the changes
+  for (std::uint32_t i = 0; i < num; ++i) {
+    if (!targets[i]) continue;
+
+    hooks[i]->_SetEnabled(false);
+    //hooks[i]->_SetOriginal(targets[i]);
+  }
+}
+
+void Plugin::RemoveHook(Identifer identifier) { RemoveHook(GetHook(identifier)); }
 
 void Plugin::RemoveHook(const char* identifier) { RemoveHook(StringToIdentifier(identifier)); }
 
-void Plugin::RemoveHook(Hook* hook) {}
+void Plugin::RemoveHook(Hook* hook) {
+  auto& api = GetApi();
+
+  // Function was not loaded successfully
+  if (hook->_GetTarget() == nullptr) return;
+
+  // No hook has been registered
+  if (hook->GetOverride() == nullptr) return;
+
+  if (api.bfp_HookRemove(m_impl->Context, hook->_GetTarget()) != BFP_OK) {
+    FatalError(api.bfp_PluginGetLastError(m_impl->Context));
+  }
+
+  hook->_SetOriginal(hook->_GetTarget());
+  hook->_SetOverride(nullptr);
+}
 
 Plugin::Hook* Plugin::GetHook(Plugin::Identifer identifier) noexcept { return &s_hooks[(std::uint64_t)identifier].hook; }
 
@@ -824,9 +941,9 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
     // Load the target function
     Hook& hook = s_hooks[identiferIndex].hook;
     hook._SetTarget(::GetProcAddress(hModule, functionName));
-    hook._SetOriginal(hook._Target());
+    hook._SetOriginal(hook._GetTarget());
 
-    if (hook._Target() == nullptr) {
+    if (hook._GetTarget() == nullptr) {
       Log(LogLevel::Warn, StringFormat("Failed to load function %s: %s", functionName, GetLastWin32Error().c_str()).c_str());
     }
   }

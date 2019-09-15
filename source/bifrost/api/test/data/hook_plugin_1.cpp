@@ -33,16 +33,18 @@ using namespace bifrost;
 #define bf_id bifrost_add
 
 /// Call original function
-bf_override(bifrost_add__original) { 
-	std::cout << "wtf" << std::endl;
-	return bf_original(bf_args); 
-}
-	
+bf_override(bifrost_add__original_1) { return bf_original(bf_args); }
+bf_override(bifrost_add__original_2) { return bf_original(bf_arg(1), bf_arg(2)); }
+bf_override(bifrost_add__original_3) { return bf_original(bf_arg(1, 2)); }
+
 /// Modify arg1
+bf_override(bifrost_add__modify_1) { return bf_original(5, bf_arg(2)); }
 
 /// Modify arg2
+bf_override(bifrost_add__modify_2) { return bf_original(bf_arg(1), 5); }
 
 /// Modify both arguments
+bf_override(bifrost_add__modify_3) { return bf_original(5, 5); }
 
 class HookTestPlugin1 final : public hook_plugin_1::Plugin {
  public:
@@ -57,9 +59,25 @@ class HookTestPlugin1 final : public hook_plugin_1::Plugin {
   }
 
   virtual void SetUp() override {
-     switch (GetFunction()) {
-      case Function::my_bifrost_add__original:
-        CreateHook(Identifer::bifrost_add, bifrost_add__original);
+    switch (GetFunction()) {
+      case Function::bifrost_add__original_1:
+        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__original_1));
+        break;
+      case Function::bifrost_add__original_2:
+        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__original_2));
+        break;
+      case Function::bifrost_add__original_3:
+        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__original_3));
+        break;
+      case Function::bifrost_add__modify_1:
+        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__modify_1));
+        break;
+      case Function::bifrost_add__modify_2:
+        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__modify_2));
+        break;
+      case Function::bifrost_add__modify_3:
+        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__modify_3));
+        break;
       default:
         break;
     }
@@ -70,4 +88,3 @@ class HookTestPlugin1 final : public hook_plugin_1::Plugin {
 };
 
 BIFROST_REGISTER_PLUGIN(HookTestPlugin1)
-

@@ -135,7 +135,7 @@ inline const char* GetConstCharPtr(const std::string& str) { return str.c_str();
   }
 
 #define BIFROST_LOG_DEBUG(...)              \
-  if (m_debugMode) {                  \
+  if (m_debugMode) {                        \
     ctx->Logger().DebugFormat(__VA_ARGS__); \
   }
 
@@ -166,22 +166,34 @@ class HookManager::Impl {
 
     // Cleanup symbol loading
     if (m_debugMode) {
-      BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymCleanup(GetCurrentProcess()));
+      BIFROST_CHECK_WIN_CALL_CTX(ctx, ::SymCleanup(::GetCurrentProcess()));
       m_debugMode = false;
       m_symbolCache.clear();
     }
   }
 
-  void HookCreate(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original) {
+  void HookCreate(u32 id, Context* ctx, void* target, void* detour, void** original) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_LOG_DEBUG("Creating %s hook from %s to %s", enable ? "and enabling" : "", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour));
-    HookCreateImpl(id, ctx, target, detour, enable, original);
+    BIFROST_LOG_DEBUG("Creating hook from %s to %s", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour));
+    HookCreateImpl(id, ctx, target, detour, original);
   }
 
-  void HookEnable(u32 id, Context* ctx, void* target) {
+  void HookRemove(u32 id, Context* ctx, void* target) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_LOG_DEBUG("Enabling hook %s", SymbolFromAdress(ctx, target));
-    HookEnableImpl(id, ctx, target);
+    BIFROST_LOG_DEBUG("Removing hook %s", SymbolFromAdress(ctx, target));
+    HookRemoveImpl(id, ctx, target);
+  }
+
+  void HookEnable(u32 id, Context* ctx, void** targets, u32 num) {
+    BIFROST_LOCK_GUARD(m_mutex);
+    for (u32 i = 0; i < num; ++i) BIFROST_LOG_DEBUG("Enabling hook %s", SymbolFromAdress(ctx, targets[i]));
+    HookEnableImpl(id, ctx, targets, num);
+  }
+
+  void HookDisable(u32 id, Context* ctx, void** targets, u32 num) {
+    BIFROST_LOCK_GUARD(m_mutex);
+    for (u32 i = 0; i < num; ++i) BIFROST_LOG_DEBUG("Disabling hook %s", SymbolFromAdress(ctx, targets[i]));
+    HookDisableImpl(id, ctx, targets, num);
   }
 
   void EnableDebug(Context* ctx) {
@@ -240,7 +252,7 @@ class HookManager::Impl {
     std::list<HookDescPerId> m_perIdDesc;
   };
 
-  void HookCreateImpl(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original) {
+  void HookCreateImpl(u32 id, Context* ctx, void* target, void* detour, void** original) {
     HookDesc* desc = GetHookDesc(target);
     if (!desc) {
       // No other hook exists, create it!
@@ -248,14 +260,58 @@ class HookManager::Impl {
                        StringFormat("creating hook from %s to %s", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour)));
       desc = SetHookDesc(target, {id, original});
     }
-
-    if (desc->NumHooks() > 1) {
-    }
-    if (enable) HookEnableImpl(id, ctx, target);
   }
 
-  void HookEnableImpl(u32 id, Context* ctx, void* target) {
-    BIFROST_CHECK_MH(MH_EnableHook(target), StringFormat("enable hook for \"%s\"", SymbolFromAdress(ctx, target)));
+  void HookRemoveImpl(u32 id, Context* ctx, void* target) {
+    HookDesc* desc = GetHookDesc(target);
+    if (!desc) return;
+
+    BIFROST_CHECK_MH(MH_RemoveHook(target), StringFormat("removing hook from %s", SymbolFromAdress(ctx, target)));
+  }
+
+  void HookEnableImpl(u32 id, Context* ctx, void** targets, u32 num) {
+    if (num == 0) return;
+
+    if (num == 1) {
+      if (targets[0]) {
+        BIFROST_CHECK_MH(MH_EnableHook(targets[0]), StringFormat("enable hook for %s", SymbolFromAdress(ctx, targets[0])));
+      }
+    } else {
+      u32 numQueued = 0;
+
+      for (u32 i = 0; i < num; ++i) {
+        if (targets[i]) {
+          BIFROST_CHECK_MH(MH_QueueEnableHook(targets[i]), StringFormat("queue enable hook for %s", SymbolFromAdress(ctx, targets[i])));
+          numQueued++;
+        }
+      }
+
+      if (numQueued > 0) {
+        BIFROST_CHECK_MH(MH_ApplyQueued(), "failed to apply queued opterations");
+      }
+    }
+  }
+
+  void HookDisableImpl(u32 id, Context* ctx, void** targets, u32 num) {
+    if (num == 0) return;
+
+    if (num == 1) {
+      if (targets[0]) {
+        BIFROST_CHECK_MH(MH_DisableHook(targets[0]), StringFormat("disable hook for %s", SymbolFromAdress(ctx, targets[0])));
+      }
+    } else {
+      u32 numQueued = 0;
+      for (u32 i = 0; i < num; ++i) {
+        if (targets[i]) {
+          BIFROST_CHECK_MH(MH_QueueDisableHook(targets[i]), StringFormat("queue disable hook for %s", SymbolFromAdress(ctx, targets[i])));
+          numQueued++;
+        }
+      }
+
+      if (numQueued > 0) {
+        BIFROST_CHECK_MH(MH_ApplyQueued(), "failed to apply queued opterations");
+      }
+    }
   }
 
   //
@@ -276,12 +332,12 @@ class HookManager::Impl {
 
       // Load the symbol from the given address
       std::string symbolName;
-      if (::SymFromAddr(GetCurrentProcess(), dwAddress, &dwDisplacement, &info.si) == TRUE) {
-        symbolName = std::string{info.si.Name, info.si.NameLen}; 
+      if (::SymFromAddr(::GetCurrentProcess(), dwAddress, &dwDisplacement, &info.si) == TRUE) {
+        symbolName = std::string{info.si.Name, info.si.NameLen};
 
       } else {
         // Failed to load the symbol -> take address
-        ctx->Logger().WarnFormat("Failed to symbol name of 0x%08x: %s", addr, GetLastWin32Error().c_str());
+        ctx->Logger().WarnFormat("Failed to get symbol name of 0x%08x: %s", addr, GetLastWin32Error().c_str());
         symbolName = StringFormat("0x%08x", addr);
       }
       return m_symbolCache.emplace(addr, std::move(symbolName)).first->second.c_str();
@@ -294,7 +350,7 @@ class HookManager::Impl {
     if (!m_debugMode) {
       DWORD options = ::SymGetOptions();
       if (m_settings->VerboseDbgHelp) options |= SYMOPT_DEBUG;
-			options |= SYMOPT_UNDNAME;
+      options |= SYMOPT_UNDNAME;
       ::SymSetOptions(options);
 
       ctx->Logger().Info("Loading symbols ...");
@@ -340,15 +396,13 @@ void HookManager::TearDown(Context* ctx) { m_impl->TearDown(ctx); }
 
 u32 HookManager::GetId() { return m_impl->GetId(); }
 
-void HookManager::HookCreate(u32 id, Context* ctx, void* target, void* detour, bool enable, void** original) {
-  m_impl->HookCreate(id, ctx, target, detour, enable, original);
-}
+void HookManager::HookCreate(u32 id, Context* ctx, void* target, void* detour, void** original) { m_impl->HookCreate(id, ctx, target, detour, original); }
 
-void HookManager::HookRemove(u32 id, Context* ctx, void* target) {}
+void HookManager::HookRemove(u32 id, Context* ctx, void* target) { m_impl->HookRemove(id, ctx, target); }
 
-void HookManager::HookEnable(u32 id, Context* ctx, void* target) { m_impl->HookEnable(id, ctx, target); }
+void HookManager::HookEnable(u32 id, Context* ctx, void** targets, u32 num) { m_impl->HookEnable(id, ctx, targets, num); }
 
-void HookManager::HookDisable(u32 id, Context* ctx, void* target) {}
+void HookManager::HookDisable(u32 id, Context* ctx, void** targets, u32 num) { m_impl->HookDisable(id, ctx, targets, num); }
 
 void HookManager::EnableDebug(Context* ctx) { m_impl->EnableDebug(ctx); }
 

@@ -44,12 +44,21 @@ TEST_F(TestHook, NoHooks) {
   ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
 }
 
-TEST_F(TestHook, Original) {
+#pragma region bifrost_add Tests
+
+// The tests work the following:
+// 1) We pass the function <id> we want to call via plugin argument. The plugin argument has the form "<tmp-file>;<id>"
+// 2) The plugin will hook the function we specified in <id>.
+// 3) The executable will call bifrost_add and the hook should be called.
+//
+// The executable and the plugin write to the tmp file so we can check the results.
+
+TEST_F(TestHook, Original1) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::my_bifrost_add__original);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::bifrost_add__original_1);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
@@ -57,5 +66,77 @@ TEST_F(TestHook, Original) {
 
   ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
 }
+
+TEST_F(TestHook, Original2) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::bifrost_add__original_2);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+TEST_F(TestHook, Original3) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::bifrost_add__original_3);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+TEST_F(TestHook, Modify1) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::bifrost_add__modify_1);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=7:TearDown1:") << "File: " << tmpFile;
+}
+
+TEST_F(TestHook, Modify2) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::bifrost_add__modify_2);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=6:TearDown1:") << "File: " << tmpFile;
+}
+
+TEST_F(TestHook, Modify3) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Function::bifrost_add__modify_3);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=10:TearDown1:") << "File: " << tmpFile;
+}
+
+#pragma endregion
 
 }  // namespace
