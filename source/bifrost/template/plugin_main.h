@@ -125,7 +125,7 @@ BIFROST_CACHE_ALIGN class Plugin {
     void* m_target = nullptr;
     void* m_override = nullptr;
     bool m_enabled = false;
-		Identifer m_identifier = Identifer::__bifrost_none__;
+    Identifer m_identifier = Identifer::__bifrost_none__;
   };
   using AlignedHook = BIFROST_CACHE_ALIGN struct { Hook hook; };
 
@@ -393,6 +393,7 @@ BIFROST_PLUGIN_DSL_DEF
 #include <Windows.h>
 
 #include <array>
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
@@ -673,9 +674,17 @@ static Module IdentifierToModule(Plugin::Identifer identifier) {
 static const wchar_t* ModuleToString(Module module) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const wchar_t*, (std::uint32_t)Module::NumModule + 1> map{
       L"<invalid>",
-      BIFROST_PLUGIN_MODULE_TO_STRING L"<invalid>",
+      BIFROST_PLUGIN_MODULE_TO_STRING
+			L"<invalid>",
   };
   return map[(std::uint32_t)module];
+}
+
+template <class T>
+static void ForEachIdentifer(T&& func) {
+  for (std::uint64_t i = (std::uint64_t)Plugin::Identifer::__bifrost_none__ + 1; i < (std::uint64_t)Plugin::Identifer::NumIdentifier; ++i) {
+    func((Plugin::Identifer)i);
+  }
 }
 
 }  // namespace
@@ -699,7 +708,7 @@ BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
   std::string Arguments;
 };
 
-BIFROST_NAMESPACE::Plugin::Plugin() { m_impl = new PluginImpl; }
+Plugin::Plugin() { m_impl = new PluginImpl; }
 
 Plugin::~Plugin() {
   RemoveAllHooks();
@@ -785,7 +794,7 @@ void Plugin::EnableHooks(const char** identifers, std::uint32_t num) {
 }
 
 void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
-  void** targets = (void**)::_alloca(sizeof(void*) * num);
+  void** targets = (void**)::_malloca(sizeof(void*) * num);
 
   // Obtain the targets
   for (std::uint32_t i = 0; i < num; ++i) {
@@ -812,6 +821,14 @@ void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
     hooks[i]->_SetEnabled(true);
     //hooks[i]->_SetOriginal(targets[i]);
   }
+}
+
+
+void Plugin::EnableAllHooks() {
+  Identifer* identifers = (Identifer*)::_alloca(sizeof(Identifer) * (std::uint64_t) Identifer::NumIdentifier - 2);
+	std::iota()
+
+  ForEachIdentifer([this](Identifer identifer) { identifers; })
 }
 
 void Plugin::DisableHook(Identifer identifier) { DisableHook(GetHook(identifier)); }
@@ -883,9 +900,7 @@ bool Plugin::HasHook(Plugin::Identifer identifier) noexcept { return GetHook(ide
 bool Plugin::HasHook(const char* identifier) { return HasHook(StringToIdentifier(identifier)); }
 
 void Plugin::RemoveAllHooks() noexcept {
-  for (std::uint64_t i = (std::uint64_t)Identifer::__bifrost_none__ + 1; i < (std::uint64_t)Identifer::NumIdentifier; ++i) {
-    RemoveHook((Identifer)i);
-  }
+  ForEachIdentifer([this](Identifer identifer) { RemoveHook(identifer); });
 }
 
 const char* Plugin::GetName() const { return s_name; }
