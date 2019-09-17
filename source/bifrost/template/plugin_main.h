@@ -62,7 +62,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   //
   // IDENTIFIER
   //
-  enum class Identifer : std::uint64_t { __bifrost_none__ = 0, BIFROST_PLUGIN_IDENTIFIER NumIdentifier };
+  enum class Identifer : std::uint64_t { __bifrost_first__ = 0, BIFROST_PLUGIN_IDENTIFIER NumIdentifier };
 
 	/// Convert Identifer to string
 	static const char* ToString(Identifer identifer);
@@ -125,7 +125,7 @@ BIFROST_CACHE_ALIGN class Plugin {
     void* m_target = nullptr;
     void* m_override = nullptr;
     bool m_enabled = false;
-    Identifer m_identifier = Identifer::__bifrost_none__;
+    Identifer m_identifier = Identifer::__bifrost_first__;
   };
   using AlignedHook = BIFROST_CACHE_ALIGN struct { Hook hook; };
 
@@ -397,6 +397,7 @@ BIFROST_PLUGIN_DSL_DEF
 #include <cstdlib>
 #include <fstream>
 #include <iostream>
+#include <numeric>
 #include <mutex>
 #include <stdexcept>
 #include <string>
@@ -409,7 +410,7 @@ BIFROST_NAMESPACE_BEGIN
 
 /// Available modules
 enum class Module : std::uint32_t {
-  __bifrost_none__ = 0,
+  __bifrost_first__ = 0,
   BIFROST_PLUGIN_MODULE NumModule,
 };
 
@@ -664,8 +665,8 @@ static const char* IdentiferToFunctionName(Plugin::Identifer identifier) {
 /// Convert an Identifer to the associated module
 static Module IdentifierToModule(Plugin::Identifer identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<Module, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
-      Module::__bifrost_none__,
-      BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::__bifrost_none__,
+      Module::__bifrost_first__,
+      BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::__bifrost_first__,
   };
   return map[(std::uint64_t)identifier];
 }
@@ -682,7 +683,7 @@ static const wchar_t* ModuleToString(Module module) {
 
 template <class T>
 static void ForEachIdentifer(T&& func) {
-  for (std::uint64_t i = (std::uint64_t)Plugin::Identifer::__bifrost_none__ + 1; i < (std::uint64_t)Plugin::Identifer::NumIdentifier; ++i) {
+  for (std::uint64_t i = (std::uint64_t)Plugin::Identifer::__bifrost_first__ + 1; i < (std::uint64_t)Plugin::Identifer::NumIdentifier; ++i) {
     func((Plugin::Identifer)i);
   }
 }
@@ -692,6 +693,8 @@ static void ForEachIdentifer(T&& func) {
 BIFROST_CACHE_ALIGN Plugin* Plugin::s_instance = nullptr;
 
 BIFROST_CACHE_ALIGN Plugin::AlignedHook Plugin::s_hooks[(std::uint64_t)Plugin::Identifer::NumIdentifier];
+
+const char* Plugin::ToString(Identifer identifer) { IdentifierToString(identifer); }
 
 BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
  public:
@@ -781,20 +784,20 @@ void Plugin::EnableHook(const char* identifier) { EnableHook(StringToIdentifier(
 
 void Plugin::EnableHook(Hook* hook) { EnableHooks(&hook, 1); }
 
+void Plugin::EnableHooks(const char** identifers, std::uint32_t num) {
+  Identifer* identiferEnums = (Identifer*)::_alloca(sizeof(Identifer) * num);
+  for (std::uint32_t i = 0; i < num; ++i) identiferEnums[i] = StringToIdentifier(identifers[i]);
+  EnableHooks(identiferEnums, num);
+}
+
 void Plugin::EnableHooks(Identifer* identifers, std::uint32_t num) {
   Hook** hooks = (Hook**)::_alloca(sizeof(Hook*) * num);
   for (std::uint32_t i = 0; i < num; ++i) hooks[i] = GetHook(identifers[i]);
   EnableHooks(hooks, num);
 }
 
-void Plugin::EnableHooks(const char** identifers, std::uint32_t num) {
-  Identifer* identifierEnums = (Identifer*)::_alloca(sizeof(Identifer) * num);
-  for (std::uint32_t i = 0; i < num; ++i) identifierEnums[i] = StringToIdentifier(identifers[i]);
-  EnableHooks(identifierEnums, num);
-}
-
 void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
-  void** targets = (void**)::_malloca(sizeof(void*) * num);
+  void** targets = (void**)::_alloca(sizeof(void*) * num);
 
   // Obtain the targets
   for (std::uint32_t i = 0; i < num; ++i) {
@@ -823,13 +826,13 @@ void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
   }
 }
 
-
 void Plugin::EnableAllHooks() {
-  Identifer* identifers = (Identifer*)::_alloca(sizeof(Identifer) * (std::uint64_t) Identifer::NumIdentifier - 2);
-	std::iota()
-
-  ForEachIdentifer([this](Identifer identifer) { identifers; })
+  std::uint64_t size = (std::uint64_t)Identifer::NumIdentifier - 1;
+  std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifer) * size);
+  std::iota(identifers, identifers + size, (std::uint64_t)Identifer::__bifrost_first__ + 1);
+  EnableHooks((Identifer*)identifers, size);
 }
+
 
 void Plugin::DisableHook(Identifer identifier) { DisableHook(GetHook(identifier)); }
 
@@ -868,6 +871,13 @@ void Plugin::DisableHooks(Hook** hooks, std::uint32_t num) {
     hooks[i]->_SetEnabled(false);
     //hooks[i]->_SetOriginal(targets[i]);
   }
+}
+
+void Plugin::DisableAllHooks() {
+  std::uint64_t size = (std::uint64_t)Identifer::NumIdentifier - 1;
+  std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifer) * size);
+  std::iota(identifers, identifers + size, (std::uint64_t)Identifer::__bifrost_first__ + 1);
+  DisableHooks((Identifer*)identifers, size);
 }
 
 void Plugin::RemoveHook(Identifer identifier) { RemoveHook(GetHook(identifier)); }
@@ -919,7 +929,7 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
 #endif
 
   // Load all externally referenced libraries
-  for (std::uint32_t moduleIndex = (std::uint32_t)Identifer::__bifrost_none__ + 1; moduleIndex < (std::uint32_t)Module::NumModule; ++moduleIndex) {
+  for (std::uint32_t moduleIndex = (std::uint32_t)Identifer::__bifrost_first__ + 1; moduleIndex < (std::uint32_t)Module::NumModule; ++moduleIndex) {
     auto moduleString = ModuleToString((Module)moduleIndex);
 
 #ifdef BIFROST_DEBUG
@@ -934,7 +944,7 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
   }
 
   // Load all referenced functions
-  for (std::uint64_t identiferIndex = (std::uint64_t)Identifer::__bifrost_none__ + 1; identiferIndex < (std::uint64_t)Identifer::NumIdentifier;
+  for (std::uint64_t identiferIndex = (std::uint64_t)Identifer::__bifrost_first__ + 1; identiferIndex < (std::uint64_t)Identifer::NumIdentifier;
        ++identiferIndex) {
     Identifer identifer = (Identifer)identiferIndex;
     const char* functionName = IdentiferToFunctionName(identifer);
