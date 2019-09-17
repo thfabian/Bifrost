@@ -121,8 +121,8 @@ BIFROST_CACHE_ALIGN class Plugin {
     void _SetIdentifier(Identifer identifier) noexcept;
 
 	private:
-    void* m_target = nullptr;
     void* m_original = nullptr;
+    void* m_target = nullptr;
     void* m_override = nullptr;
     bool m_enabled = false;
 		Identifer m_identifier = Identifer::__bifrost_none__;
