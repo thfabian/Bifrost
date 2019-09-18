@@ -648,7 +648,8 @@ static Plugin::Identifer StringToIdentifier(const char* identifer) {
 static const char* IdentifierToString(Plugin::Identifer identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_STRING "<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_STRING 
+			"<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
@@ -657,7 +658,8 @@ static const char* IdentifierToString(Plugin::Identifer identifier) {
 static const char* IdentiferToFunctionName(Plugin::Identifer identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME 
+			"<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
@@ -694,7 +696,7 @@ BIFROST_CACHE_ALIGN Plugin* Plugin::s_instance = nullptr;
 
 BIFROST_CACHE_ALIGN Plugin::AlignedHook Plugin::s_hooks[(std::uint64_t)Plugin::Identifer::NumIdentifier];
 
-const char* Plugin::ToString(Identifer identifer) { IdentifierToString(identifer); }
+const char* Plugin::ToString(Identifer identifer) { return IdentifierToString(identifer); }
 
 BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
  public:
@@ -827,7 +829,7 @@ void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
 }
 
 void Plugin::EnableAllHooks() {
-  std::uint64_t size = (std::uint64_t)Identifer::NumIdentifier - 1;
+  std::uint32_t size = (std::uint32_t)Identifer::NumIdentifier - 1;
   std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifer) * size);
   std::iota(identifers, identifers + size, (std::uint64_t)Identifer::__bifrost_first__ + 1);
   EnableHooks((Identifer*)identifers, size);
@@ -874,7 +876,7 @@ void Plugin::DisableHooks(Hook** hooks, std::uint32_t num) {
 }
 
 void Plugin::DisableAllHooks() {
-  std::uint64_t size = (std::uint64_t)Identifer::NumIdentifier - 1;
+  std::uint32_t size = (std::uint32_t)Identifer::NumIdentifier - 1;
   std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifer) * size);
   std::iota(identifers, identifers + size, (std::uint64_t)Identifer::__bifrost_first__ + 1);
   DisableHooks((Identifer*)identifers, size);

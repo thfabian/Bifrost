@@ -41,6 +41,7 @@ workspace "bifrost"
       
   filter { "configurations:Release" }
     optimize "On"
+    defines { "NDEBUG" }
     
   filter { "configurations:Debug" }
     defines { "BIFROST_CONFIG_DEBUG" }
