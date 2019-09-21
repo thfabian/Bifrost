@@ -2,7 +2,7 @@
   "profiles": {
     "compiler": {
       "commandName": "Project",
-      "commandLineArgs": "--help"
+      "commandLineArgs": "-l C:\\Users\\fabian\\Desktop\\Bifrost\\source\\compiler\\Test\\input.yaml"
     }
   }
 }

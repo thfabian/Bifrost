@@ -20,21 +20,16 @@ namespace Bifrost.Compiler.Input
     public class Configuration
     {
         /// <summary>
-        /// General options
+        /// Clang specific options
         /// </summary>
-        public class GeneralT
+        public class ClangT
         {
             /// <summary>
-            /// Use verbose output
+            /// Extra arguments passed to Clang
             /// </summary>
-            public bool Logging = false;
-
-            /// <summary>
-            /// File to log to
-            /// </summary>
-            public string LogFile = "log.{0}.txt";
+            public string Arguments = "";
 
         };
-        public GeneralT General = new GeneralT();
+        public ClangT Clang = new ClangT();
     }
 }

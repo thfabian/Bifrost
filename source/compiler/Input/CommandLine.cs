@@ -359,7 +359,7 @@ namespace Bifrost.Compiler.Input
                 Stage = OptionAction.StageEnum.ConfigurationBuilder,
                 HandleOption = (opt, cmd, ctx, cfg) =>
                 {
-                    var clangArg = cmd.ParseResult.ValueForOption<string>("clang-arg");
+                    cfg.Clang.Arguments = cmd.ParseResult.ValueForOption<string>("clang-arg");
                 }
             };
         }

@@ -27,9 +27,14 @@ namespace Bifrost.Compiler.Logger
         Warn,
 
         /// <summary>
-        /// Something went wrong, always aborts the current work.
+        /// Something went wrong but we can still continue.
         /// </summary>
         Error,
+
+        /// <summary>
+        /// Something went terribly wrong, always aborts the current work.
+        /// </summary>
+        Fatal,
     }
 
     /// <summary>
@@ -52,5 +57,9 @@ namespace Bifrost.Compiler.Logger
         void Error(string message);
         void Error(string message, Exception exception);
         void ErrorFormat(string format, params object[] args);
+
+        void Fatal(string message);
+        void Fatal(string message, Exception exception);
+        void FatalFormat(string format, params object[] args);
     }
 }

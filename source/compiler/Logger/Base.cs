@@ -107,6 +107,21 @@ namespace Bifrost.Compiler.Logger
         {
             Error(string.Format(format, args));
         }
+
+        public void Fatal(string message)
+        {
+            LogImpl(LogSeverity.Fatal, message);
+        }
+
+        public void Fatal(string message, Exception exception)
+        {
+            Fatal(message + "\n" + exception.ToString());
+        }
+
+        public void FatalFormat(string format, params object[] args)
+        {
+            Fatal(string.Format(format, args));
+        }
         #endregion
 
         private void LogImpl(LogSeverity severity, string message)

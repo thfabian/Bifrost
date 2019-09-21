@@ -40,6 +40,9 @@ namespace Bifrost.Compiler.Logger
                     case LogSeverity.Error:
                         System.Console.ForegroundColor = ConsoleColor.Red;
                         break;
+                    case LogSeverity.Fatal:
+                        System.Console.ForegroundColor = ConsoleColor.Red;
+                        break;
                     default:
                         break;
                 }

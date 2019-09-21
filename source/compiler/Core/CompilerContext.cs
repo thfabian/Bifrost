@@ -42,9 +42,9 @@ namespace Bifrost.Compiler.Core
         /// <summary>
         /// Run the given configuration
         /// </summary>
-        public int Run(Configuration config)
+        public bool Run(Configuration config)
         {
-            return 0;
+            return true;
         }
 
         private readonly Logger.Forward m_logger = new Forward();

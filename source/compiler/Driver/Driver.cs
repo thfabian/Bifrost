@@ -26,14 +26,8 @@ namespace Bifrost.Compiler.Driver
 
             // Parse command-line
             var cmd = ParseArguments(ctx, args);
-            if (cmd == null)
-            {
-                return 1;
-            }
-            if (cmd.Stop)
-            {
-                return 0;
-            }
+            if (cmd == null) return 1;
+            if (cmd.Stop) return 0;
 
             // Run the compiler 
             return RunCompiler(ctx, cmd);
@@ -50,7 +44,7 @@ namespace Bifrost.Compiler.Driver
             }
             catch (Exception e)
             {
-                ctx.Diagnostics.Error(e);
+                ctx.Diagnostics.Fatal(e);
             }
             return null;
         }
@@ -60,25 +54,30 @@ namespace Bifrost.Compiler.Driver
         /// </summary>
         private static int RunCompiler(Core.CompilerContext ctx, Input.CommandLine cmd)
         {
+            bool success = true;
             try
             {
-                // 1) Build the configuration
-                var configBuilder = new Input.ConfigurationBuilder(ctx);
-                var config = configBuilder.Build(cmd, "");
+                foreach (var file in cmd.Files)
+                {
+                    // 1) Build the configuration
+                    var configBuilder = new Input.ConfigurationBuilder(ctx);
+                    var config = configBuilder.Build(cmd, file);
 
-                // 2) Run the configuration
-                return ctx.Run(config);
+                    // 2) Run the configuration
+                    success &= ctx.Run(config);
+                }
             }
             catch (Core.CompilerError e)
             {
-                ctx.Diagnostics.Error(e);
+                ctx.Diagnostics.Fatal(e);
                 return 1;
             }
             catch (Exception e)
             {
-                ctx.Diagnostics.Error(e);
+                ctx.Diagnostics.Fatal(e);
                 return 1;
             }
+            return success ? 1 : 0;
         }
     }
 }
