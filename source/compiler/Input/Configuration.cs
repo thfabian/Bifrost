@@ -19,17 +19,32 @@ namespace Bifrost.Compiler.Input
 {
     public class Configuration
     {
-        /// <summary>
-        /// Clang specific options
-        /// </summary>
+        [Comment("Revision of the Configuration")]
+        public System.Version Version { set; get; } = new System.Version(0, 1, 1);
+
         public class ClangT
         {
-            /// <summary>
-            /// Extra arguments passed to Clang
-            /// </summary>
-            public string Arguments = "";
+            [Comment("Extra arguments passed to Clang")]
+            public string Arguments { get; set; } = "";
 
+            [Comment("Directories added to include search path")]
+            public List<string> Includes { get; set; } = new List<string>();
+
+            [Comment("Define macros")]
+            public Dictionary<string, string> Defines { get; set; } = new Dictionary<string, string>();
         };
-        public ClangT Clang = new ClangT();
+
+        [Comment("Clang specific options")]
+        public ClangT Clang { set; get; } = new ClangT();
+    };
+
+    internal class CommentAttribute : Attribute
+    {
+        public CommentAttribute(string comment)
+        {
+            Comment = comment;
+        }
+
+        public string Comment { get; }
     }
 }

@@ -22,58 +22,37 @@ namespace Bifrost.Compiler.Core
     /// </summary>
     public class Diagnostics : CompilerObject
     {
-        public Diagnostics(CompilerContext ctx) : base(ctx)
-        {
-        }
+        public Diagnostics(CompilerContext ctx) : base(ctx) { }
 
         /// <summary>
         /// Use colors in the output?
         /// </summary>
-        public bool UseColors { get; set; } = true;
+        public bool UseColors
+        {
+            get;
+            set;
+        }
+        = true;
 
         /// <summary>
         /// Issue an error message
         /// </summary>
-        public void Error(string message, SourceRange range = null)
-        {
-            Consume(SeverityEnum.Error, range, message, null);
-        }
+        public void Error(string message, SourceRange range = null) { Consume(SeverityEnum.Error, range, message, null); }
 
-        public void Error(CompilerError error)
-        {
-            Consume(SeverityEnum.Error, error.Range, error.Message, error.StackTrace);
-        }
+        public void Error(CompilerError error) { Consume(SeverityEnum.Error, error.Range, error.Message, error.StackTrace); }
 
-        public void Error(Exception error)
-        {
-            Consume(SeverityEnum.Error, null, error.Message, error.StackTrace);
-        }
+        public void Error(Exception error) { Consume(SeverityEnum.Error, null, error.Message, error.StackTrace); }
 
         /// <summary>
         /// Issue a fatal error message
         /// </summary>
-        public void Fatal(string message, SourceRange range = null)
-        {
-            Consume(SeverityEnum.Fatal, range, message, null);
-        }
+        public void Fatal(string message, SourceRange range = null) { Consume(SeverityEnum.Fatal, range, message, null); }
 
-        public void Fatal(CompilerError error)
-        {
-            Consume(SeverityEnum.Fatal, error.Range, error.Message, error.StackTrace);
-        }
+        public void Fatal(CompilerError error) { Consume(SeverityEnum.Fatal, error.Range, error.Message, error.StackTrace); }
 
-        public void Fatal(Exception error)
-        {
-            Consume(SeverityEnum.Fatal, null, error.Message, error.StackTrace);
-        }
+        public void Fatal(Exception error) { Consume(SeverityEnum.Fatal, null, error.Message, error.StackTrace); }
 
-
-        private enum SeverityEnum
-        {
-            Warning,
-            Error,
-            Fatal
-        }
+        private enum SeverityEnum { Warning, Error, Fatal }
 
         private void Consume(SeverityEnum severity, SourceRange range, string message, string stackTrace)
         {
@@ -138,34 +117,92 @@ namespace Bifrost.Compiler.Core
 
                     var line = lines[locStart.Row - 1];
                     var size = line.Count();
+                    var cursor = 0;
 
+                    // Print line
                     if (size > width)
                     {
-                        // Chop the line if necessary
                         var col = locStart.Column;
 
-                        if (col < 5)
+                        //          col
+                        //           |
+                        // ~~~~~~~~~~v~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~    size
+                        // -----------------------                        width
+                        //
+                        if (col < (width - 4))
                         {
                             // Chop right
                             var left = line.Substring(0, col);
-                            var right = line.Substring(col, Math.Min(size, width) - col - 4) + " ...";
+                            var right = line.Substring(col, width - col - 4) + " ...";
 
                             Console.WriteLine(left + right);
+                            cursor = col;
                         }
-                        else if (size - col < 5)
+                        //                                col
+                        //                                 |
+                        // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~~~~~~    size
+                        //                     -----------------------    width
+                        //
+                        else if ((size - col) < (width - 4))
                         {
-                            // Chop right
+                            // Chop left
+                            var left = "... " + line.Substring(size - width, col - 4);
+                            var right = line.Substring(col);
 
+                            Console.WriteLine(left + right);
+                            cursor = size - width + col;
                         }
+                        //                        col
+                        //                         |
+                        // ~~~~~~~~~~~~~~~~~~~~~~~~v~~~~~~~~~~~~~~~~~~    size
+                        //             -----------------------            width
+                        //
                         else
                         {
                             // Chop both ends
+                            var halfWidth = width / 2;
+                            var left = "... " + line.Substring(col - halfWidth + 4, halfWidth - 4);
+                            var right = line.Substring(col, halfWidth - 4) + " ...";
 
+                            Console.WriteLine(left + right);
+                            cursor = halfWidth;
                         }
                     }
                     else
                     {
                         Console.WriteLine(line);
+                        cursor = locStart.Column;
+                    }
+
+                    // Print cursor
+                    var arrow = "";
+                    if (range.End.Column == 1 || range.End.Column == range.Start.Column)
+                    {
+                        arrow = new string(' ', cursor - 1) + "^";
+                    }
+                    else
+                    {
+                        if (range.End.Column > range.Start.Column)
+                        {
+                            var len = range.End.Column - range.Start.Column;
+                            arrow = new string(' ', cursor - 1) + "^" + new string('~', Math.Min(len, width - cursor - 2));
+                        }
+                        else
+                        {
+                            var len = range.Start.Column - range.End.Column;
+                            arrow = new string(' ', Math.Min(cursor - len - 1, 0)) + new string('~', Math.Min(len - 1, cursor)) + "^";
+                        }
+                    }
+
+                    if (UseColors)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine(arrow);
+                        Console.ResetColor();
+                    }
+                    else
+                    {
+                        Console.WriteLine(arrow);
                     }
                 }
             }

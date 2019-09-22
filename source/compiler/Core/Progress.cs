@@ -28,6 +28,7 @@ namespace Bifrost.Compiler.Core
             m_initialMessage = message;
             m_finalMessage = null;
             m_stopwatch = new Stopwatch();
+            m_stopwatch.Start();
             Logger.Debug($"{m_initialMessage} ...");
         }
 
@@ -39,6 +40,7 @@ namespace Bifrost.Compiler.Core
 
         public void Report()
         {
+            m_stopwatch.Stop();
             if (m_success)
             {
                 Logger.Debug(FormatFinalMessage());

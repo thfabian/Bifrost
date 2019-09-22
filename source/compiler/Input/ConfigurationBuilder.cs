@@ -15,9 +15,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.IO;
-using Bifrost.Compiler.Core;
-using YamlDotNet.Serialization;
+using System.Runtime.Serialization;
 using YamlDotNet.Core;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
+using Bifrost.Compiler.Core;
 
 namespace Bifrost.Compiler.Input
 {
@@ -49,62 +51,38 @@ namespace Bifrost.Compiler.Input
 
         private Configuration Parse(string file)
         {
-            Configuration config = null;
-
             if (!File.Exists(file))
             {
                 throw new Exception($"no such file or directory: '{file}'");
             }
 
-            if (Path.GetExtension(file) == ".yaml")
-            {
-                config = ParseYaml(file);
-            }
-            else if (Path.GetExtension(file) == ".yaml")
-            {
-                config = ParseJson(file);
-            }
-            else
-            {
-                throw new Exception($"invalid input file: JSON or YAML file is required: '{file}'");
-            }
+            Logger.Debug($"Parsing YAML file: '{file}'");
+            var yaml = File.ReadAllText(file);
 
-            return config;
-        }
-
-        private Configuration ParseYaml(string file, string content = null)
-        {
-            if (content == null)
-            {
-                Logger.Debug($"Parsing YAML file: '{file}'");
-                content = File.ReadAllText(file);
-            }
-
-            var deserializer = new DeserializerBuilder().Build();
-            var serializer = new SerializerBuilder().JsonCompatible().Build();
-
-            object yamlObject = null;
             try
             {
-                yamlObject = deserializer.Deserialize(new StringReader(content));
+                var deserializer = new DeserializerBuilder()
+                    .WithNamingConvention(new CamelCaseNamingConvention())
+                    .Build();
+
+                return deserializer.Deserialize<Configuration>(yaml);
             }
             catch (YamlException e)
             {
-                var msg = "Failed to parse YAML: " + e.Message.Substring(e.Message.IndexOf("):") + 3);
+                var msg = "invalid configuration: ";
+                if (e.InnerException != null && e.InnerException.GetType() == typeof(SerializationException))
+                {
+                    var innerMsg = e.InnerException.Message.Replace("Bifrost.Compiler.Input.Configuration", "Configuration");
+                    msg += char.ToLower(innerMsg[0]) + innerMsg.Substring(1);
+                }
+                else
+                {
+                    msg += e.Message.Substring(e.Message.IndexOf("):") + 3);
+                }
+
                 var range = new SourceRange(new SourceLocation(file, e.Start.Line, e.Start.Column), new SourceLocation(file, e.End.Line, e.End.Column));
                 throw new CompilerError(msg, range);
             }
-            return ParseJson(file, serializer.Serialize(yamlObject));
-        }
-
-        private Configuration ParseJson(string file, string content = null)
-        {
-            if (content == null)
-            {
-                content = File.ReadAllText(file);
-            }
-
-            return new Configuration();
         }
     }
 }

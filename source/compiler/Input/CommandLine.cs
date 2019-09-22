@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using System.CommandLine;
 using System.CommandLine.Builder;
 using System.IO;
+using static Bifrost.Compiler.Core.DictionaryExtensions;
 
 namespace Bifrost.Compiler.Input
 {
@@ -117,6 +118,7 @@ namespace Bifrost.Compiler.Input
 
             cmd.Add(AddInput());
             cmd.Add(AddHelp());
+            cmd.Add(AddConfig());
             cmd.Add(AddVersion());
             cmd.Add(AddLogging());
             cmd.Add(AddOutput());
@@ -205,7 +207,7 @@ namespace Bifrost.Compiler.Input
             // This option is never parsed - because this command line library doesn't really support positional arguments (?) we fake them by:
             //  1) Create this option for the help statement
             //  2) Use the UnmatchedTokens of the ParseResult to access them (note we have to fiddle with the errors as they are flagged as unknown arguments).
-            Option = new Option("_inputs_", "Input configuration (.yaml) or Bifrost IR (.bir) files."),
+            Option = new Option("_inputs_", "Input configuration (.yaml), use --config for details."),
             Stage = OptionAction.StageEnum.Skip,
         };
 
@@ -233,6 +235,17 @@ namespace Bifrost.Compiler.Input
             }
         };
 
+        private static OptionAction AddConfig() => new OptionAction()
+        {
+            Option = new Option(new[] { "--config", "-c" }, "Print details on input configuration."),
+            Stage = OptionAction.StageEnum.CommandBuilder,
+            HandleOption = (opt, cmd, ctx, cfg) =>
+            {
+                Console.WriteLine(ConfigurationPrinter.Print(new Configuration()));
+                cmd.Stop = true;
+            }
+        };
+
         private static OptionAction AddVersion() => new OptionAction()
         {
             Option = new Option(new[] { "--version", "-v" }, "Print version number and exit."),
@@ -253,7 +266,7 @@ namespace Bifrost.Compiler.Input
                 ctx.Logger.Loggers.Add("console", new Logger.Console());
             }
         };
-        
+
         private static OptionAction AddNoColor() => new OptionAction()
         {
             Option = new Option(new[] { "--no-color" }, "Disable colored output."),
@@ -273,7 +286,7 @@ namespace Bifrost.Compiler.Input
             var argument = new Argument
             {
                 ArgumentType = typeof(string),
-                Arity = ArgumentArity.ZeroOrOne,
+                Arity = ArgumentArity.ExactlyOne,
                 Name = "dir",
             };
             argument.SetDefaultValue(Directory.GetCurrentDirectory());
@@ -297,7 +310,8 @@ namespace Bifrost.Compiler.Input
             var argument = new Argument
             {
                 ArgumentType = typeof(string),
-                Arity = ArgumentArity.ZeroOrMore,
+                Arity = ArgumentArity.OneOrMore,
+
                 Name = "dir",
             };
             argument.SetDefaultValue(Array.Empty<string>());
@@ -311,7 +325,7 @@ namespace Bifrost.Compiler.Input
                 Stage = OptionAction.StageEnum.ConfigurationBuilder,
                 HandleOption = (opt, cmd, ctx, cfg) =>
                 {
-                    var includes = cmd.ParseResult.ValueForOption<string[]>("include");
+                    cfg.Clang.Includes.AddRange(cmd.ParseResult.ValueForOption<string[]>("include"));
                 }
             };
         }
@@ -321,7 +335,7 @@ namespace Bifrost.Compiler.Input
             var argument = new Argument
             {
                 ArgumentType = typeof(string),
-                Arity = ArgumentArity.ZeroOrMore,
+                Arity = ArgumentArity.OneOrMore,
                 Name = "macro>=<value",
             };
             argument.SetDefaultValue(Array.Empty<string>());
@@ -335,7 +349,18 @@ namespace Bifrost.Compiler.Input
                 Stage = OptionAction.StageEnum.ConfigurationBuilder,
                 HandleOption = (opt, cmd, ctx, cfg) =>
                 {
-                    var defines = cmd.ParseResult.ValueForOption<string[]>("define");
+                    foreach (var define in cmd.ParseResult.ValueForOption<string[]>("define"))
+                    {
+                        var equal = define.IndexOf("=");
+                        if (equal == -1)
+                        {
+                            cfg.Clang.Defines.Update(define, "1");
+                        }
+                        else
+                        {
+                            cfg.Clang.Defines.Update(define.Substring(0, equal), define.Substring(equal + 1));
+                        }
+                    }
                 }
             };
         }
@@ -345,10 +370,10 @@ namespace Bifrost.Compiler.Input
             var argument = new Argument
             {
                 ArgumentType = typeof(string),
-                Arity = ArgumentArity.ZeroOrOne,
+                Arity = ArgumentArity.OneOrMore,
                 Name = "arg",
             };
-            argument.SetDefaultValue("");
+            argument.SetDefaultValue(Array.Empty<string>());
 
             return new OptionAction()
             {
@@ -359,7 +384,7 @@ namespace Bifrost.Compiler.Input
                 Stage = OptionAction.StageEnum.ConfigurationBuilder,
                 HandleOption = (opt, cmd, ctx, cfg) =>
                 {
-                    cfg.Clang.Arguments = cmd.ParseResult.ValueForOption<string>("clang-arg");
+                    cfg.Clang.Arguments += string.Join(" ", cmd.ParseResult.ValueForOption<string[]>("clang-arg"));
                 }
             };
         }
