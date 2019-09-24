@@ -30,3 +30,6 @@ build_script:
 test_script:
   # Run gtest C++ unit tests
   - ps: .\ci\unit_tests.ps1 "build-$($env:PREMAKE_GENERATOR)/bin/$($env:CONFIGURATION)"
+  
+  # Run C# XUnit tests
+  - cmd: dotnet test "source/compiler/Compiler.Test/compiler_test.csproj"

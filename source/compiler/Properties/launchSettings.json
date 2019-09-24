@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "compiler": {
-      "commandName": "Project",
-      "commandLineArgs": "-l C:\\Users\\fabian\\Desktop\\Bifrost\\source\\compiler\\Test\\input.yaml"
-    }
-  }
-}

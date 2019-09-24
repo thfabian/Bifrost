@@ -384,7 +384,8 @@ namespace Bifrost.Compiler.Input
                 Stage = OptionAction.StageEnum.ConfigurationBuilder,
                 HandleOption = (opt, cmd, ctx, cfg) =>
                 {
-                    cfg.Clang.Arguments += string.Join(" ", cmd.ParseResult.ValueForOption<string[]>("clang-arg"));
+                    cfg.Clang.Arguments += " " + string.Join(" ", cmd.ParseResult.ValueForOption<string[]>("clang-arg"));
+                    cfg.Clang.Arguments = cfg.Clang.Arguments.Trim();
                 }
             };
         }

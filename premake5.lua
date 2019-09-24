@@ -320,8 +320,14 @@ workspace "bifrost"
   -- *
   externalproject "compiler"
     kind "ConsoleApp"
-    uuid "EF3CF87A-F30E-4447-B03B-5E4541AA0C50"
-    location "source/compiler"
+    --uuid "EF3CF87A-F30E-4447-B03B-5E4541AA0C50"
+    location "source/compiler/Compiler"
+    language "C#"
+    
+  externalproject "compiler_test"
+    kind "ConsoleApp"
+    --uuid "EF3CF87A-F30E-4447-B03B-5E4541AA0C50"
+    location "source/compiler/Compiler.Test"
     language "C#"
     
   -- *

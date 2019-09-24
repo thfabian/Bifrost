@@ -1,0 +1,8 @@
+﻿version: 0.1.1
+
+clang: 
+  arguments: foo
+  includes: [ foo, bar ]
+  defines:
+    foo: bar
+    bar: foo
