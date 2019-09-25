@@ -18,6 +18,11 @@ namespace Bifrost.Compiler.Frontend
         public Clang(CompilerContext ctx) : base(ctx) { }
 
         /// <inheritDoc />
+        public void Visit(Configuration config, BIR.BIR bir)
+        {
+        }
+
+        /// <inheritDoc />
         public BIR.BIR Produce(Configuration config)
         {
             using (var section = CreateSection("Invoking Clang"))
@@ -33,17 +38,67 @@ namespace Bifrost.Compiler.Frontend
                 clangArgs.AddRange(config.Clang.Defines.Select((x, y) => $"-D{x}=\"{y}\""));
                 clangArgs.AddRange(config.Clang.Arguments.Split(" "));
 
-                var translationFlags = CXTranslationUnit_Flags.CXTranslationUnit_SkipFunctionBodies;
+                var tuFlags = CXTranslationUnit_Flags.CXTranslationUnit_SkipFunctionBodies;
+
+                var path = @"C:\Users\fabian\Desktop\Bifrost\source\compiler\Compiler\Test\input.h";
 
                 var index = CXIndex.Create();
-                var translationUnitError = CXTranslationUnit.TryParse(index, @"C:\Users\fabian\Desktop\Bifrost\source\compiler\Compiler\Test\input.h", clangArgs.ToArray(), Array.Empty<CXUnsavedFile>(), translationFlags, out CXTranslationUnit handle);
+                var tuError = CXTranslationUnit.TryParse(index, path, clangArgs.ToArray(), Array.Empty<CXUnsavedFile>(), tuFlags, out CXTranslationUnit tu);
+                using (var parser = new ClangParser(Context, tu))
+                {
+
+                }
             }
             return null;
         }
 
-        /// <inheritDoc />
-        public void Visit(Configuration config, BIR.BIR bir)
+        internal class ClangParser : CompilerObject, IDisposable
         {
+            private readonly CXTranslationUnit TU;
+
+            public ClangParser(CompilerContext ctx, CXTranslationUnit tu) : base(ctx)
+            {
+               TU = tu;
+            }
+
+            public void Dispose()
+            {
+                EmitDiagnostics();
+            }
+
+            /// <summary>
+            /// Emit diagnostics of the translation unit
+            /// </summary>
+            private void EmitDiagnostics()
+            {
+                for (uint i = 0; i < TU.NumDiagnostics; i++)
+                {
+                    var diag = TU.GetDiagnostic(i);
+                    if (diag.Severity < CXDiagnosticSeverity.CXDiagnostic_Error)
+                    {
+                        continue;
+                    }
+
+                    var range = new SourceRange(ExtractLocation(diag.Location));
+                    if (diag.NumRanges > 0)
+                    {
+                        range = ExtractRange(diag.GetRange(0));
+                    }
+
+                    Diagnostics.Error($"clang error: {diag.Spelling}", range);
+                }
+            }
+
+            private static SourceLocation ExtractLocation(CXSourceLocation loc)
+            {
+                loc.GetFileLocation(out CXFile cxfile, out uint line, out uint column, out uint offset);
+                return new SourceLocation(cxfile.ToString(), (int)line, (int)column);
+            }
+
+            private static SourceRange ExtractRange(CXSourceRange range)
+            {
+                return new SourceRange(ExtractLocation(range.Start), ExtractLocation(range.End));
+            }
         }
     }
 }

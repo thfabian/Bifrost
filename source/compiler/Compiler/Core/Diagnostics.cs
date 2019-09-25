@@ -176,7 +176,7 @@ namespace Bifrost.Compiler.Core
 
                     // Print cursor
                     var arrow = "";
-                    if (range.End.Column == 1 || range.End.Column == range.Start.Column)
+                    if (range.End == null || range.End.Column == -1 || range.End.Column == range.Start.Column)
                     {
                         arrow = new string(' ', cursor - 1) + "^";
                     }

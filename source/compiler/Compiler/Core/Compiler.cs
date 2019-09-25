@@ -24,7 +24,7 @@ namespace Bifrost.Compiler.Core
                 var bir = ProduceBIR(config);
                 if (bir == null)
                 {
-                    throw new Exception("No valid Bifrost Intermediate Representation (BIR) was produced");
+                    throw new Exception("no valid Bifrost Intermediate Representation (BIR) was produced");
                 }
 
                 section.Done();
