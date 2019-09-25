@@ -42,12 +42,21 @@ namespace Bifrost.Compiler.Frontend
 
                 var path = @"C:\Users\fabian\Desktop\Bifrost\source\compiler\Compiler\Test\input.h";
 
-                var index = CXIndex.Create();
-                var tuError = CXTranslationUnit.TryParse(index, path, clangArgs.ToArray(), Array.Empty<CXUnsavedFile>(), tuFlags, out CXTranslationUnit tu);
-                using (var parser = new ClangParser(Context, tu))
+                // https://shaharmike.com/cpp/libclang/
+                using (var index = CXIndex.Create())
                 {
+                    Logger.Debug($"Clang args: {string.Join(" ", clangArgs)}");
+                    var tuError = CXTranslationUnit.TryParse(index, path, clangArgs.ToArray(), Array.Empty<CXUnsavedFile>(), tuFlags, out CXTranslationUnit tu);
+                    if (tuError != CXErrorCode.CXError_Success)
+                    {
+                        throw new Exception($"clang error: failed to generate tanslation unit: {tuError}");
+                    }
+                    using (var parser = new ClangParser(Context, tu))
+                    {
 
+                    }
                 }
+                section.Done();
             }
             return null;
         }
@@ -58,12 +67,13 @@ namespace Bifrost.Compiler.Frontend
 
             public ClangParser(CompilerContext ctx, CXTranslationUnit tu) : base(ctx)
             {
-               TU = tu;
+                TU = tu;
             }
 
             public void Dispose()
             {
                 EmitDiagnostics();
+                TU.Dispose();
             }
 
             /// <summary>
