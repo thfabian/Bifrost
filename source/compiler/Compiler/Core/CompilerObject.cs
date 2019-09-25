@@ -35,6 +35,11 @@ namespace Bifrost.Compiler.Core
         /// </summary>
         public ILogger Logger => Context.Logger;
 
+        /// <summary>
+        /// Diagnostic reporter
+        /// </summary>
+        public Diagnostics Diagnostics => Context.Diagnostics;
+
         public CompilerObject(CompilerContext ctx)
         {
             Context = ctx;

@@ -29,7 +29,7 @@ namespace Bifrost.Compiler.Core
             m_finalMessage = null;
             m_stopwatch = new Stopwatch();
             m_stopwatch.Start();
-            Logger.Debug($"{m_initialMessage} ...");
+            Logger.Info($"{m_initialMessage} ...");
         }
 
         public void Done(string message)
@@ -43,7 +43,7 @@ namespace Bifrost.Compiler.Core
             m_stopwatch.Stop();
             if (m_success)
             {
-                Logger.Debug(FormatFinalMessage());
+                Logger.Info(FormatFinalMessage());
             }
             else
             {

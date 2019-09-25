@@ -36,7 +36,7 @@ namespace Bifrost.Compiler.Input
         public Configuration Build(CommandLine cmd, string file)
         {
             Configuration config = null;
-            using (var section = CreateSection("Building input configuration"))
+            using (var section = CreateSection("Building configuration"))
             {
                 // Read configuration from file
                 config = Parse(file);
@@ -51,6 +51,7 @@ namespace Bifrost.Compiler.Input
 
         private Configuration Parse(string file)
         {
+            Configuration config = null;
             if (!File.Exists(file))
             {
                 throw new Exception($"no such file or directory: '{file}'");
@@ -59,13 +60,17 @@ namespace Bifrost.Compiler.Input
             Logger.Debug($"Parsing YAML file: '{file}'");
             var yaml = File.ReadAllText(file);
 
+            if(string.IsNullOrEmpty(yaml))
+            {
+                throw new Exception($"file is empty: '{file}'");
+            }
+
             try
             {
                 var deserializer = new DeserializerBuilder()
                     .WithNamingConvention(new CamelCaseNamingConvention())
                     .Build();
-
-                return deserializer.Deserialize<Configuration>(yaml);
+                config = deserializer.Deserialize<Configuration>(yaml);
             }
             catch (YamlException e)
             {
@@ -83,6 +88,7 @@ namespace Bifrost.Compiler.Input
                 var range = new SourceRange(new SourceLocation(file, e.Start.Line, e.Start.Column), new SourceLocation(file, e.End.Line, e.End.Column));
                 throw new CompilerError(msg, range);
             }
+            return config;
         }
     }
 }

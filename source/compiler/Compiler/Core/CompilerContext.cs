@@ -15,7 +15,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using Bifrost.Compiler.Input;
-using Bifrost.Compiler.Logger;
 
 namespace Bifrost.Compiler.Core
 {
@@ -27,7 +26,7 @@ namespace Bifrost.Compiler.Core
         /// <summary>
         /// Logger of the context
         /// </summary>
-        public Logger.Forward Logger => m_logger;
+        public Logger.Forward Logger { get; } = new Logger.Forward();
 
         /// <summary>
         /// Diagnostic reporter
@@ -35,18 +34,14 @@ namespace Bifrost.Compiler.Core
         public Diagnostics Diagnostics => m_diagnostics ?? (m_diagnostics = new Diagnostics(this));
         private Diagnostics m_diagnostics = null;
 
-        public CompilerContext()
-        {
-        }
+        public CompilerContext() { }
 
         /// <summary>
         /// Run the given configuration
         /// </summary>
         public bool Run(Configuration config)
         {
-            return true;
+            return new Compiler(this).Run(config);
         }
-
-        private readonly Logger.Forward m_logger = new Forward();
     }
 }
