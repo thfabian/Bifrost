@@ -1,1 +1,50 @@
-version: 0.0.1
+# <string>: Revision of the configuration.
+version: 0.1.1
+
+#
+# Clang specific options.
+#
+clang:
+  # <string>: Extra arguments passed to Clang.
+  arguments: ""
+
+  # <list>: Directories added to include search path.
+  includes: []
+
+  # <dict>: Used the following macros during compilation.
+  defines: {}
+
+  # <enum{C99,Cpp11,Cpp14,Cpp16}>: Language to compile in.
+  language: Cpp17
+
+#
+# Hook description.
+#
+hook:
+  # <list>: Individual descriptions.
+  descriptions:
+     # <string>: [Required] Name of the function or class method to hook. Note that the full qualified name needs to be provided (including namespaces).
+     # For example, 'ID3D12GraphicsCommandList::Close' where 'ID3D12GraphicsCommandList' is the class and 'Close' the method to hook.
+     # You may use wild cards (*) to generate multiple hooks at once. For example, 'ID3D12GraphicsCommandList::*' will hook all methods
+     # of the class 'ID3D12GraphicsCommandList'. If the evaluation of the name results in multiple hooks, the field 'identifier' is ignored.
+   - name: "foo"
+
+     # <enum{Class,Function}>: [Required] The type of hook.
+     type: Function
+
+     # <string>: Identifier of the hook, needs to be a valid C/C++ enum value. By default any '::' will be transformed to '_'
+     # (e.g ID3D12GraphicsCommandList::Close -> ID3D12GraphicsCommandList_Close).
+     identifier: ""
+
+     # <list>: [Required] List of C/C++ input files which need to be included in oder to obtain the declaration of this hook (e.g "d3d12.h")
+     input: ["foo.h"]
+
+#
+# Options of the generated Bifrost plugin.
+#
+plugin:
+  # <string>: [Required] Name of the generated Plugin, needs to be a valid C++ class name.
+  name: ""
+
+  # <string>: [Required] Namespace of the generated plugin will be placed in.
+  namespace: ""

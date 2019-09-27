@@ -241,7 +241,9 @@ namespace Bifrost.Compiler.Input
             Stage = OptionAction.StageEnum.CommandBuilder,
             HandleOption = (opt, cmd, ctx, cfg) =>
             {
-                Console.WriteLine(ConfigurationPrinter.Print(new Configuration()));
+                var config = new Configuration();
+                config.Hook.Descriptions.Add(new Configuration.HookT.DescriptionT());
+                Console.WriteLine(ConfigurationPrinter.Print(config));
                 cmd.Stop = true;
             }
         };

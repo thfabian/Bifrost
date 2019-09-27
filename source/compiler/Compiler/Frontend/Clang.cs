@@ -25,14 +25,55 @@ namespace Bifrost.Compiler.Frontend
         /// <inheritDoc />
         public BIR.BIR Produce(Configuration config)
         {
-            using (var section = CreateSection("Invoking Clang"))
+            // https://shaharmike.com/cpp/libclang/
+            using (var index = CXIndex.Create())
             {
+                using (var tu = BuildClangAST(config, index))
+                {
+                    if (tu != null)
+                    {
+                        return TransformClangASTtoBIR(config, index, tu);
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Build the Clang AST 
+        /// </summary>
+        private CXTranslationUnit BuildClangAST(Configuration config, CXIndex index)
+        {
+            CXTranslationUnit tu = null;
+            using (var section = CreateSection("Building Clang AST"))
+            {
+                // Assemble the arguments
                 var clangArgs = new List<string>()
                 {
-                    "-std=c++11",
-                    "-xc++",
                     "-Wno-pragma-once-outside-header"
                 };
+
+                switch (config.Clang.Language)
+                {
+                    case LanguageEnum.C99:
+                        clangArgs.Add("-xc");
+                        clangArgs.Add("-std=c99");
+                        break;
+                    case LanguageEnum.Cpp11:
+                        clangArgs.Add("-xc++");
+                        clangArgs.Add("-std=c++11");
+                        break;
+                    case LanguageEnum.Cpp14:
+                        clangArgs.Add("-xc++");
+                        clangArgs.Add("-std=c++14");
+                        break;
+                    case LanguageEnum.Cpp17:
+                        clangArgs.Add("-xc++");
+                        clangArgs.Add("-std=c++17");
+                        break;
+                    default:
+                        throw new Exception($"unknown language {config.Clang.Language}");
+                }
 
                 clangArgs.AddRange(config.Clang.Includes.Select(x => $"-I\"{x}\""));
                 clangArgs.AddRange(config.Clang.Defines.Select((x, y) => $"-D{x}=\"{y}\""));
@@ -40,63 +81,132 @@ namespace Bifrost.Compiler.Frontend
 
                 var tuFlags = CXTranslationUnit_Flags.CXTranslationUnit_SkipFunctionBodies;
 
-                var path = @"C:\Users\fabian\Desktop\Bifrost\source\compiler\Compiler\Test\input.h";
+                // Create the TU source file
+                var sourceFiles = new HashSet<string>();
+                config.Hook.Descriptions.ForEach(hook => hook.Input.ForEach(source => sourceFiles.Add(source)));
 
-                // https://shaharmike.com/cpp/libclang/
-                using (var index = CXIndex.Create())
+                var name = string.IsNullOrEmpty(config.Plugin.Name) ? Path.GetTempFileName() : config.Plugin.Name; 
+                var tuSourceFile = Path.Combine(Utils.IO.CreateDirectory(Path.GetTempPath(), Utils.UUID.Generate()), name + ".cpp");
+                var tuSource = "#include \"" + string.Join("\n#include \"", sourceFiles) + "\"";
+
+                File.WriteAllText(tuSourceFile, tuSource);
+                Logger.Debug($"Clang TU source file: \"{tuSourceFile}\"");
+                Logger.Debug($"Clang TU source:\n{tuSource}");
+
+                // Invoke clang to get the TU
+                Logger.Debug($"Clang args: {string.Join(" ", clangArgs)}");
+                var tuError = CXTranslationUnit.TryParse(index, tuSourceFile, clangArgs.ToArray(), Array.Empty<CXUnsavedFile>(), tuFlags, out tu);
+                if (tuError != CXErrorCode.CXError_Success)
                 {
-                    Logger.Debug($"Clang args: {string.Join(" ", clangArgs)}");
-                    var tuError = CXTranslationUnit.TryParse(index, path, clangArgs.ToArray(), Array.Empty<CXUnsavedFile>(), tuFlags, out CXTranslationUnit tu);
-                    if (tuError != CXErrorCode.CXError_Success)
-                    {
-                        throw new Exception($"clang error: failed to generate tanslation unit: {tuError}");
-                    }
-                    using (var parser = new ClangParser(Context, tu))
-                    {
-
-                    }
+                    throw new Exception($"clang error: failed to generate tanslation unit: {tuError}");
                 }
                 section.Done();
             }
-            return null;
+            return tu;
+        }
+
+        /// <summary>
+        /// Transform the Clang AST to BIR
+        /// </summary>
+        private BIR.BIR TransformClangASTtoBIR(Configuration config, CXIndex index, CXTranslationUnit tu)
+        {
+            BIR.BIR bir = null;
+            using (var section = CreateSection("Transforming Clang AST to BIR"))
+            {
+                using (var parser = new ClangParser(Context, index, tu))
+                {
+                    bir = parser.ProduceBIR(config);
+                }
+                section.Done();
+            }
+            return bir;
         }
 
         internal class ClangParser : CompilerObject, IDisposable
         {
-            private readonly CXTranslationUnit TU;
+            /// <summary>
+            /// Reference to the translation unit
+            /// </summary>
+            public readonly CXTranslationUnit TU;
 
-            public ClangParser(CompilerContext ctx, CXTranslationUnit tu) : base(ctx)
+            /// <summary>
+            /// Current CXIndex (pointer to AST)
+            /// </summary>
+            public CXIndex Index;
+
+            /// <summary>
+            /// Diagnostics have been emitted?
+            /// </summary>
+            private bool m_diagEmitted = false;
+
+            public ClangParser(CompilerContext ctx, CXIndex index, CXTranslationUnit tu) : base(ctx)
             {
+                Index = index;
                 TU = tu;
+            }
+
+            public BIR.BIR ProduceBIR(Configuration config)
+            {
+                EmitTUErrors();
+                if (HasTUErrors())
+                {
+                    return null;
+                }
+                return null;
             }
 
             public void Dispose()
             {
-                EmitDiagnostics();
-                TU.Dispose();
+                EmitTUErrors();
             }
 
             /// <summary>
             /// Emit diagnostics of the translation unit
             /// </summary>
-            private void EmitDiagnostics()
+            private void EmitTUErrors()
+            {
+                if (m_diagEmitted)
+                {
+                    return;
+                }
+
+                for (uint i = 0; i < TU.NumDiagnostics; i++)
+                {
+                    using (var diag = TU.GetDiagnostic(i))
+                    {
+                        if (diag.Severity < CXDiagnosticSeverity.CXDiagnostic_Error)
+                        {
+                            continue;
+                        }
+
+                        var range = new SourceRange(ExtractLocation(diag.Location));
+                        if (diag.NumRanges > 0)
+                        {
+                            range = ExtractRange(diag.GetRange(0));
+                        }
+
+                        Diagnostics.Error($"clang error: {diag.Spelling}", range);
+                    }
+                }
+                m_diagEmitted = true;
+            }
+
+            /// <summary>
+            /// Do we have errors in the AST?
+            /// </summary>
+            private bool HasTUErrors()
             {
                 for (uint i = 0; i < TU.NumDiagnostics; i++)
                 {
-                    var diag = TU.GetDiagnostic(i);
-                    if (diag.Severity < CXDiagnosticSeverity.CXDiagnostic_Error)
+                    using (var diag = TU.GetDiagnostic(i))
                     {
-                        continue;
+                        if (diag.Severity >= CXDiagnosticSeverity.CXDiagnostic_Error)
+                        {
+                            return true;
+                        }
                     }
-
-                    var range = new SourceRange(ExtractLocation(diag.Location));
-                    if (diag.NumRanges > 0)
-                    {
-                        range = ExtractRange(diag.GetRange(0));
-                    }
-
-                    Diagnostics.Error($"clang error: {diag.Spelling}", range);
                 }
+                return false;
             }
 
             private static SourceLocation ExtractLocation(CXSourceLocation loc)
