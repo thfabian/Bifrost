@@ -15,7 +15,6 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Diagnostics;
-
 using Bifrost.Compiler.Logger;
 
 namespace Bifrost.Compiler.Core
@@ -39,6 +38,16 @@ namespace Bifrost.Compiler.Core
         /// Diagnostic reporter
         /// </summary>
         public Diagnostics Diagnostics => Context.Diagnostics;
+
+        /// <summary>
+        /// I/O related functions
+        /// </summary>
+        public IO IO => Context.IO;
+
+        /// <summary>
+        /// I/O related functions
+        /// </summary>
+        public Utils Utils => Context.Utils;
 
         public CompilerObject(CompilerContext ctx)
         {

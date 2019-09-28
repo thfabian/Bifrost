@@ -34,6 +34,18 @@ namespace Bifrost.Compiler.Core
         public Diagnostics Diagnostics => m_diagnostics ?? (m_diagnostics = new Diagnostics(this));
         private Diagnostics m_diagnostics = null;
 
+        /// <summary>
+        /// I/O related functions
+        /// </summary>
+        public IO IO => m_io ?? (m_io = new IO(this));
+        private IO m_io = null;
+
+        /// <summary>
+        /// I/O related functions
+        /// </summary>
+        public Utils Utils => m_utils ?? (m_utils = new Utils(this));
+        private Utils m_utils = null;
+
         public CompilerContext() { }
 
         /// <summary>

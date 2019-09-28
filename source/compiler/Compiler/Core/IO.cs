@@ -5,13 +5,14 @@ using System.IO;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace Bifrost.Compiler.Core
 {
     /// <summary>
     /// I/O related functions
     /// </summary>
-    class IO : CompilerObject
+    public class IO : CompilerObject
     {
         public IO(CompilerContext context) : base(context)
         {
@@ -36,7 +37,7 @@ namespace Bifrost.Compiler.Core
         /// <returns>Full path to the directory</returns>
         public string CreateTempDirectory()
         {
-            return CreateDirectory(Path.GetTempPath(), Utils.UUID.Generate());
+            return CreateDirectory(Path.GetTempPath(), Utils.UUID());
         }
 
         /// <summary>
@@ -334,6 +335,14 @@ namespace Bifrost.Compiler.Core
         }
 
         /// <summary>
+        /// Convert long to short path according Windows convention
+        /// </summary>
+        public string Shorten(string path)
+        {
+            return GetShortPath(path);
+        }
+
+        /// <summary>
         /// Normalize the path to only contain '/' (instead of '\')
         /// </summary>
         public string Normalize(string path)
@@ -427,6 +436,31 @@ namespace Bifrost.Compiler.Core
         }
 
         #region private
+        private static readonly int MAX_PATH = 255;
+
+        [DllImport("kernel32.dll", EntryPoint = "GetShortPathName", CharSet = CharSet.Auto)]
+        private static extern int kernel32_GetShortPathName(
+            [MarshalAs(UnmanagedType.LPTStr)]
+            string path,
+            [MarshalAs(UnmanagedType.LPTStr)]
+            StringBuilder shortPath,
+            int shortPathLength
+        );
+
+        private static string GetShortPath(string path)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                var shortPath = new StringBuilder(MAX_PATH);
+                kernel32_GetShortPathName(path, shortPath, MAX_PATH);
+                return shortPath.ToString();
+            }
+            else
+            {
+                return path;
+            }
+        }
+
         private enum TransferMode
         {
             Copy,

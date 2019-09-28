@@ -26,7 +26,6 @@ namespace Bifrost.Compiler.Core
                 {
                     throw new Exception("no valid Bifrost Intermediate Representation (BIR) was produced");
                 }
-
                 section.Done();
             }
             return true;

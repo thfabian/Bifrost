@@ -75,7 +75,7 @@ namespace Bifrost.Compiler.Frontend
                         throw new Exception($"unknown language {config.Clang.Language}");
                 }
 
-                clangArgs.AddRange(config.Clang.Includes.Select(x => $"-I\"{x}\""));
+                clangArgs.AddRange(config.Clang.Includes.Select(x => $"-I{IO.Normalize(IO.Shorten(x))}"));
                 clangArgs.AddRange(config.Clang.Defines.Select((x, y) => $"-D{x}=\"{y}\""));
                 clangArgs.AddRange(config.Clang.Arguments.Split(" "));
 
@@ -85,20 +85,21 @@ namespace Bifrost.Compiler.Frontend
                 var sourceFiles = new HashSet<string>();
                 config.Hook.Descriptions.ForEach(hook => hook.Input.ForEach(source => sourceFiles.Add(source)));
 
-                var name = string.IsNullOrEmpty(config.Plugin.Name) ? Path.GetTempFileName() : config.Plugin.Name; 
-                var tuSourceFile = Path.Combine(Utils.IO.CreateDirectory(Path.GetTempPath(), Utils.UUID.Generate()), name + ".cpp");
-                var tuSource = "#include \"" + string.Join("\n#include \"", sourceFiles) + "\"";
+                var tuFilename = Path.GetFileNameWithoutExtension(string.IsNullOrEmpty(config.Plugin.Name) ? Path.GetTempFileName() : config.Plugin.Name) + ".cpp";
+                Logger.Debug($"Clang TU filename: {tuFilename}");
 
-                File.WriteAllText(tuSourceFile, tuSource);
-                Logger.Debug($"Clang TU source file: \"{tuSourceFile}\"");
+                var tuSource = "#include <" + string.Join(">\n#include <", sourceFiles) + ">";
+
                 Logger.Debug($"Clang TU source:\n{tuSource}");
-
-                // Invoke clang to get the TU
-                Logger.Debug($"Clang args: {string.Join(" ", clangArgs)}");
-                var tuError = CXTranslationUnit.TryParse(index, tuSourceFile, clangArgs.ToArray(), Array.Empty<CXUnsavedFile>(), tuFlags, out tu);
-                if (tuError != CXErrorCode.CXError_Success)
+                using (var tuSourceFile = CXUnsavedFile.Create(tuFilename, tuSource))
                 {
-                    throw new Exception($"clang error: failed to generate tanslation unit: {tuError}");
+                    // Invoke clang to get the TU
+                    Logger.Debug($"Clang args: {string.Join(" ", clangArgs)}");
+                    var tuError = CXTranslationUnit.TryParse(index, tuSourceFile.FilenameString, clangArgs.ToArray(), new CXUnsavedFile[] { tuSourceFile }, tuFlags, out tu);
+                    if (tuError != CXErrorCode.CXError_Success)
+                    {
+                        throw new Exception($"clang error: failed to generate tanslation unit: {tuError}");
+                    }
                 }
                 section.Done();
             }
@@ -117,7 +118,11 @@ namespace Bifrost.Compiler.Frontend
                 {
                     bir = parser.ProduceBIR(config);
                 }
-                section.Done();
+
+                if (bir != null)
+                {
+                    section.Done();
+                }
             }
             return bir;
         }
@@ -152,6 +157,9 @@ namespace Bifrost.Compiler.Frontend
                 {
                     return null;
                 }
+
+                TU.Cursor.VisitChildren(() = >)
+
                 return null;
             }
 
