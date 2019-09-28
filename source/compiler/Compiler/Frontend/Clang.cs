@@ -6,6 +6,7 @@ using System.IO;
 using Bifrost.Compiler.BIR;
 using Bifrost.Compiler.Input;
 using Bifrost.Compiler.Core;
+using ClangSharp;
 using ClangSharp.Interop;
 
 namespace Bifrost.Compiler.Frontend
@@ -42,7 +43,7 @@ namespace Bifrost.Compiler.Frontend
         /// <summary>
         /// Build the Clang AST 
         /// </summary>
-        private CXTranslationUnit BuildClangAST(Configuration config, CXIndex index)
+        private TranslationUnit BuildClangAST(Configuration config, CXIndex index)
         {
             CXTranslationUnit tu = null;
             using (var section = CreateSection("Building Clang AST"))
@@ -103,13 +104,17 @@ namespace Bifrost.Compiler.Frontend
                 }
                 section.Done();
             }
-            return tu;
+            if (tu == null)
+            {
+                return null;
+            }
+            return TranslationUnit.GetOrCreate(tu);
         }
 
         /// <summary>
         /// Transform the Clang AST to BIR
         /// </summary>
-        private BIR.BIR TransformClangASTtoBIR(Configuration config, CXIndex index, CXTranslationUnit tu)
+        private BIR.BIR TransformClangASTtoBIR(Configuration config, CXIndex index, TranslationUnit tu)
         {
             BIR.BIR bir = null;
             using (var section = CreateSection("Transforming Clang AST to BIR"))
@@ -132,7 +137,7 @@ namespace Bifrost.Compiler.Frontend
             /// <summary>
             /// Reference to the translation unit
             /// </summary>
-            public readonly CXTranslationUnit TU;
+            public readonly TranslationUnit TU;
 
             /// <summary>
             /// Current CXIndex (pointer to AST)
@@ -144,7 +149,7 @@ namespace Bifrost.Compiler.Frontend
             /// </summary>
             private bool m_diagEmitted = false;
 
-            public ClangParser(CompilerContext ctx, CXIndex index, CXTranslationUnit tu) : base(ctx)
+            public ClangParser(CompilerContext ctx, CXIndex index, TranslationUnit tu) : base(ctx)
             {
                 Index = index;
                 TU = tu;
@@ -158,9 +163,8 @@ namespace Bifrost.Compiler.Frontend
                     return null;
                 }
 
-                TU.Cursor.VisitChildren(() = >)
-
-                return null;
+                var visitor = new ClangASTVisitor(Context, config);
+                return visitor.VisitTU(TU);
             }
 
             public void Dispose()
@@ -178,9 +182,9 @@ namespace Bifrost.Compiler.Frontend
                     return;
                 }
 
-                for (uint i = 0; i < TU.NumDiagnostics; i++)
+                for (uint i = 0; i < TU.Handle.NumDiagnostics; i++)
                 {
-                    using (var diag = TU.GetDiagnostic(i))
+                    using (var diag = TU.Handle.GetDiagnostic(i))
                     {
                         if (diag.Severity < CXDiagnosticSeverity.CXDiagnostic_Error)
                         {
@@ -204,9 +208,9 @@ namespace Bifrost.Compiler.Frontend
             /// </summary>
             private bool HasTUErrors()
             {
-                for (uint i = 0; i < TU.NumDiagnostics; i++)
+                for (uint i = 0; i < TU.Handle.NumDiagnostics; i++)
                 {
-                    using (var diag = TU.GetDiagnostic(i))
+                    using (var diag = TU.Handle.GetDiagnostic(i))
                     {
                         if (diag.Severity >= CXDiagnosticSeverity.CXDiagnostic_Error)
                         {
@@ -226,6 +230,116 @@ namespace Bifrost.Compiler.Frontend
             private static SourceRange ExtractRange(CXSourceRange range)
             {
                 return new SourceRange(ExtractLocation(range.Start), ExtractLocation(range.End));
+            }
+        }
+
+        /// <summary>
+        /// Visit the Clang AST
+        /// </summary>
+        internal class ClangASTVisitor : CompilerObject
+        {
+            /// <summary>
+            /// BIR we are constructing
+            /// </summary>
+
+            private BIR.BIR m_bir = new BIR.BIR();
+
+            /// <summary>
+            /// Configuration we are currently parsing
+            /// </summary>
+
+            private readonly Configuration m_config;
+
+            /// <summary>
+            /// Functions we need to hook
+            /// </summary>
+            private readonly HashSet<string> m_hookFunctions = new HashSet<string>();
+
+            /// <summary>
+            /// Hook functions we have visited
+            /// </summary>
+            private HashSet<string> m_hookFunctionsVisited = new HashSet<string>();
+
+            /// <summary>
+            /// Cursors which we already encountered
+            /// </summary>
+            private HashSet<Cursor> m_visitedCursors = new HashSet<Cursor>();
+
+            public ClangASTVisitor(CompilerContext ctx, Configuration config) : base(ctx)
+            {
+                m_config = config;
+                foreach (var desc in m_config.Hook.Descriptions)
+                {
+                    if (desc.Type == HookTypeEnum.Function)
+                    {
+                        m_hookFunctions.Add(desc.Name);
+                    }
+                }
+            }
+
+            /// <summary>
+            /// Visit all AST nodes of the translation unit
+            /// </summary>
+            public BIR.BIR VisitTU(TranslationUnit tu)
+            {
+                var tuDecl = tu.TranslationUnitDecl;
+                m_visitedCursors.Add(tuDecl);
+
+                foreach (var decl in tuDecl.Decls)
+                {
+                    Visit(decl);
+                }
+
+                return m_bir;
+            }
+
+            /// <summary>
+            /// Main dispatch method
+            /// </summary>
+            private void Visit(Cursor cursor)
+            {
+                // The AST can by cyclic
+                if (m_visitedCursors.Contains(cursor))
+                {
+                    return;
+                }
+                m_visitedCursors.Add(cursor);
+
+                if (cursor is Decl decl)
+                {
+                    VisitDecl(decl);
+                }
+            }
+
+            /// <summary>
+            /// Visit a declaration cursor
+            /// </summary>
+            private void VisitDecl(Decl decl)
+            {
+                if (decl is FunctionDecl funDecl)
+                {
+                    VisitFunctionDecl(funDecl);
+                }
+            }
+
+            /// <summary>
+            /// Visit a function declaration
+            /// </summary>
+            private void VisitFunctionDecl(FunctionDecl funDecl)
+            {
+                if (m_hookFunctions.Contains(funDecl.Spelling))
+                {
+                    RegisterFunctionHook(funDecl);
+                }
+            }
+
+            /// <summary>
+            /// Register a C function hook
+            /// </summary>
+            private void RegisterFunctionHook(FunctionDecl decl)
+            {
+                var name = decl.Name;
+                var type = decl.Type;
             }
         }
     }
