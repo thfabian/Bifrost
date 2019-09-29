@@ -57,7 +57,7 @@ namespace Bifrost.Compiler.Core
         private void Consume(SeverityEnum severity, SourceRange range, string message, string stackTrace)
         {
             var locStart = range?.Start;
-            var locStartStr = locStart != null ? locStart.ToString() + " " : "";
+            var locStartStr = locStart != null ? IO.Normalize(locStart.ToString()) + " " : "";
 
             // Log the message
             switch (severity)
@@ -117,7 +117,7 @@ namespace Bifrost.Compiler.Core
 
                     var line = lines[locStart.Row - 1];
                     var size = line.Count();
-                    var cursor = 0;
+                    int cursor;
 
                     // Print line
                     if (size > width)
@@ -175,7 +175,7 @@ namespace Bifrost.Compiler.Core
                     }
 
                     // Print cursor
-                    var arrow = "";
+                    string arrow;
                     if (range.End == null || range.End.Column == -1 || range.End.Column == range.Start.Column)
                     {
                         arrow = new string(' ', cursor - 1) + "^";
@@ -185,7 +185,7 @@ namespace Bifrost.Compiler.Core
                         if (range.End.Column > range.Start.Column)
                         {
                             var len = range.End.Column - range.Start.Column;
-                            arrow = new string(' ', cursor - 1) + "^" + new string('~', Math.Min(len, width - cursor - 2));
+                            arrow = new string(' ', cursor - 1) + "^" + new string('~', Math.Min(len - 1, width - cursor - 2));
                         }
                         else
                         {
@@ -212,7 +212,7 @@ namespace Bifrost.Compiler.Core
         {
             if (location != null)
             {
-                return location.ToString();
+                return IO.Normalize(location.ToString());
             }
             else
             {

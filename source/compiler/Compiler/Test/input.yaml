@@ -14,9 +14,11 @@ clang:
 #
 hook:
   descriptions:
-   - name: "foo"
+   - name: "foo::foo"
      type: Function
-     identifier: ""
+     input: ["foo.h"]
+   - name: "foo::Foo::foo"
+     type: ClassMethod
      input: ["foo.h"]
 
 #

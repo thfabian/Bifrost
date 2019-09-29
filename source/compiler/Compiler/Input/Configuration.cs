@@ -19,7 +19,7 @@ namespace Bifrost.Compiler.Input
 {
     public enum HookTypeEnum
     {
-        Class,
+        ClassMethod,
         Function
     }
 
@@ -39,12 +39,15 @@ namespace Bifrost.Compiler.Input
 
     public class Configuration
     {
-
         [Comment("Revision of the configuration.")]
         public System.Version Version { set; get; } = new System.Version(0, 1, 1);
 
         public class ClangT
         {
+            public static readonly string Latest = "latest";
+
+            public static readonly string None = "none";
+
             [Comment("Extra arguments passed to Clang.")]
             public string Arguments { get; set; } = "";
 
@@ -53,6 +56,14 @@ namespace Bifrost.Compiler.Input
 
             [Comment("Used the following macros during compilation.")]
             public Dictionary<string, string> Defines { get; set; } = new Dictionary<string, string>();
+
+            [Comment("Path to the Win SDK include directories (e.g. C:/Program Files (x86)/Windows Kits/10/Include/10.0.18362.0).\n" +
+                     "Set to 'latest', to use the latest available on the system. Set to 'none' to disable Win SDK includes.")]
+            public string WinSDK { get; set; } = Latest;
+
+            [Comment("Path to the C++ STL include directories (e.g. C:/Program Files (x86)/Microsoft Visual Studio/2019/Professional/VC/Tools/MSVC/14.23.28105/include).\n" +
+                     "Set to 'latest', to use the latest available on the system. Set to 'none' to disable C++ STL includes.")]
+            public string CxxSTL { get; set; } = Latest;
 
             [Comment("Language to compile in.")]
             public LanguageEnum Language { get; set; } = LanguageEnum.Cpp17;

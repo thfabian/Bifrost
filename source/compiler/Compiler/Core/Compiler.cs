@@ -33,6 +33,7 @@ namespace Bifrost.Compiler.Core
 
         private BIR.BIR ProduceBIR(Configuration config)
         {
+            BIR.BIR bir = null;
             using (var section = CreateSection("Producing BIR"))
             {
                 // Assemble the frontend actions
@@ -40,7 +41,6 @@ namespace Bifrost.Compiler.Core
                 frontendActions.Add(new Clang(Context));
 
                 // Run the frontend actions
-                BIR.BIR bir = null;
                 foreach (var action in frontendActions)
                 {
                     if ((bir = action.Produce(config)) != null)
@@ -61,7 +61,7 @@ namespace Bifrost.Compiler.Core
 
                 section.Done();
             }
-            return null;
+            return bir;
         }
     }
 }
