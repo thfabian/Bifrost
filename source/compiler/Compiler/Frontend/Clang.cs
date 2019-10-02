@@ -656,7 +656,7 @@ namespace Bifrost.Compiler.Frontend
             }
 
             /// <summary>
-            /// Register a C function hook
+            /// Register a hook
             /// </summary>
             private void RegisterHook(FunctionDecl decl, HookDesc hookDesc, TraversalData traversalData)
             {
