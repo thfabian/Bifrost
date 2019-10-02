@@ -653,7 +653,7 @@ namespace Bifrost.Compiler.Frontend
             }
 
             /// <summary>
-            /// Register a C function hook
+            /// Register a hook
             /// </summary>
             private BIR.BIR.Hook CreateHook(FunctionDecl decl, HookDesc hookDesc, TraversalData traversalData)
             {
