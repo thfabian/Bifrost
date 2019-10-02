@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Linq;
@@ -700,6 +700,29 @@ namespace Bifrost.Compiler.Frontend
         private static SourceRange ExtractRange(CXSourceRange range)
         {
             return new SourceRange(ExtractLocation(range.Start), ExtractLocation(range.End));
+        }
+
+
+        private static string Dump(Cursor c)
+        {
+            var stringBuilder = new StringBuilder();
+            DumpImpl(c, stringBuilder, 0, "");
+            return stringBuilder.ToString();
+        }
+
+        private static void DumpToFile(Cursor c, string file = "ast.txt")
+        {
+            File.WriteAllText(file, Dump(c));
+        }
+
+        private static void DumpImpl(Cursor c, StringBuilder stringBuilder, int indent, string prefix)
+        {
+            stringBuilder.AppendLine(new string(' ', Math.Max(0, indent - 2)) + prefix + c.KindSpelling + ": " + c.ToString());
+            var numChildren = c.CursorChildren.Count;
+            for (int i = 0; i < numChildren; ++i)
+            {
+                DumpImpl(c.CursorChildren[i], stringBuilder, indent + 2, i == numChildren - 1 ? "`-" : "|-");
+            }
         }
     }
 }
