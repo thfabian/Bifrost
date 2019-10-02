@@ -41,9 +41,14 @@ namespace Bifrost.Compiler.BIR
             public string ThisType;
 
             /// <summary>
-            /// Calling convention of the function
+            /// Module (DLL) to load to obtain this function
             /// </summary>
-            public string CallingConvention;
+            public string Module;
+
+            /// <summary>
+            /// Input headers required for the declaration 
+            /// </summary>
+            public List<string> Inputs;
 
             public class Parameter
             {
@@ -57,8 +62,8 @@ namespace Bifrost.Compiler.BIR
                 /// </summary>
                 public string Type;
             }
-            public List<Parameter> Parameters;
+            public List<Parameter> Parameters = new List<Parameter>();
         }
-        public List<Hook> Hooks;
+        public List<Hook> Hooks = new List<Hook>();
     }
 }

@@ -393,35 +393,32 @@ namespace Bifrost.Compiler.Frontend
             public class TraversalData
             {
                 /// <summary>
-                /// Aggregated namespace
+                /// Get the namespace
                 /// </summary>
-                public string Namespace
+                public string GetNamespaces()
                 {
-                    get
-                    {
-                        var ns = string.Join("::", m_namespaces);
-                        return string.IsNullOrEmpty(ns) ? "" : ns + "::";
-                    }
+                    if (m_namespaces.Count == 0) return "";
+                    return string.Join("::", m_namespaces);
                 }
 
                 /// <summary>
-                /// Aggregated namespace
+                /// Get classes
                 /// </summary>
-                public string Class
+                public string GetClasses()
                 {
-                    get
-                    {
-                        var classes = string.Join("::", m_classes);
-                        return string.IsNullOrEmpty(classes) ? "" : classes + "::";
-                    }
+                    var ns = GetNamespaces();
+                    var classes = string.Join("::", m_classes);
+                    return (string.IsNullOrEmpty(ns) ? "": (ns + (string.IsNullOrEmpty(classes) ? "": "::"))) + classes;
                 }
 
                 /// <summary>
                 /// Get the fully qualified name
                 /// </summary>
-                public string GetName(NamedDecl namedDecl)
+
+                public string GetQualifiedType(NamedDecl namedDecl)
                 {
-                    return Namespace + Class + namedDecl.Name;
+                    var classes = GetClasses();
+                    return (string.IsNullOrEmpty(classes) ? "" : classes + "::") + namedDecl.Name;
                 }
 
                 /// <summary>
@@ -437,7 +434,7 @@ namespace Bifrost.Compiler.Frontend
                 /// </summary>
                 public void RemoveClass()
                 {
-                    m_classes.RemoveAt(m_namespaces.Count - 1);
+                    m_classes.RemoveAt(m_classes.Count - 1);
                 }
 
                 /// <summary>
@@ -487,7 +484,7 @@ namespace Bifrost.Compiler.Frontend
                 }
 
                 /// <summary>
-                /// Does the provided name matcht the requested C function or class method?
+                /// Does the provided name match the requested C function or class method?
                 /// </summary>
                 public bool Matches(string name)
                 {
@@ -615,14 +612,14 @@ namespace Bifrost.Compiler.Frontend
             /// </summary>
             private void VisitTypeDecl(TypeDecl typeDecl, TraversalData traversalData)
             {
-                if (typeDecl.Kind == CXCursorKind.CXCursor_ClassDecl)
+                if (typeDecl.Kind == CXCursorKind.CXCursor_ClassDecl || typeDecl.Kind == CXCursorKind.CXCursor_StructDecl)
                 {
                     traversalData.AddClass(typeDecl.Name);
                 }
 
                 Visit(typeDecl.CursorChildren, traversalData);
 
-                if (typeDecl.Kind == CXCursorKind.CXCursor_ClassDecl)
+                if (typeDecl.Kind == CXCursorKind.CXCursor_ClassDecl || typeDecl.Kind == CXCursorKind.CXCursor_StructDecl)
                 {
                     traversalData.RemoveClass();
                 }
@@ -633,10 +630,10 @@ namespace Bifrost.Compiler.Frontend
             /// </summary>
             private void VisitFunctionDecl(FunctionDecl funDecl, TraversalData traversalData)
             {
-                var desc = MatchHook(traversalData.GetName(funDecl));
+                var desc = MatchHook(traversalData.GetQualifiedType(funDecl));
                 if (desc != null)
                 {
-                    RegisterHook(funDecl, desc, traversalData);
+                    m_bir.Hooks.Add(CreateHook(funDecl, desc, traversalData));
                 }
             }
 
@@ -658,25 +655,43 @@ namespace Bifrost.Compiler.Frontend
             /// <summary>
             /// Register a C function hook
             /// </summary>
-            private void RegisterHook(FunctionDecl decl, HookDesc hookDesc, TraversalData traversalData)
+            private BIR.BIR.Hook CreateHook(FunctionDecl decl, HookDesc hookDesc, TraversalData traversalData)
             {
+                BIR.BIR.Hook hook = new BIR.BIR.Hook();
+
                 var desc = hookDesc.Desc;
 
-                // Fully qualified name
-                var name = traversalData.GetName(decl);
+                hook.Identifier = string.IsNullOrEmpty(desc.Identifier) ? traversalData.GetQualifiedType(decl).Replace("::", "_") : desc.Identifier;
+                hook.ReturnType = decl.ReturnType.ToString();
+                hook.Module = desc.Module;
+                hook.Inputs = desc.Input;
 
-                // Compute the identifier of the hook
-                var identifier = string.IsNullOrEmpty(desc.Identifier) ? name.Replace("::", "_") : desc.Identifier;
+                if (decl.Handle.Kind == CXCursorKind.CXCursor_CXXMethod)
+                {
+                    var cxxMethodDecl = (CXXMethodDecl)decl;
+                    hook.ThisType = traversalData.GetClasses();
+                    hook.HookType = cxxMethodDecl.IsVirtual ? BIR.BIR.HookTypeEnum.VTable : BIR.BIR.HookTypeEnum.Function;
+                }
+                else
+                {
+                    hook.HookType = BIR.BIR.HookTypeEnum.Function;
+                    if(string.IsNullOrEmpty(hook.Module))
+                    {
+                        throw new Exception($"'hook.descriptions.[{m_config.Hook.Descriptions.IndexOf(desc)}].module' is required to load function \"{desc.Name}\"");
+                    }
+                }
 
-                var type = decl.Type;
-                var retType = decl.ReturnType;
-                var isMethod = decl.Handle.Kind == CXCursorKind.CXCursor_CXXMethod;
-
+                // Extract parameter
                 foreach (var param in decl.Parameters)
                 {
-                    var paramName = param.Name;
-                    var paramType = param.Type;
+                    hook.Parameters.Add(new BIR.BIR.Hook.Parameter()
+                    {
+                        Name = param.Name,
+                        Type = param.Type.ToString(),
+                    });
                 }
+
+                return hook;
             }
 
             private void Error(Decl decl, string message)
