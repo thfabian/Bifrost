@@ -49,6 +49,11 @@ namespace Bifrost.Compiler.Core
         /// </summary>
         public Utils Utils => Context.Utils;
 
+        /// <summary>
+        /// Internal Profiler
+        /// </summary>
+        public Profiler Profiler => Context.Profiler;
+
         public CompilerObject(CompilerContext ctx)
         {
             Context = ctx;
@@ -68,7 +73,8 @@ namespace Bifrost.Compiler.Core
         {
             return new SectionCollection(new List<ISection>()
             {
-                new Progress(Context, message)
+                new SectionProgress(Context, message),
+                Profiler.CreateProfileSection(identifier)
             });
         }
     }

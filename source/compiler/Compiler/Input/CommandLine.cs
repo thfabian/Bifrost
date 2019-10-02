@@ -37,6 +37,11 @@ namespace Bifrost.Compiler.Input
         public IEnumerable<string> Files { get; set; } = new List<string>();
 
         /// <summary>
+        /// Print the profling results?
+        /// </summary>
+        public bool PrintProfiler { get; set; } = false;
+
+        /// <summary>
         /// Root command of the command line parser
         /// </summary>
         public RootCommand RootCommand { get; set; }
@@ -121,6 +126,7 @@ namespace Bifrost.Compiler.Input
             cmd.Add(AddConfig());
             cmd.Add(AddVersion());
             cmd.Add(AddLogging());
+            cmd.Add(AddProfiling());
             cmd.Add(AddOutput());
             cmd.Add(AddInclues());
             cmd.Add(AddDefines());
@@ -266,6 +272,16 @@ namespace Bifrost.Compiler.Input
             HandleOption = (opt, cmd, ctx, cfg) =>
             {
                 ctx.Logger.Loggers.Add("console", new Logger.Console());
+            }
+        };
+
+        private static OptionAction AddProfiling() => new OptionAction()
+        {
+            Option = new Option(new[] { "--profiling", "-p" }, "Enable profiling and print the results."),
+            Stage = OptionAction.StageEnum.CommandBuilder,
+            HandleOption = (opt, cmd, ctx, cfg) =>
+            {
+                cmd.PrintProfiler = true;
             }
         };
 

@@ -27,12 +27,13 @@ namespace Bifrost.Compiler.Core
             m_sections = sections;
         }
 
-
+        /// <inheritDoc />
         public void Done(string message = null)
         {
             ForEach(s => s.Done(message));
         }
 
+        /// <inheritDoc />
         public void Report()
         {
             if (!m_reported)
@@ -42,6 +43,7 @@ namespace Bifrost.Compiler.Core
             }
         }
 
+        /// <inheritDoc />
         public void Dispose()
         {
             Report();

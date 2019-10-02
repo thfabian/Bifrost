@@ -2,12 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace Bifrost.Compiler.Frontend
+namespace Bifrost.Compiler.BIRProducer
 {
     /// <summary>
-    /// A fronted action produces a BIR
+    /// Prouce a Bifrost Intermediate Representation (BIR)
     /// </summary>
-    public interface IFrontendAction
+    public interface IBIRProducer
     {
         /// <summary>
         /// Build the Bifrost Intermediate Representation (BIR) from the input configuration

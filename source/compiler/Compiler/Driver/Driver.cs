@@ -65,6 +65,10 @@ namespace Bifrost.Compiler.Driver
 
                     // 2) Run the configuration
                     success &= ctx.Run(config);
+                    if(success && cmd.PrintProfiler)
+                    {
+                        ctx.Profiler.Report();
+                    }
                 }
             }
             catch (Core.CompilerError e)

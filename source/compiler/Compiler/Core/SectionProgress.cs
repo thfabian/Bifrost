@@ -20,9 +20,9 @@ namespace Bifrost.Compiler.Core
     /// <summary>
     /// Log progress update
     /// </summary>
-    public class Progress : CompilerObject, ISection
+    public class SectionProgress : CompilerObject, ISection
     {
-        public Progress(CompilerContext ctx, string message) : base(ctx)
+        public SectionProgress(CompilerContext ctx, string message) : base(ctx)
         {
             m_success = false;
             m_initialMessage = message;
@@ -32,12 +32,14 @@ namespace Bifrost.Compiler.Core
             Logger.Info($"{m_initialMessage} ...");
         }
 
+        /// <inheritDoc />
         public void Done(string message)
         {
             m_success = true;
             m_finalMessage = message;
         }
 
+        /// <inheritDoc />
         public void Report()
         {
             m_stopwatch.Stop();

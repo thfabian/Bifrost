@@ -46,6 +46,12 @@ namespace Bifrost.Compiler.Core
         public Utils Utils => m_utils ?? (m_utils = new Utils(this));
         private Utils m_utils = null;
 
+        /// <summary>
+        /// Internal Profiler
+        /// </summary>
+        public Profiler Profiler => m_profiler ?? (m_profiler = new Profiler(this));
+        private Profiler m_profiler = null;
+
         public CompilerContext() { }
 
         /// <summary>

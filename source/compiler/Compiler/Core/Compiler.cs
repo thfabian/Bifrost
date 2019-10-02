@@ -1,7 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Bifrost.Compiler.Frontend;
+using Bifrost.Compiler.BIRProducer;
+using Bifrost.Compiler.BIRConsumer;
 using Bifrost.Compiler.Input;
 
 namespace Bifrost.Compiler.Core
@@ -18,17 +19,22 @@ namespace Bifrost.Compiler.Core
         /// </summary>
         public bool Run(Configuration config)
         {
+            bool success = true;
             using (var section = CreateSection("Executing configuration"))
             {
-                // Run the frontend actions
+                // Produce the BIR
                 var bir = ProduceBIR(config);
                 if (bir == null)
                 {
                     throw new Exception("no valid Bifrost Intermediate Representation (BIR) was produced");
                 }
+
+                // Consume the BIR
+                success = ConsumeBIR(config, bir);
+
                 section.Done();
             }
-            return true;
+            return success;
         }
 
         private BIR.BIR ProduceBIR(Configuration config)
@@ -36,14 +42,14 @@ namespace Bifrost.Compiler.Core
             BIR.BIR bir = null;
             using (var section = CreateSection("Producing BIR"))
             {
-                // Assemble the frontend actions
-                var frontendActions = new List<IFrontendAction>();
-                frontendActions.Add(new Clang(Context));
+                // Assemble the producers
+                var producers = new List<IBIRProducer>();
+                producers.Add(new Clang(Context));
 
-                // Run the frontend actions
-                foreach (var action in frontendActions)
+                // Run the producers
+                foreach (var producer in producers)
                 {
-                    if ((bir = action.Produce(config)) != null)
+                    if ((bir = producer.Produce(config)) != null)
                     {
                         break;
                     }
@@ -53,15 +59,35 @@ namespace Bifrost.Compiler.Core
                     return null;
                 }
 
-                // Let the frontend actions visit the BIR 
-                foreach (var action in frontendActions)
+                // Let the producers visit the final BIR 
+                foreach (var producer in producers)
                 {
-                    action.Visit(config, bir);
+                    producer.Visit(config, bir);
                 }
 
                 section.Done();
             }
             return bir;
+        }
+
+        private bool ConsumeBIR(Configuration config, BIR.BIR bir)
+        {
+            bool success = true;
+            using (var section = CreateSection("Consuming BIR"))
+            {
+                // Assemble the consumers
+                var consumers = new List<IBIRConsumer>();
+                consumers.Add(new BifrostPlugin(Context));
+
+                // Let the producers visit the final BIR 
+                foreach (var consumer in consumers)
+                {
+                    success &= consumer.Consume(config, bir);
+                }
+
+                section.Done();
+            }
+            return success;
         }
     }
 }
