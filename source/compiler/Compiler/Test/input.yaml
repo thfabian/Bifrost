@@ -4,9 +4,6 @@ version: 0.1.1
 # Clang specific options.
 #
 clang:
-  arguments: ""
-  includes: []
-  defines: {}
   language: Cpp17
 
 #

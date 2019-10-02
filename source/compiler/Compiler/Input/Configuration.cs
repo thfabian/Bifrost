@@ -90,8 +90,11 @@ namespace Bifrost.Compiler.Input
                          "(e.g ID3D12GraphicsCommandList::Close -> ID3D12GraphicsCommandList_Close).")]
                 public string Identifier { get; set; } = "";
 
-                [Comment("List of C/C++ input files which need to be included in oder to obtain the declaration of this hook (e.g \"d3d12.h\")", ImportanceEnum.Required)]
+                [Comment("List of C/C++ input files which need to be included in oder to obtain the declaration of this hook (e.g \"d3d12.h\").", ImportanceEnum.Required)]
                 public List<string> Input { get; set; } = new List<string>();
+
+                [Comment("Module (DLL) to obtain the address of the function - only required for function hooks.")]
+                public string Module { get; set; } = "";
             }
 
             [Comment("Individual descriptions.")]
