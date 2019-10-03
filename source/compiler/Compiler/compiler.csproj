@@ -27,6 +27,24 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\..\bifrost\template\plugin_main.h">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\bifrost\template\plugin_fwd.h">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\bifrost\api\plugin.h">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="AvalonStudio.Languages.CPlusPlus.LibClang" Version="8.0.0" />
     <PackageReference Include="ClangSharp" Version="8.0.0-beta" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.3-beta1" />
