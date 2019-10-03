@@ -114,6 +114,6 @@ namespace Bifrost.Compiler.Core
         /// <summary>
         /// Individual sections
         /// </summary>
-        private List<ProfileSection> m_sections = new List<ProfileSection>();
+        private readonly List<ProfileSection> m_sections = new List<ProfileSection>();
     }
 }
