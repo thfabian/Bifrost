@@ -3,8 +3,6 @@
 // adjusting bifrost/api/loader.cpp - changing the implementation significantly requires changing the minor version (otherwise just increase the patch version)
 //
 
-#pragma region Plugin Forward Declaration
-
 #define BIFROST_PLUGIN_SETUP_PROC_NAME bifrost_PluginSetUp
 #define BIFROST_PLUGIN_SETUP_PROC_NAME_STRING "bifrost_PluginSetUp"
 #define BIFROST_PLUGIN_SETUP_PROC_TYPE int (*)(void*) noexcept(false)
@@ -31,5 +29,3 @@
   __declspec(dllexport) const char* BIFROST_PLUGIN_HELP_PROC_NAME() noexcept(false); \
   }
 #define BIFROST_PLUGIN_HELP_PROC_DEF const char* BIFROST_PLUGIN_HELP_PROC_NAME() noexcept(false)
-
-#pragma endregion

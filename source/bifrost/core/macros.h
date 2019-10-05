@@ -16,7 +16,7 @@
 /// Convert `x` to a string constant
 #define BIFROST_STRINGIFY(x) BIFROST_STRINGIFY_IMPL(x)
 
-/// Concatinate `a` an `b`
+/// Concatenate `a` an `b`
 #define BIFROST_CONCAT(a, b) a##b
 
 /// Assert macro

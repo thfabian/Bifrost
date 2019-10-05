@@ -55,7 +55,7 @@ class HookSettings {
 
     ctx->Logger().Debug("Hook settings:");
     Debug = TryParseAsBool(ctx, "Debug", j, "BIFROST_HOOK_DEBUG", Debug);
-    Debug = TryParseAsBool(ctx, "VerboseDbgHelp", j, "BIFROST_HOOK_VERBOSE_DBGHELP", VerboseDbgHelp);
+    VerboseDbgHelp = TryParseAsBool(ctx, "VerboseDbgHelp", j, "BIFROST_HOOK_VERBOSE_DBGHELP", VerboseDbgHelp);
   }
 
  private:
@@ -129,9 +129,9 @@ struct ImageHlpLine64 : public IMAGEHLP_LINE64 {
 inline const char* GetConstCharPtr(const char* str) { return str; }
 inline const char* GetConstCharPtr(const std::string& str) { return str.c_str(); }
 
-#define BIFROST_CHECK_MH(ret, reason)                                                       \
-  if (ret != MH_OK) {                                                                       \
-    throw Exception("Failed to %s: %s", GetConstCharPtr(reason), ::MH_StatusToString(ret)); \
+#define BIFROST_CHECK_MH(call, reason)                                                         \
+  if (MH_STATUS status; (status = call) != MH_OK) {                                            \
+    throw Exception("Failed to %s: %s", GetConstCharPtr(reason), ::MH_StatusToString(status)); \
   }
 
 #define BIFROST_LOG_DEBUG(...)              \
@@ -212,53 +212,105 @@ class HookManager::Impl {
   //
 
   /// Per id hook description
-  class HookDescPerId {
-   public:
-    HookDescPerId(u32 id) : m_id(id) {}
-
-    /// Get the associated id
-    u32 Id() { return m_id; }
-
-   private:
-    u32 m_id;
+  struct HookChainNode {
+    u32 Id;
+    bool Enabled;
+    void* Override;
   };
 
   /// Per function hook description
   class HookDesc {
    public:
-    HookDesc(u32 id, void* original) : m_original(original) { Add(id); }
+    friend class HookManager::Impl;
+
+    HookDesc(void* original) : m_original(original) { m_hookChain.reserve(8); }
 
     /// Get the original function
     void* Original() { return m_original; }
 
-    /// Get the description of the id if available
-    HookDescPerId* PerIdDesc(u32 id) {
-      auto it = m_idToIt.find(id);
-      return it != m_idToIt.end() ? &(*it->second) : nullptr;
+    /// Get the node of id in the chain or NULL if no node exists for this id
+    HookChainNode* GetHookChainNode(u32 id) {
+      for (auto& node : m_hookChain) {
+        if (node.Id == id) return &node;
+      }
+      return nullptr;
     }
 
-    std::size_t NumHooks() { return m_idToIt.size(); }
+    /// Add a new node
+    void AddHookChainNode(HookChainNode&& node) { m_hookChain.emplace_back(std::move(node)); }
 
-   private:
-    void Add(u32 id) {
-      m_perIdDesc.emplace_back(id);
-      m_idToIt[id] = --m_perIdDesc.end();
+    /// Remove the node and potentially re-hook adjacent node(s)
+    void RemoveHookChainNode(HookManager::Impl* impl, const HookChainNode* node) {
+      if (&m_hookChain.back() == node) {
+        // This is the last node in the chain, we can safely remove it
+				
+				// TODO:
+				// 1) Last -> kill
+				// 2) Freeze threads -> disable & remove current hook -> recreate hook from left to this one -> enable it? -> unfreeze threads
+				// RAII to unfreeze
+      }
     }
+
+    /// Get the number of registered hooks
+    u32 NumHooks() const { return m_hookChain.size(); }
 
    private:
     void* m_original;
-
-    std::unordered_map<u32, std::list<HookDescPerId>::iterator> m_idToIt;
-    std::list<HookDescPerId> m_perIdDesc;
+    std::vector<HookChainNode> m_hookChain;
   };
+
+  HookDesc* GetHookDesc(void* target) {
+    auto it = m_hookTargetToDesc.find((u64)target);
+    return it != m_hookTargetToDesc.end() ? &it->second : nullptr;
+  }
+
+  HookDesc* SetHookDesc(void* target, HookDesc desc) { return &m_hookTargetToDesc.emplace((u64)target, std::move(desc)).first->second; }
+
+  void RemoveHookDesc(void* target) { m_hookTargetToDesc.erase((u64)target); }
+
+  void MinHookCreateHook(Context* ctx, void* target, void* detour, void** original) {
+    BIFROST_CHECK_MH(MH_CreateHook(target, detour, original),
+                     StringFormat("to create hook from %s to %s", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour)));
+  }
+
+  void MinHookRemoveHook(Context* ctx, void* target) {
+    BIFROST_CHECK_MH(MH_RemoveHook(target), StringFormat("to remove hook from %s", SymbolFromAdress(ctx, target)));
+  }
+
+  void MinHookEnableHook(Context* ctx, void* target) {
+    BIFROST_CHECK_MH(MH_EnableHook(target), StringFormat("to enable hook from %s", SymbolFromAdress(ctx, target)));
+  }
+
+  void MinHookDisableHook(Context* ctx, void* target) {
+    BIFROST_CHECK_MH(MH_DisableHook(target), StringFormat("to disable hook from %s", SymbolFromAdress(ctx, target)));
+  }
 
   void HookCreateImpl(u32 id, Context* ctx, void* target, void* detour, void** original) {
     HookDesc* desc = GetHookDesc(target);
+
     if (!desc) {
       // No other hook exists, create it!
-      BIFROST_CHECK_MH(MH_CreateHook(target, detour, original),
-                       StringFormat("creating hook from %s to %s", SymbolFromAdress(ctx, target), SymbolFromAdress(ctx, detour)));
-      desc = SetHookDesc(target, {id, original});
+      MinHookCreateHook(ctx, target, detour, original);
+      desc = SetHookDesc(target, HookDesc{original});
+      desc->AddHookChainNode(HookChainNode{id, false, detour});
+    } else {
+      // There is already an existing hook on this target!
+      HookChainNode* node = desc->GetHookChainNode(id);
+      BIFROST_ASSERT(desc->NumHooks() != 0);
+
+      if (node) {
+        if (desc->NumHooks() == 1) {
+          // We are the only hook that exists, recreate it
+          HookRemoveImpl(id, ctx, target);
+          HookCreateImpl(id, ctx, target, detour, original);
+        } else {
+          // There are multiple hooks registered on this target, we may have to re-hook some of them
+          desc->RemoveHookChainNode(this, node);
+        }
+      } else {
+        // This is the first hook for us, chain it to the already existing hook(s)
+        desc->AddHookChainNode(HookChainNode{id, false, detour});
+      }
     }
   }
 
@@ -266,7 +318,17 @@ class HookManager::Impl {
     HookDesc* desc = GetHookDesc(target);
     if (!desc) return;
 
-    BIFROST_CHECK_MH(MH_RemoveHook(target), StringFormat("removing hook from %s", SymbolFromAdress(ctx, target)));
+    HookChainNode* node = desc->GetHookChainNode(id);
+    if (node) {
+      // A hook as been registered for this target, remove it
+      desc->RemoveHookChainNode(this, node);
+
+      if (desc->NumHooks() == 0) {
+        // This was the last hook in the chain of of this target, remove the entire hook
+        MinHookRemoveHook(ctx, target);
+        RemoveHookDesc(target);
+      }
+    }
   }
 
   void HookEnableImpl(u32 id, Context* ctx, void** targets, u32 num) {
@@ -359,17 +421,6 @@ class HookManager::Impl {
       m_debugMode = true;
     }
   }
-
-  //
-  // UTILITY
-  //
-
-  inline HookDesc* GetHookDesc(void* target) {
-    auto it = m_hookTargetToDesc.find((u64)target);
-    return it != m_hookTargetToDesc.end() ? &it->second : nullptr;
-  }
-
-  inline HookDesc* SetHookDesc(void* target, HookDesc desc) { return &m_hookTargetToDesc.emplace((u64)target, std::move(desc)).first->second; }
 
  private:
   SpinMutex m_mutex;

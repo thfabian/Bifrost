@@ -1,0 +1,26 @@
+version: 0.1.1
+
+#
+# Clang specific options.
+#
+clang:
+  language: Cpp17
+
+#
+# Hook description.
+#
+hook:
+  descriptions:
+   - name: "foo::foo"
+     type: Function
+     input: ["foo.h"]
+   - name: "foo::Foo::foo"
+     type: ClassMethod
+     input: ["foo.h"]
+
+#
+# Options of the generated Bifrost plugin.
+#
+plugin:
+  name: ""
+  namespace: ""

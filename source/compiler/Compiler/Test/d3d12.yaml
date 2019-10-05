@@ -1,0 +1,24 @@
+﻿version: 0.1.1
+
+#
+# Clang specific options.
+#
+clang:
+  language: Cpp17
+
+#
+# Hook description.
+#
+hook:
+  descriptions:
+    - name: D3D12CreateDevice
+      type: Function
+      input: [ "d3d12.h" ]
+      module: d3d12.dll
+
+#
+# Options of the generated Bifrost plugin.
+#
+plugin:
+  name: HookD3D12
+  namespace: hook_d3d12
