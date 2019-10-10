@@ -24,6 +24,8 @@ namespace Bifrost.Compiler.Core
             var token = tokenStream.Next();
             while (token != null)
             {
+                bool expandedTokensUpdated = false;
+
                 // Extract a new macro: #define <name> <value>
                 if (token == "#define")
                 {
@@ -34,9 +36,16 @@ namespace Bifrost.Compiler.Core
                     {
                         n += 2; // Skip macro name and the following whitespace
                         var value = "";
+                        string leftOverToken = "";
+
                         while (true)
                         {
                             var curToken = tokenStream.Peak(n++);
+                            if (curToken == null)
+                            {
+                                break;
+                            }
+
                             bool endOfMacroValue = false;
 
                             bool skipNextNewLine = false;
@@ -55,6 +64,7 @@ namespace Bifrost.Compiler.Core
                                     }
                                     else
                                     {
+                                        leftOverToken = curToken.Substring(i + 1);
                                         endOfMacroValue = true;
                                     }
                                 }
@@ -70,11 +80,18 @@ namespace Bifrost.Compiler.Core
                             }
                         }
 
+                        if (!string.IsNullOrEmpty(leftOverToken))
+                        {
+                            expandedTokens.Add(leftOverToken);
+                        }
+
                         tokenStream.AddMacro(name, value);
                         tokenStream.Consume(n);
+                        expandedTokensUpdated = true;
                     }
                 }
-                else
+
+                if (!expandedTokensUpdated)
                 {
                     expandedTokens.Add(token);
                 }
@@ -199,14 +216,7 @@ namespace Bifrost.Compiler.Core
             /// </summary>
             public void AddMacro(string name, string value)
             {
-                if (m_macros.ContainsKey(name))
-                {
-                    m_macros[name] = value;
-                }
-                else
-                {
-                    m_macros.Add(name, value);
-                }
+                m_macros.Update(name, value);
             }
 
             private string Expand(string token)
@@ -219,8 +229,10 @@ namespace Bifrost.Compiler.Core
                     expansionFound = false;
                     foreach (var (name, value) in m_macros)
                     {
+                        // The reason we can't do direct value comparison is that we may expand a macro into several tokens
                         var prevIndex = 0;
-                        var curIndex = expandedToken.IndexOf(name);
+
+                        var curIndex = TokenMatches(expandedToken, name);
                         bool insideString = false;
 
                         while (curIndex != -1)
@@ -249,7 +261,6 @@ namespace Bifrost.Compiler.Core
                             if (!insideString)
                             {
                                 expandedToken = expandedToken.Substring(0, curIndex) + value + expandedToken.Substring(curIndex + name.Length);
-                                curIndex += value.Length;
                                 expansionFound = true;
                             }
                             else
@@ -258,11 +269,37 @@ namespace Bifrost.Compiler.Core
                             }
 
                             prevIndex = curIndex;
-                            curIndex = token.IndexOf(name, curIndex);
+                            curIndex = TokenMatches(expandedToken, name, curIndex);
                         }
                     }
                 } while (expansionFound);
                 return expandedToken;
+            }
+
+            /// <summary>
+            /// Check if <paramref name="token"/> contains <paramref name="value"/>
+            /// </summary>
+            static private int TokenMatches(string token, string value, int startIndex = 0)
+            {
+                var idx = token.IndexOf(value, startIndex);
+                if (idx == -1)
+                {
+                    return idx;
+                }
+
+                // Check that the character before the value is a whitespace/newline
+                if (idx > 0 && !char.IsWhiteSpace(token[idx - 1]))
+                {
+                    return -1;
+                }
+
+                // Check that the character after the value is a whitespace/newline
+                if ((idx + value.Length) != token.Length && !char.IsWhiteSpace(token[idx + value.Length]))
+                {
+                    return -1;
+                }
+
+                return idx;
             }
 
             private readonly List<string> m_tokens;

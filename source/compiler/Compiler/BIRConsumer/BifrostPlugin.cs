@@ -48,7 +48,7 @@ namespace Bifrost.Compiler.BIRConsumer
         {
             return new Dictionary<string, string>()
             {
-                ["BIFROST_NAMESPACE"] = config.Plugin.Namespace
+                ["BIFROST_NAMESPACE"] = string.IsNullOrEmpty(config.Plugin.Namespace) ? config.Plugin.Name.ToLower() : config.Plugin.Namespace
             };
         }
 
@@ -71,93 +71,12 @@ namespace Bifrost.Compiler.BIRConsumer
         /// </summary>
         private string ExpandMacros(string plugin, Dictionary<string, string> predefinedMacros)
         {
-            var lines = new List<string>();
-            var regex = new Regex(@"#define (\S*) (.*)");
-
-            var expandMacros = new List<string>()
+            var macrosToParse = new List<string>()
             {
                 "BIFROST_NAMESPACE_BEGIN",
                 "BIFROST_NAMESPACE_END",
             };
-            var macros = new Dictionary<string, string>(predefinedMacros);
-
-            foreach (var line in plugin.Split("\n"))
-            {
-                // Expand value
-                bool insideString = false;
-                int lastIndex = 0;
-                var tokens = new List<string>();
-                for(var idx = 0; idx < line.Length; ++idx)
-                {
-                    var c = line[idx];
-
-                    // We can't expand tokens inside strings
-                    if(c == '\"')
-                    {
-                        insideString = !insideString;
-                    }
-
-                    if(!insideString && c == ' ')
-                    {
-                        tokens.Add(line.Substring(lastIndex, idx - lastIndex));
-                        lastIndex = idx++;
-
-                        // Consume as many whitespaces as we can
-                        for (; idx < line.Length; ++idx)
-                        {
-                            var wc = line[idx];
-                            if(wc != ' ' || idx == (line.Length - 1))
-                            {
-                                tokens.Add(line.Substring(lastIndex, idx - lastIndex));
-                                lastIndex = idx++;
-                                break;
-                            }
-                        }
-                    }
-                }
-
-                var newLineBuilder = new StringBuilder();
-                foreach(var token in tokens)
-                {
-                    foreach (var (key, value) in macros)
-                    {
-                        if(token == key)
-                        {
-                            newLineBuilder.Append(value);
-                        }
-                        else
-                        {
-                            newLineBuilder.Append(token);
-                        }
-                    }
-                }
-                var newLine = newLineBuilder.ToString();
-
-                // Extract value
-                bool skip = false;
-                foreach (var macro in expandMacros)
-                {
-                    var match = regex.Match(newLine);
-                    if (match.Success)
-                    {
-                        var key = match.Groups[1].Value;
-                        var value = match.Groups[2].Value.Replace("\r", "");
-                        if (key == macro)
-                        {
-                            Logger.Debug($"Found value of macro '{key}': '{value}'");
-                            macros.Add(key, value);
-                            skip = true;
-                        }
-                    }
-                }
-
-                if (!skip)
-                {
-                    lines.Add(newLine);
-                }
-            }
-
-            return string.Join("\n", lines);
+            return PreprocessorUtils.ExpandMacros(plugin, macrosToParse, predefinedMacros);
         }
     }
 }
