@@ -42,6 +42,15 @@ namespace Bifrost.Compiler.Input
         [Comment("Revision of the configuration.")]
         public System.Version Version { set; get; } = new System.Version(0, 1, 1);
 
+        public class GeneralT
+        {
+            [Comment("Path to write outputs to, defaults to the current working directory.", ImportanceEnum.Optional)]
+            public string OutputPath { get; set; } = "";
+        }
+
+        [Comment("General options.")]
+        public GeneralT General { set; get; } = new GeneralT();
+
         public class ClangT
         {
             public static readonly string Latest = "latest";
@@ -109,7 +118,7 @@ namespace Bifrost.Compiler.Input
             [Comment("Name of the generated Plugin, needs to be a valid C++ class name.", ImportanceEnum.Required)]
             public string Name { get; set; } = "";
 
-            [Comment("Namespace of the generated plugin will be placed in.", ImportanceEnum.Required)]
+            [Comment("Namespace of the generated plugin will be placed in.", ImportanceEnum.Optional)]
             public string Namespace { get; set; } = "";
         }
 

@@ -12,7 +12,7 @@
 // ---------------------------------------------------------------------------------------------------
 #define BIFROST_NAMESPACE saxpy
 #define BIFROST_PLUGIN_IDENTIFIER saxpy,
-#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER {"saxpy", Plugin::Identifer::saxpy},
+#define BIFROST_PLUGIN_STRING_TO_IDENTIFIER {"saxpy", Plugin::Identifier::saxpy},
 #define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "saxpy",
 #define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "saxpy",
 
@@ -21,6 +21,7 @@
 #define BIFROST_PLUGIN_MODULE_TO_STRING L"example-saxpy.dll"
 
 #define BIFROST_PLUGIN_DSL_DEF
+#define BIFROST_PLUGIN_INCLUDES
 // ---------------------------------------------------------------------------------------------------
 
 #define BIFROST_IMPLEMENTATION
@@ -30,11 +31,7 @@
 #define _bf_func_decl_ret_saxpy__saxpy void
 #define _bf_func_decl_args_saxpy__saxpy int n, float a, float *x, float *y
 
-#define _bf_func_saxpy__saxpy                                                           \
-  ((void (*)(int, float, float *, float *))BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Get)() \
-       .GetHook<BIFROST_NAMESPACE_UNQUALIFIED(Plugin::Identifer::saxpy)>()             \
-       ->GetOriginal())
-
+#define _bf_func_saxpy__saxpy ((void (*)(int, float, float *, float *))::saxpy::Plugin::Get().GetHook<::saxpy::Plugin::Identifier::saxpy>()->GetOriginal())
 #define _bf_args_saxpy__saxpy n, a, x, y
 
 #define _bf_arg_1_saxpy__saxpy n
@@ -84,7 +81,7 @@ bf_override(my_saxpy3) {
 class MySaxpyPlugin final : public ::saxpy::Plugin {
  public:
   virtual void SetUp() override {
-    CreateHook(Identifer::saxpy, my_saxpy1);
+    CreateHook(Identifier::saxpy, my_saxpy1);
     CreateHook("saxpy", my_saxpy2);
   }
 

@@ -14,6 +14,9 @@ namespace Bifrost.Compiler.Test.Core.Test
         [InlineData("foo bar ", new[] { "foo", " ", "bar", " " })]
         [InlineData("foo\nbar", new[] { "foo", "\n", "bar" })]
 
+        [InlineData("foo+bar", new[] { "foo", "+", "bar" })]
+        [InlineData("foo +bar", new[] { "foo", " +", "bar" })]
+
         [InlineData("foo bar    bar", new[] { "foo", " ", "bar", "    ", "bar" })]
         [InlineData("foo bar\r\n foo", new[] { "foo", " ", "bar", "\r\n ", "foo" })]
         [InlineData("foo bar\r\n\n\r\n \n foo", new[] { "foo", " ", "bar", "\r\n\n\r\n \n ", "foo" })]
@@ -46,12 +49,20 @@ namespace Bifrost.Compiler.Test.Core.Test
         [InlineData("#define FOO foo\nbarFOO\nFOO", "barFOO\nfoo", new string[] { "FOO" })]
         [InlineData("#define FOO foo\n FOOs\nFOO", " FOOs\nfoo", new string[] { "FOO" })]
 
-        //[InlineData("#define FOO bar\\\nfoo\nFOO", " bar\nfoo", new string[] { "FOO" })]
-        //[InlineData("#define FOO bar \\\n foo\nFOO", " bar \n foo", new string[] { "FOO" })]
+
+        [InlineData("#define FOO bar\\\nfoo\nFOO", "bar\nfoo", new string[] { "FOO" })]
+        [InlineData("#define FOO bar \\\n foo\nFOO", "bar \n foo", new string[] { "FOO" })]
 
         // Multi expansion
         [InlineData("#define FOO foo\n#define BAR FOO\nFOO BAR", "foo foo", new string[] { "FOO", "BAR" })]
         [InlineData("#define FOO foo\n#define BAR FOO FOO\nBAR", "foo foo", new string[] { "FOO", "BAR" })]
+
+        // Special chars
+        [InlineData("#define FOO foo\nFOO+FOO", "foo+foo", new string[] { "FOO" })]
+        [InlineData("#define FOO foo\nbar(FOO)", "bar(foo)", new string[] { "FOO" })]
+        [InlineData("#define FOO foo\nFOO;", "foo;", new string[] { "FOO" })]
+        //[InlineData("#define FOO foo {\nFOO", "foo {", new string[] { "FOO" })]
+        //[InlineData("#define FOO foo {\nFOO}", "foo {}", new string[] { "FOO" })]
 
         public void ExpandMacros(string input, string expandedInput, IEnumerable<string> macrosToParse, IEnumerable<string> predefinedMacros = null)
         {

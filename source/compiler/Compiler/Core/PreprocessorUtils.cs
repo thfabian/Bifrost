@@ -1,4 +1,15 @@
-﻿using System;
+﻿//   ____  _  __               _
+//  |  _ \(_)/ _|             | |
+//  | |_) |_| |_ _ __ ___  ___| |_
+//  |  _ <| |  _| '__/ _ \/ __| __|
+//  | |_) | | | | | | (_) \__ \ |_
+//  |____/|_|_| |_|  \___/|___/\__|   2018 - 2019
+//
+//
+// This file is distributed under the MIT License (MIT).
+// See LICENSE.txt for details.
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.Linq;
@@ -37,6 +48,7 @@ namespace Bifrost.Compiler.Core
                         n += 2; // Skip macro name and the following whitespace
                         var value = "";
                         string leftOverToken = "";
+                        bool skipNextNewLine = false;
 
                         while (true)
                         {
@@ -47,14 +59,15 @@ namespace Bifrost.Compiler.Core
                             }
 
                             bool endOfMacroValue = false;
+                            var backSlashIndices = new HashSet<int>();
 
-                            bool skipNextNewLine = false;
                             for (int i = 0; i < curToken.Length; ++i)
                             {
                                 char c = curToken[i];
                                 if (c == '\\')
                                 {
                                     skipNextNewLine = true;
+                                    backSlashIndices.Add(i);
                                 }
                                 else if (c == '\n')
                                 {
@@ -76,7 +89,15 @@ namespace Bifrost.Compiler.Core
                             }
                             else
                             {
-                                value += curToken;
+                                var newToken = new StringBuilder();
+                                for(int i = 0; i < curToken.Length; ++i)
+                                {
+                                    if(!backSlashIndices.Contains(i))
+                                    {
+                                        newToken.Append(curToken[i]);
+                                    }
+                                }
+                                value += newToken.ToString();
                             }
                         }
 
@@ -124,6 +145,8 @@ namespace Bifrost.Compiler.Core
                 }
             }
 
+            var separator = new List<char>() { '.', ',', ';', '+', '-', '*', '/', '=', '<', '>', '{', '}', '[', ']', '(', ')', ':', '?', '!' };
+
             for (; curIndex < input.Length; ++curIndex)
             {
                 var c = input[curIndex];
@@ -146,7 +169,7 @@ namespace Bifrost.Compiler.Core
                 }
                 else if (!insideString)
                 {
-                    if (char.IsWhiteSpace(c))
+                    if (char.IsWhiteSpace(c) || separator.Contains(c))
                     {
                         AddTokenIfInsideWhitespace(false);
                     }

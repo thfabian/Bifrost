@@ -33,6 +33,12 @@
   </ItemGroup>
   
   <ItemGroup>
+    <EmbeddedResource Include="..\..\bifrost\template\plugin_main.cpp">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+  
+  <ItemGroup>
     <EmbeddedResource Include="..\..\bifrost\template\plugin_fwd.h">
       <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </EmbeddedResource>

@@ -20,6 +20,7 @@
 #define BIFROST_PLUGIN_MODULE_TO_STRING
 
 #define BIFROST_PLUGIN_DSL_DEF
+#define BIFROST_PLUGIN_INCLUDES
 
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"

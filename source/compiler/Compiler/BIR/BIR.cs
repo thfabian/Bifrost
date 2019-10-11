@@ -1,4 +1,15 @@
-﻿using System;
+﻿//   ____  _  __               _
+//  |  _ \(_)/ _|             | |
+//  | |_) |_| |_ _ __ ___  ___| |_
+//  |  _ <| |  _| '__/ _ \/ __| __|
+//  | |_) | | | | | | (_) \__ \ |_
+//  |____/|_|_| |_|  \___/|___/\__|   2018 - 2019
+//
+//
+// This file is distributed under the MIT License (MIT).
+// See LICENSE.txt for details.
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -11,7 +22,8 @@ namespace Bifrost.Compiler.BIR
     {
         public enum HookTypeEnum
         {
-            Function,
+            CFunction,
+            MethodFunction,
             VTable
         }
 
@@ -36,11 +48,6 @@ namespace Bifrost.Compiler.BIR
             public string ReturnType;
 
             /// <summary>
-            /// Type of the "this" pointer (only relevant for VTable hooks)
-            /// </summary>
-            public string ThisType;
-
-            /// <summary>
             /// Module (DLL) to load to obtain this function
             /// </summary>
             public string Module;
@@ -49,6 +56,20 @@ namespace Bifrost.Compiler.BIR
             /// Input headers required for the declaration 
             /// </summary>
             public List<string> Inputs;
+
+            #region CFunction specific
+            /// <summary>
+            /// Name of the function
+            /// </summary>
+            public string CFunctionName;
+            #endregion
+
+            #region VTable specific
+            /// <summary>
+            /// Type of the "this" pointer (only relevant for VTable hooks)
+            /// </summary>
+            public string VTableThisType;
+            #endregion
 
             public class Parameter
             {

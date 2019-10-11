@@ -21,4 +21,4 @@ hook:
 #
 plugin:
   name: HookD3D12
-  namespace: hook_d3d12
+  namespace: d3d12

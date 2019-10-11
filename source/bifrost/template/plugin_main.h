@@ -1,35 +1,47 @@
-//   ____  _  __               _
-//  |  _ \(_)/ _|             | |
-//  | |_) |_| |_ _ __ ___  ___| |_
-//  |  _ <| |  _| '__/ _ \/ __| __|
-//  | |_) | | | | | | (_) \__ \ |_
-//  |____/|_|_| |_|  \___/|___/\__|   2018 - 2019
+// The following macros can be defined to alter the implementation:
 //
+//		BIFROST_IMPLEMENTATION	    			Include the implementation, has to be defined exactly once per application/plugin.
+//		BIFROST_DEBUG						<int>			Set to 1 to enable debug mode (default: 0).
+//		BIFROST_NO_INCLUDE			<int>			Set to 1 to disable the include if the original headers (default: 0)
+//		BIFROST_CACHE_LINE			<int>			Size of a cache-line (default: 64).
 //
-// This file is distributed under the MIT License (MIT).
-// See LICENSE.txt for details.
 
 #pragma once
 
+#pragma region Configuration
+
+#if BIFROST_DEBUG
+#define BIFROST_ENABLE_DEBUG 1
+#else
+#define BIFROST_ENABLE_DEBUG 0
+#endif
+
+#ifndef BIFROST_CACHE_LINE
+#define BIFROST_CACHE_LINE 64
+#endif
+
+#if BIFROST_NO_INCLUDE
+#define BIFROST_ENABLE_INCLUDE 0
+#else
+#define BIFROST_ENABLE_INCLUDE 1
+#endif
+
+#pragma endregion
+
 #include <cstdint>
 
-#pragma region Namespace
+#if BIFROST_ENABLE_INCLUDE
+BIFROST_PLUGIN_INCLUDES
+#endif
 
 #define BIFROST_NAMESPACE_BEGIN namespace BIFROST_NAMESPACE {
 #define BIFROST_NAMESPACE_END }
-#define BIFROST_NAMESPACE_CONCAT_IMPL(x, y) x##y
-#define BIFROST_NAMESPACE_CONCAT(x, y) BIFROST_NAMESPACE_CONCAT_IMPL(x, y)
-#define BIFROST_NAMESPACE_UNQUALIFIED(x) BIFROST_NAMESPACE_CONCAT(::, BIFROST_NAMESPACE_CONCAT(BIFROST_NAMESPACE, BIFROST_NAMESPACE_CONCAT(::, x)))
-
-#pragma endregion
 
 #pragma region Interface
 
 struct bfp_PluginContext_t;
 
 BIFROST_NAMESPACE_BEGIN
-
-#define BIFROST_CACHE_LINE 64
 
 #ifdef _MSC_VER
 #define BIFROST_CACHE_ALIGN __declspec(align(BIFROST_CACHE_LINE))
@@ -60,10 +72,10 @@ BIFROST_CACHE_ALIGN class Plugin {
   //
   // IDENTIFIER
   //
-  enum class Identifer : std::uint64_t { __bifrost_first__ = 0, BIFROST_PLUGIN_IDENTIFIER NumIdentifier };
+  enum class Identifier : std::uint64_t { __bifrost_first__ = 0, BIFROST_PLUGIN_IDENTIFIER NumIdentifier };
 
-	/// Convert Identifer to string
-	static const char* ToString(Identifer identifer);
+  /// Convert Identifier to string
+  static const char* ToString(Identifier identifer);
 
   //
   // INTERFACE
@@ -107,23 +119,23 @@ BIFROST_CACHE_ALIGN class Plugin {
     /// Query if this hook is currently enabled
     inline bool IsEnabled() const noexcept { return m_enabled; }
 
-		/// Get the associated identifier
-		Identifer GetIdentifier() const noexcept { return m_identifier; }
+    /// Get the associated identifier
+    Identifier GetIdentifier() const noexcept { return m_identifier; }
 
    private:
     void* _GetTarget() const noexcept;
     void _SetTarget(void* target) noexcept;
     void _SetOverride(void* override) noexcept;
     void _SetOriginal(void* original) noexcept;
-	  void _SetEnabled(bool enabled) noexcept;
-    void _SetIdentifier(Identifer identifier) noexcept;
+    void _SetEnabled(bool enabled) noexcept;
+    void _SetIdentifier(Identifier identifier) noexcept;
 
-	private:
+   private:
     void* m_original = nullptr;
     void* m_target = nullptr;
     void* m_override = nullptr;
     bool m_enabled = false;
-    Identifer m_identifier = Identifer::__bifrost_first__;
+    Identifier m_identifier = Identifier::__bifrost_first__;
   };
   using AlignedHook = BIFROST_CACHE_ALIGN struct { Hook hook; };
 
@@ -136,21 +148,21 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// @param[in] identifier Identifier of the function to override
   /// @param[in] override   Function pointer to use for the override (type has to match!)
   /// @returns a reference to the hook object
-  Hook* CreateHook(Identifer identifier, void* override);
+  Hook* CreateHook(Identifier identifier, void* override);
   Hook* CreateHook(const char* identifier, void* override);
 
   /// Enables the registered hook given by `identifier`
   ///
-  /// Each enable or disable operation of a hook suspends and resumes all threads, use the array version `EnableHooks` for better increased performance.
+  /// Each enable or disable operation of a hook suspends and resumes all threads, use the array version `EnableHooks` for better performance.
   /// Calls `FatalError` if an error occurred.
   ///
   /// @param[in] identifier		Identifier of the function to enable
-  void EnableHook(Identifer identifier);
+  void EnableHook(Identifier identifier);
   void EnableHook(const char* identifier);
   void EnableHook(Hook* hook);
 
-  /// Like `EnableHook` but perform the operation on the array `identifier` of length `num`
-  void EnableHooks(Identifer* identifiers, std::uint32_t num);
+  /// Like `EnableHook` but perform the operation on the array `identifiers` of length `num`
+  void EnableHooks(Identifier* identifiers, std::uint32_t num);
   void EnableHooks(const char** identifiers, std::uint32_t num);
   void EnableHooks(Hook** hooks, std::uint32_t num);
 
@@ -159,16 +171,16 @@ BIFROST_CACHE_ALIGN class Plugin {
 
   /// Disables the registered hook given by `identifier`
   ///
-  /// Each enable or disable operation of a hook suspends and resumes all threads, use the array version `DisableHooks` for better increased performance.
+  /// Each enable or disable operation of a hook suspends and resumes all threads, use the array version `DisableHooks` for better performance.
   /// Calls `FatalError` if an error occurred.
   ///
   /// @param[in] identifier		Identifier of the function to enable
-  void DisableHook(Identifer identifier);
+  void DisableHook(Identifier identifier);
   void DisableHook(const char* identifier);
   void DisableHook(Hook* hook);
 
-  /// Like `DisableHook` but perform the operation on the array `identifier` of length `num`
-  void DisableHooks(Identifer* identifiers, std::uint32_t num);
+  /// Like `DisableHook` but perform the operation on the array `identifiers` of length `num`
+  void DisableHooks(Identifier* identifiers, std::uint32_t num);
   void DisableHooks(const char** identifiers, std::uint32_t num);
   void DisableHooks(Hook** hooks, std::uint32_t num);
 
@@ -180,8 +192,8 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// If the hook has already been set, the hook is first deactivated and a new Hook object is created.
   /// Calls `FatalError` if an error occurred.
   ///
-  /// @param[in] identifier Identifer of the function to override
-  void RemoveHook(Identifer identifier);
+  /// @param[in] identifier Identifier of the function to override
+  void RemoveHook(Identifier identifier);
   void RemoveHook(const char* identifier);
   void RemoveHook(Hook* hook);
 
@@ -193,22 +205,21 @@ BIFROST_CACHE_ALIGN class Plugin {
 
   /// Get an already created hook
   ///
-  /// @param[in] identifier  Identifer of the hook
+  /// @param[in] identifier  Identifier of the hook
   /// @returns a reference to the hook object
-  Hook* GetHook(Identifer identifier) noexcept;
+  Hook* GetHook(Identifier identifier) noexcept;
   Hook* GetHook(const char* identifier);
 
-	template <Identifer identifer>
+  template <Identifier identifer>
   inline constexpr Hook* GetHook() noexcept {
     return &s_hooks[(std::uint64_t)identifer].hook;
   }
 
-
   /// Check if there was a hook created for `identifier` (the hook may be disabled)
   ///
-  /// @param[in] identifier  Identifer of the hook
+  /// @param[in] identifier  Identifier of the hook
   /// @returns `true` if a hook has been set, false otherwise.
-  bool HasHook(Identifer identifier) noexcept;
+  bool HasHook(Identifier identifier) noexcept;
   bool HasHook(const char* identifier);
 
   /// Deactivate all hooks
@@ -242,7 +253,7 @@ BIFROST_CACHE_ALIGN class Plugin {
  private:
   static BIFROST_CACHE_ALIGN Plugin* s_instance;
   static BIFROST_CACHE_ALIGN const char* s_name;
-  static BIFROST_CACHE_ALIGN AlignedHook s_hooks[(std::uint64_t)Identifer::NumIdentifier];
+  static BIFROST_CACHE_ALIGN AlignedHook s_hooks[(std::uint64_t)Identifier::NumIdentifier];
 
   class PluginImpl;
   PluginImpl* m_impl;
@@ -460,7 +471,7 @@ inline std::wstring StringFormat(const wchar_t* fmt, Args&&... args) {
 }
 
 /// Convert string to wstring
-std::wstring StringToWString(const std::string& s) {
+static std::wstring StringToWString(const std::string& s) {
   int len;
   int slength = (int)s.length() + 1;
   len = ::MultiByteToWideChar(CP_ACP, 0, s.c_str(), slength, 0, 0);
@@ -633,8 +644,8 @@ static BifrostPluginApi& GetApi() {
 }
 
 /// Convert a string to the Identifier enum
-static Plugin::Identifer StringToIdentifier(const char* identifer) {
-  static BIFROST_CACHE_ALIGN std::unordered_map<std::string, Plugin::Identifer> map{BIFROST_PLUGIN_STRING_TO_IDENTIFIER};
+static Plugin::Identifier StringToIdentifier(const char* identifer) {
+  static BIFROST_CACHE_ALIGN std::unordered_map<std::string, Plugin::Identifier> map{BIFROST_PLUGIN_STRING_TO_IDENTIFIER};
 
   auto it = map.find(identifer);
   if (it != map.end()) Plugin::Get().FatalError(StringFormat("Identifier \"%s\" does not exist", identifer).c_str());
@@ -643,28 +654,26 @@ static Plugin::Identifer StringToIdentifier(const char* identifer) {
 }
 
 /// Convert an Identifier to string
-static const char* IdentifierToString(Plugin::Identifer identifier) {
-  static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
+static const char* IdentifierToString(Plugin::Identifier identifier) {
+  static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifier::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_STRING 
-			"<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_STRING "<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
 
 /// Get the original function name of an Identifier
-static const char* IdentiferToFunctionName(Plugin::Identifer identifier) {
-  static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
+static const char* IdentiferToFunctionName(Plugin::Identifier identifier) {
+  static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifier::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME 
-			"<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
 
-/// Convert an Identifer to the associated module
-static Module IdentifierToModule(Plugin::Identifer identifier) {
-  static constexpr BIFROST_CACHE_ALIGN std::array<Module, (std::uint64_t)Plugin::Identifer::NumIdentifier + 1> map{
+/// Convert an Identifier to the associated module
+static Module IdentifierToModule(Plugin::Identifier identifier) {
+  static constexpr BIFROST_CACHE_ALIGN std::array<Module, (std::uint64_t)Plugin::Identifier::NumIdentifier + 1> map{
       Module::__bifrost_first__,
       BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::__bifrost_first__,
   };
@@ -675,16 +684,15 @@ static Module IdentifierToModule(Plugin::Identifer identifier) {
 static const wchar_t* ModuleToString(Module module) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const wchar_t*, (std::uint32_t)Module::NumModule + 1> map{
       L"<invalid>",
-      BIFROST_PLUGIN_MODULE_TO_STRING
-			L"<invalid>",
+      BIFROST_PLUGIN_MODULE_TO_STRING L"<invalid>",
   };
   return map[(std::uint32_t)module];
 }
 
 template <class T>
 static void ForEachIdentifer(T&& func) {
-  for (std::uint64_t i = (std::uint64_t)Plugin::Identifer::__bifrost_first__ + 1; i < (std::uint64_t)Plugin::Identifer::NumIdentifier; ++i) {
-    func((Plugin::Identifer)i);
+  for (std::uint64_t i = (std::uint64_t)Plugin::Identifier::__bifrost_first__ + 1; i < (std::uint64_t)Plugin::Identifier::NumIdentifier; ++i) {
+    func((Plugin::Identifier)i);
   }
 }
 
@@ -692,9 +700,9 @@ static void ForEachIdentifer(T&& func) {
 
 BIFROST_CACHE_ALIGN Plugin* Plugin::s_instance = nullptr;
 
-BIFROST_CACHE_ALIGN Plugin::AlignedHook Plugin::s_hooks[(std::uint64_t)Plugin::Identifer::NumIdentifier];
+BIFROST_CACHE_ALIGN Plugin::AlignedHook Plugin::s_hooks[(std::uint64_t)Plugin::Identifier::NumIdentifier];
 
-const char* Plugin::ToString(Identifer identifer) { return IdentifierToString(identifer); }
+const char* Plugin::ToString(Identifier identifer) { return IdentifierToString(identifer); }
 
 BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
  public:
@@ -744,15 +752,13 @@ void Plugin::Hook::_SetOverride(void* override) noexcept { m_override = override
 
 void Plugin::Hook::_SetOriginal(void* original) noexcept { m_original = original; }
 
-void Plugin::Hook::_SetIdentifier(Identifer identifer) noexcept { m_identifier = identifer; }
+void Plugin::Hook::_SetIdentifier(Identifier identifer) noexcept { m_identifier = identifer; }
 
 void Plugin::Hook::_SetEnabled(bool enabled) noexcept { m_enabled = enabled; }
 
-Plugin::Hook* Plugin::CreateHook(const char* identifier, void* override) {
-  return CreateHook(StringToIdentifier(identifier), override);
-}
+Plugin::Hook* Plugin::CreateHook(const char* identifier, void* override) { return CreateHook(StringToIdentifier(identifier), override); }
 
-Plugin::Hook* Plugin::CreateHook(Plugin::Identifer identifier, void* override) {
+Plugin::Hook* Plugin::CreateHook(Plugin::Identifier identifier, void* override) {
   auto& api = GetApi();
   Hook* hook = GetHook(identifier);
 
@@ -778,19 +784,19 @@ Plugin::Hook* Plugin::CreateHook(Plugin::Identifer identifier, void* override) {
   return hook;
 }
 
-void Plugin::EnableHook(Identifer identifier) { EnableHook(GetHook(identifier)); }
+void Plugin::EnableHook(Identifier identifier) { EnableHook(GetHook(identifier)); }
 
 void Plugin::EnableHook(const char* identifier) { EnableHook(StringToIdentifier(identifier)); }
 
 void Plugin::EnableHook(Hook* hook) { EnableHooks(&hook, 1); }
 
 void Plugin::EnableHooks(const char** identifers, std::uint32_t num) {
-  Identifer* identiferEnums = (Identifer*)::_alloca(sizeof(Identifer) * num);
+  Identifier* identiferEnums = (Identifier*)::_alloca(sizeof(Identifier) * num);
   for (std::uint32_t i = 0; i < num; ++i) identiferEnums[i] = StringToIdentifier(identifers[i]);
   EnableHooks(identiferEnums, num);
 }
 
-void Plugin::EnableHooks(Identifer* identifers, std::uint32_t num) {
+void Plugin::EnableHooks(Identifier* identifers, std::uint32_t num) {
   Hook** hooks = (Hook**)::_alloca(sizeof(Hook*) * num);
   for (std::uint32_t i = 0; i < num; ++i) hooks[i] = GetHook(identifers[i]);
   EnableHooks(hooks, num);
@@ -822,32 +828,31 @@ void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
     if (!targets[i]) continue;
 
     hooks[i]->_SetEnabled(true);
-    //hooks[i]->_SetOriginal(targets[i]);
+    // hooks[i]->_SetOriginal(targets[i]);
   }
 }
 
 void Plugin::EnableAllHooks() {
-  std::uint32_t size = (std::uint32_t)Identifer::NumIdentifier - 1;
-  std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifer) * size);
-  std::iota(identifers, identifers + size, (std::uint64_t)Identifer::__bifrost_first__ + 1);
-  EnableHooks((Identifer*)identifers, size);
+  std::uint32_t size = (std::uint32_t)Identifier::NumIdentifier - 1;
+  std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifier) * size);
+  std::iota(identifers, identifers + size, (std::uint64_t)Identifier::__bifrost_first__ + 1);
+  EnableHooks((Identifier*)identifers, size);
 }
 
-
-void Plugin::DisableHook(Identifer identifier) { DisableHook(GetHook(identifier)); }
+void Plugin::DisableHook(Identifier identifier) { DisableHook(GetHook(identifier)); }
 
 void Plugin::DisableHook(const char* identifier) { DisableHook(StringToIdentifier(identifier)); }
 
 void Plugin::DisableHook(Hook* hook) { DisableHooks(&hook, 1); }
 
-void Plugin::DisableHooks(Identifer* identifers, std::uint32_t num) {
+void Plugin::DisableHooks(Identifier* identifers, std::uint32_t num) {
   Hook** hooks = (Hook**)::_alloca(sizeof(Hook*) * num);
   for (std::uint32_t i = 0; i < num; ++i) hooks[i] = GetHook(identifers[i]);
   DisableHooks(hooks, num);
 }
 
 void Plugin::DisableHooks(const char** identifers, std::uint32_t num) {
-  Identifer* identifierEnums = (Identifer*)::_alloca(sizeof(Identifer) * num);
+  Identifier* identifierEnums = (Identifier*)::_alloca(sizeof(Identifier) * num);
   for (std::uint32_t i = 0; i < num; ++i) identifierEnums[i] = StringToIdentifier(identifers[i]);
   DisableHooks(identifierEnums, num);
 }
@@ -869,18 +874,18 @@ void Plugin::DisableHooks(Hook** hooks, std::uint32_t num) {
     if (!targets[i]) continue;
 
     hooks[i]->_SetEnabled(false);
-    //hooks[i]->_SetOriginal(targets[i]);
+    // hooks[i]->_SetOriginal(targets[i]);
   }
 }
 
 void Plugin::DisableAllHooks() {
-  std::uint32_t size = (std::uint32_t)Identifer::NumIdentifier - 1;
-  std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifer) * size);
-  std::iota(identifers, identifers + size, (std::uint64_t)Identifer::__bifrost_first__ + 1);
-  DisableHooks((Identifer*)identifers, size);
+  std::uint32_t size = (std::uint32_t)Identifier::NumIdentifier - 1;
+  std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifier) * size);
+  std::iota(identifers, identifers + size, (std::uint64_t)Identifier::__bifrost_first__ + 1);
+  DisableHooks((Identifier*)identifers, size);
 }
 
-void Plugin::RemoveHook(Identifer identifier) { RemoveHook(GetHook(identifier)); }
+void Plugin::RemoveHook(Identifier identifier) { RemoveHook(GetHook(identifier)); }
 
 void Plugin::RemoveHook(const char* identifier) { RemoveHook(StringToIdentifier(identifier)); }
 
@@ -901,16 +906,16 @@ void Plugin::RemoveHook(Hook* hook) {
   hook->_SetOverride(nullptr);
 }
 
-Plugin::Hook* Plugin::GetHook(Plugin::Identifer identifier) noexcept { return &s_hooks[(std::uint64_t)identifier].hook; }
+Plugin::Hook* Plugin::GetHook(Plugin::Identifier identifier) noexcept { return &s_hooks[(std::uint64_t)identifier].hook; }
 
 Plugin::Hook* Plugin::GetHook(const char* identifier) { return GetHook(StringToIdentifier(identifier)); }
 
-bool Plugin::HasHook(Plugin::Identifer identifier) noexcept { return GetHook(identifier) != nullptr; }
+bool Plugin::HasHook(Plugin::Identifier identifier) noexcept { return GetHook(identifier) != nullptr; }
 
 bool Plugin::HasHook(const char* identifier) { return HasHook(StringToIdentifier(identifier)); }
 
 void Plugin::RemoveAllHooks() noexcept {
-  ForEachIdentifer([this](Identifer identifer) { RemoveHook(identifer); });
+  ForEachIdentifer([this](Identifier identifer) { RemoveHook(identifer); });
 }
 
 const char* Plugin::GetName() const { return s_name; }
@@ -921,7 +926,7 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
 
   if (m_impl->Init) throw std::runtime_error("Plugin already set up");
 
-#ifdef BIFROST_DEBUG
+#if BIFROST_ENABLE_DEBUG
   // Enable debug layer for symbols
   if (api.bfp_HookEnableDebug(ctx) != BFP_OK) {
     Log(LogLevel::Warn, api.bfp_PluginGetLastError(m_impl->Context));
@@ -929,10 +934,10 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
 #endif
 
   // Load all externally referenced libraries
-  for (std::uint32_t moduleIndex = (std::uint32_t)Identifer::__bifrost_first__ + 1; moduleIndex < (std::uint32_t)Module::NumModule; ++moduleIndex) {
+  for (std::uint32_t moduleIndex = (std::uint32_t)Identifier::__bifrost_first__ + 1; moduleIndex < (std::uint32_t)Module::NumModule; ++moduleIndex) {
     auto moduleString = ModuleToString((Module)moduleIndex);
 
-#ifdef BIFROST_DEBUG
+#ifdef BIFROST_ENABLE_DEBUG
     Log(LogLevel::Debug, StringFormat("Loading library \"%s\"", WStringToString(moduleString).c_str()).c_str());
 #endif
 
@@ -944,12 +949,12 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
   }
 
   // Load all referenced functions
-  for (std::uint64_t identiferIndex = (std::uint64_t)Identifer::__bifrost_first__ + 1; identiferIndex < (std::uint64_t)Identifer::NumIdentifier;
+  for (std::uint64_t identiferIndex = (std::uint64_t)Identifier::__bifrost_first__ + 1; identiferIndex < (std::uint64_t)Identifier::NumIdentifier;
        ++identiferIndex) {
-    Identifer identifer = (Identifer)identiferIndex;
+    Identifier identifer = (Identifier)identiferIndex;
     const char* functionName = IdentiferToFunctionName(identifer);
 
-#ifdef BIFROST_DEBUG
+#ifdef BIFROST_ENABLE_DEBUG
     Log(LogLevel::Debug, StringFormat("Loading function %s", functionName).c_str());
 #endif
 

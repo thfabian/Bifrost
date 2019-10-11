@@ -318,7 +318,7 @@ namespace Bifrost.Compiler.Input
                 Stage = OptionAction.StageEnum.ConfigurationBuilder,
                 HandleOption = (opt, cmd, ctx, cfg) =>
                 {
-                    var output = cmd.ParseResult.ValueForOption<string>("output");
+                    cfg.General.OutputPath = cmd.ParseResult.ValueForOption<string>("output");
                 }
             };
         }

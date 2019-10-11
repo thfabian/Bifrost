@@ -1,3 +1,14 @@
+//   ____  _  __               _
+//  |  _ \(_)/ _|             | |
+//  | |_) |_| |_ _ __ ___  ___| |_
+//  |  _ <| |  _| '__/ _ \/ __| __|
+//  | |_) | | | | | | (_) \__ \ |_
+//  |____/|_|_| |_|  \___/|___/\__|   2018 - 2019
+//
+//
+// This file is distributed under the MIT License (MIT).
+// See LICENSE.txt for details.
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -665,7 +676,7 @@ namespace Bifrost.Compiler.BIRProducer
 
                 var desc = hookDesc.Desc;
 
-                hook.Identifier = string.IsNullOrEmpty(desc.Identifier) ? traversalData.GetQualifiedType(decl).Replace("::", "_") : desc.Identifier;
+                hook.Identifier = IO.MakeValidIdentifier(string.IsNullOrEmpty(desc.Identifier) ? traversalData.GetQualifiedType(decl).Replace("::", "_") : desc.Identifier);
                 hook.ReturnType = decl.ReturnType.ToString();
                 hook.Module = desc.Module;
                 hook.Inputs = desc.Input;
@@ -673,12 +684,13 @@ namespace Bifrost.Compiler.BIRProducer
                 if (decl.Handle.Kind == CXCursorKind.CXCursor_CXXMethod)
                 {
                     var cxxMethodDecl = (CXXMethodDecl)decl;
-                    hook.ThisType = traversalData.GetClasses();
-                    hook.HookType = cxxMethodDecl.IsVirtual ? BIR.BIR.HookTypeEnum.VTable : BIR.BIR.HookTypeEnum.Function;
+                    hook.VTableThisType = traversalData.GetClasses();
+                    hook.HookType = cxxMethodDecl.IsVirtual ? BIR.BIR.HookTypeEnum.VTable : BIR.BIR.HookTypeEnum.CFunction;
                 }
                 else
                 {
-                    hook.HookType = BIR.BIR.HookTypeEnum.Function;
+                    hook.HookType = BIR.BIR.HookTypeEnum.CFunction;
+                    hook.CFunctionName = traversalData.GetQualifiedType(decl);
                     if (string.IsNullOrEmpty(hook.Module))
                     {
                         throw new Exception($"'hook.descriptions.[{m_config.Hook.Descriptions.IndexOf(desc)}].module' is required to load function \"{desc.Name}\"");

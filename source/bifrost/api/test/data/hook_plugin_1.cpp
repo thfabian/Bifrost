@@ -12,7 +12,7 @@
 #define BIFROST_NAMESPACE hook_plugin_1
 #include "bifrost/api/test/data/plugin_def.h"
 
-#define BIFROST_DEBUG
+#define BIFROST_DEBUG 1
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
@@ -61,22 +61,22 @@ class HookTestPlugin1 final : public hook_plugin_1::Plugin {
   virtual void SetUp() override {
     switch (GetFunction()) {
       case Function::bifrost_add__original_1:
-        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__original_1));
+        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__original_1));
         break;
       case Function::bifrost_add__original_2:
-        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__original_2));
+        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__original_2));
         break;
       case Function::bifrost_add__original_3:
-        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__original_3));
+        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__original_3));
         break;
       case Function::bifrost_add__modify_1:
-        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__modify_1));
+        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__modify_1));
         break;
       case Function::bifrost_add__modify_2:
-        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__modify_2));
+        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__modify_2));
         break;
       case Function::bifrost_add__modify_3:
-        EnableHook(CreateHook(Identifer::bifrost_add, bifrost_add__modify_3));
+        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__modify_3));
         break;
       default:
         break;

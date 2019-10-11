@@ -1,4 +1,15 @@
-﻿using System;
+﻿//   ____  _  __               _
+//  |  _ \(_)/ _|             | |
+//  | |_) |_| |_ _ __ ___  ___| |_
+//  |  _ <| |  _| '__/ _ \/ __| __|
+//  | |_) | | | | | | (_) \__ \ |_
+//  |____/|_|_| |_|  \___/|___/\__|   2018 - 2019
+//
+//
+// This file is distributed under the MIT License (MIT).
+// See LICENSE.txt for details.
+
+using System;
 using System.Collections.Generic;
 using System.Text;
 using System.IO;
@@ -224,7 +235,7 @@ namespace Bifrost.Compiler.Core
             return GetFiles(path, "*");
         }
 
-        // <summary>
+        /// <summary>
         /// Make <paramref name="path"/> relative to <paramref name="baseFolder"/>
         /// </summary>
         public string MakeRelative(string baseFolder, string path)
@@ -235,6 +246,45 @@ namespace Bifrost.Compiler.Core
                 baseFolder += Path.DirectorySeparatorChar;
             }
             return Uri.UnescapeDataString(new Uri(baseFolder).MakeRelativeUri(new Uri(path)).ToString().Replace('/', Path.DirectorySeparatorChar));
+        }
+
+        /// <summary>
+        /// Make an absolute path
+        /// </summary>
+        public string MakeAbsolute(string path)
+        {
+            return Path.GetFullPath((new Uri(path)).LocalPath);
+        }
+
+
+        /// <summary>
+        /// Make sure the given string is a valid C identifier, replaces invalid characters with <paramref name="replacement"/>
+        /// </summary>
+        public string MakeValidIdentifier(string identifier, char replacement = '_')
+        {
+            var validIdentifier = new StringBuilder();
+
+            if (!((identifier[0] >= 'a' && identifier[0] <= 'z') || (identifier[0] >= 'A' && identifier[0] <= 'Z') || identifier[0] == '_'))
+            {
+                validIdentifier.Append(replacement);
+            }
+            else
+            {
+                validIdentifier.Append(identifier[0]);
+            }
+
+            for (int i = 1; i < identifier.Length; i++)
+            {
+                if (!((identifier[i] >= 'a' && identifier[i] <= 'z') || (identifier[i] >= 'A' && identifier[i] <= 'Z') || (identifier[i] >= '0' && identifier[i] <= '9') || identifier[i] == '_'))
+                {
+                    validIdentifier.Append(replacement);
+                }
+                else
+                {
+                    validIdentifier.Append(identifier[i]);
+                }
+            }
+            return validIdentifier.ToString();
         }
 
         /// <summary>
