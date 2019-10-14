@@ -13,6 +13,7 @@ namespace Bifrost.Compiler.Test.Core.Test
         [InlineData("foo bar", new[] { "foo", " ", "bar" })]
         [InlineData("foo bar ", new[] { "foo", " ", "bar", " " })]
         [InlineData("foo\nbar", new[] { "foo", "\n", "bar" })]
+        [InlineData("foo }\nbar", new[] { "foo", " }\n", "bar" })]
 
         [InlineData("foo+bar", new[] { "foo", "+", "bar" })]
         [InlineData("foo +bar", new[] { "foo", " +", "bar" })]
@@ -44,11 +45,10 @@ namespace Bifrost.Compiler.Test.Core.Test
 
         // Single expansion
         [InlineData("#define FOO foo\nFOO", "foo", new string[] { "FOO" })]
-        [InlineData("#define FOO foo \nFOO", "foo", new string[] { "FOO" })]
+        [InlineData("#define FOO foo \nFOO", "foo ", new string[] { "FOO" })]
         [InlineData("#define FOO foo\n FOO ", " foo ", new string[] { "FOO" })]
         [InlineData("#define FOO foo\nbarFOO\nFOO", "barFOO\nfoo", new string[] { "FOO" })]
         [InlineData("#define FOO foo\n FOOs\nFOO", " FOOs\nfoo", new string[] { "FOO" })]
-
 
         [InlineData("#define FOO bar\\\nfoo\nFOO", "bar\nfoo", new string[] { "FOO" })]
         [InlineData("#define FOO bar \\\n foo\nFOO", "bar \n foo", new string[] { "FOO" })]
@@ -61,8 +61,8 @@ namespace Bifrost.Compiler.Test.Core.Test
         [InlineData("#define FOO foo\nFOO+FOO", "foo+foo", new string[] { "FOO" })]
         [InlineData("#define FOO foo\nbar(FOO)", "bar(foo)", new string[] { "FOO" })]
         [InlineData("#define FOO foo\nFOO;", "foo;", new string[] { "FOO" })]
-        //[InlineData("#define FOO foo {\nFOO", "foo {", new string[] { "FOO" })]
-        //[InlineData("#define FOO foo {\nFOO}", "foo {}", new string[] { "FOO" })]
+        [InlineData("#define FOO foo {\nFOO", "foo {", new string[] { "FOO" })]
+        [InlineData("#define FOO foo {\nFOO}", "foo {}", new string[] { "FOO" })]
 
         public void ExpandMacros(string input, string expandedInput, IEnumerable<string> macrosToParse, IEnumerable<string> predefinedMacros = null)
         {

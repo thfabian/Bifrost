@@ -47,10 +47,11 @@ namespace Bifrost.Compiler.Core
                     {
                         n += 2; // Skip macro name and the following whitespace
                         var value = "";
-                        string leftOverToken = "";
                         bool skipNextNewLine = false;
 
-                        while (true)
+                        // We consume as many tokens as the <value> until we find a "\n" character - if we have a "\" character we skip the next newline
+                        bool endOfMacroValue = false;
+                        while (!endOfMacroValue)
                         {
                             var curToken = tokenStream.Peak(n++);
                             if (curToken == null)
@@ -58,12 +59,14 @@ namespace Bifrost.Compiler.Core
                                 break;
                             }
 
-                            bool endOfMacroValue = false;
                             var backSlashIndices = new HashSet<int>();
 
-                            for (int i = 0; i < curToken.Length; ++i)
+                            int i = 0;
+                            for (; !endOfMacroValue && i < curToken.Length; ++i)
                             {
                                 char c = curToken[i];
+
+                                // "\" indicates skipping the next newline - we record the position to be able to remove them later on.
                                 if (c == '\\')
                                 {
                                     skipNextNewLine = true;
@@ -77,33 +80,39 @@ namespace Bifrost.Compiler.Core
                                     }
                                     else
                                     {
-                                        leftOverToken = curToken.Substring(i + 1);
+                                        // We found the end of <value>. Our tokenizer is greedy and puts everything that is not a character in a single token, hence we need
+                                        // to append everything up to the newline to the <value> and keep everything after the newline.
                                         endOfMacroValue = true;
+                                        break;
                                     }
                                 }
+                            }
+
+                            // Add all the characters up to the newline
+                            var leftSubTokenBuilder = new StringBuilder();
+                            for (int j = 0; j < i; ++j)
+                            {
+                                if (!backSlashIndices.Contains(j))
+                                {
+                                    leftSubTokenBuilder.Append(curToken[j]);
+                                }
+                            }
+                            var leftSubToken = leftSubTokenBuilder.ToString();
+
+                            if (!string.IsNullOrEmpty(leftSubToken))
+                            {
+                                value += leftSubToken;
                             }
 
                             if (endOfMacroValue)
                             {
-                                break;
-                            }
-                            else
-                            {
-                                var newToken = new StringBuilder();
-                                for(int i = 0; i < curToken.Length; ++i)
+                                // Verbatimly add everything after the newline
+                                var rightSubToken = i + 1 > curToken.Length ? null : curToken.Substring(i + 1);
+                                if (!string.IsNullOrEmpty(rightSubToken))
                                 {
-                                    if(!backSlashIndices.Contains(i))
-                                    {
-                                        newToken.Append(curToken[i]);
-                                    }
+                                    expandedTokens.Add(rightSubToken);
                                 }
-                                value += newToken.ToString();
                             }
-                        }
-
-                        if (!string.IsNullOrEmpty(leftOverToken))
-                        {
-                            expandedTokens.Add(leftOverToken);
                         }
 
                         tokenStream.AddMacro(name, value);
