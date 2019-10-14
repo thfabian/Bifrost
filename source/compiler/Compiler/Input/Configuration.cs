@@ -63,7 +63,7 @@ namespace Bifrost.Compiler.Input
             [Comment("Directories added to include search path.")]
             public List<string> Includes { get; set; } = new List<string>();
 
-            [Comment("Used the following macros during compilation.")]
+            [Comment("Use the following macros during compilation.")]
             public Dictionary<string, string> Defines { get; set; } = new Dictionary<string, string>();
 
             [Comment("Path to the Win SDK include directories (e.g. C:/Program Files (x86)/Windows Kits/10/Include/10.0.18362.0).\n" +
@@ -83,13 +83,16 @@ namespace Bifrost.Compiler.Input
 
         public class HookT
         {
+            [Comment("Ignore the following descriptions (this can be useful to define abstract YAML anchors).")]
+            public List<string> Skip { get; set; } = new List<string>();
+
             public class DescriptionT
             {
-                [Comment("Name of the function or class method to hook. Note that the full qualified name needs to be provided (including namespaces).\n" +
+                [Comment("Name of the function or class method to hook - defaults to the name of this node.\n"+
+                         "Note that the full qualified name needs to be provided (including namespaces).\n" +
                          "For example, 'ID3D12GraphicsCommandList::Close' where 'ID3D12GraphicsCommandList' is the class and 'Close' the method to hook.\n" +
                          "You may use wild cards (*) to generate multiple hooks at once. For example, 'ID3D12GraphicsCommandList::*' will hook all methods \n" +
-                         "of the class 'ID3D12GraphicsCommandList'. If the evaluation of the name results in multiple hooks, the field 'identifier' is ignored.",
-                        ImportanceEnum.Required)]
+                         "of the class 'ID3D12GraphicsCommandList'. If the evaluation of the name results in multiple hooks, the field 'identifier' is ignored.")]
                 public string Name { get; set; } = "";
 
                 [Comment("The type of hook.", ImportanceEnum.Required)]
@@ -107,7 +110,7 @@ namespace Bifrost.Compiler.Input
             }
 
             [Comment("Individual descriptions.")]
-            public List<DescriptionT> Descriptions { get; set; } = new List<DescriptionT>();
+            public Dictionary<string, DescriptionT> Descriptions { get; set; } = new Dictionary<string, DescriptionT>();
         }
 
         [Comment("Hook description.")]

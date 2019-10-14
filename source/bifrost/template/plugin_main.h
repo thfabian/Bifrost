@@ -37,7 +37,7 @@ BIFROST_PLUGIN_INCLUDES
 #define BIFROST_NAMESPACE_BEGIN namespace BIFROST_NAMESPACE {
 #define BIFROST_NAMESPACE_END }
 
-#pragma region Interface
+#pragma region Plugin Interface
 
 struct bfp_PluginContext_t;
 

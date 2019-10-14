@@ -97,7 +97,7 @@ namespace Bifrost.Compiler.BIRProducer
 
                 // Create the TU source file
                 var sourceFiles = new HashSet<string>();
-                config.Hook.Descriptions.ForEach(hook => hook.Input.ForEach(source => sourceFiles.Add(source)));
+                config.Hook.Descriptions.Values.ToList().ForEach(hook => hook.Input.ForEach(source => sourceFiles.Add(source)));
 
                 var tuFilename = Path.GetFileNameWithoutExtension(string.IsNullOrEmpty(config.Plugin.Name) ? Path.GetTempFileName() : config.Plugin.Name) + ".cpp";
                 Logger.Debug($"Clang TU filename: {tuFilename}");
@@ -489,9 +489,15 @@ namespace Bifrost.Compiler.BIRProducer
                 /// </summary>
                 public readonly Configuration.HookT.DescriptionT Desc;
 
-                public HookDesc(Configuration.HookT.DescriptionT desc)
+                /// <summary>
+                /// Internal key into the descriptions map
+                /// </summary>
+                public readonly string Key;
+
+                public HookDesc(KeyValuePair<string, Configuration.HookT.DescriptionT> kvp)
                 {
-                    Desc = desc;
+                    Key = kvp.Key;
+                    Desc = kvp.Value;
                 }
 
                 /// <summary>
@@ -513,13 +519,13 @@ namespace Bifrost.Compiler.BIRProducer
             public ClangASTVisitor(CompilerContext ctx, Configuration config) : base(ctx)
             {
                 m_config = config;
-                foreach (var desc in m_config.Hook.Descriptions)
+                foreach (var kvp in m_config.Hook.Descriptions)
                 {
-                    m_hookDescs.Add(new HookDesc(desc)
+                    m_hookDescs.Add(new HookDesc(kvp)
                     {
-                        Matcher = new StringMatcher(desc.Name),
+                        Matcher = new StringMatcher(kvp.Value.Name),
                     });
-                    desc.Input.ForEach(input => m_relevantInputFilenames.Add(input));
+                    kvp.Value.Input.ForEach(input => m_relevantInputFilenames.Add(input));
                 }
             }
 
@@ -693,7 +699,7 @@ namespace Bifrost.Compiler.BIRProducer
                     hook.CFunctionName = traversalData.GetQualifiedType(decl);
                     if (string.IsNullOrEmpty(hook.Module))
                     {
-                        throw new Exception($"'hook.descriptions.[{m_config.Hook.Descriptions.IndexOf(desc)}].module' is required to load function \"{desc.Name}\"");
+                        throw new Exception($"'hook.descriptions.[{hookDesc.Key}].module' is required to load function \"{desc.Name}\"");
                     }
                 }
 

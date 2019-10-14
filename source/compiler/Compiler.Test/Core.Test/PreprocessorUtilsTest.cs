@@ -63,6 +63,8 @@ namespace Bifrost.Compiler.Test.Core.Test
         [InlineData("#define FOO foo\nFOO;", "foo;", new string[] { "FOO" })]
         [InlineData("#define FOO foo {\nFOO", "foo {", new string[] { "FOO" })]
         [InlineData("#define FOO foo {\nFOO}", "foo {}", new string[] { "FOO" })]
+        [InlineData("#define FOO }\nFOO", "}", new string[] { "FOO" })]
+        [InlineData("#define FOO {}\nFOO", "{}", new string[] { "FOO" })]
 
         public void ExpandMacros(string input, string expandedInput, IEnumerable<string> macrosToParse, IEnumerable<string> predefinedMacros = null)
         {
