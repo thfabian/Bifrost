@@ -320,6 +320,9 @@ BIFROST_NAMESPACE_END
 // Implementation of bf_original
 #define _bf_original _bf_concat(_bf_func_, _bf_concat(_bf_namespace, bf_id))
 
+// Implementation of bf_this
+#define _bf_this _bf_concat(_bf_this_, _bf_concat(_bf_namespace, bf_id))
+
 // Implementation of bf_args
 #define _bf_args _bf_concat(_bf_args_, _bf_concat(_bf_namespace, bf_id))
 
@@ -328,6 +331,9 @@ BIFROST_NAMESPACE_END
 
 /// bf_original
 #define bf_original(...) _bf_original(__VA_ARGS__)
+
+/// bf_original
+#define bf_this _bf_this
 
 /// bf_args
 #define bf_args _bf_args

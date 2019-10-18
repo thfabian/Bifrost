@@ -17,14 +17,26 @@
 #define BIFROST_HOOK_DLL_API __declspec(dllimport)
 #endif
 
-#if __cplusplus
+//
+// C-Function
+//
 extern "C" {
-#endif
-
-/// Add `arg1` to `arg2` and return the result
 BIFROST_HOOK_DLL_API int bifrost_add(int arg1, int arg2);
+}
 
+//
+// Class method
+//
+namespace bifrost {
 
-#if __cplusplus
-}  // extern "C"
-#endif
+class BIFROST_HOOK_DLL_API Adder {
+ public:
+  int add(int arg1, int arg2);
+};
+
+}  // namespace bifrost
+
+//
+// VTable hook
+//
+namespace bifrost {}

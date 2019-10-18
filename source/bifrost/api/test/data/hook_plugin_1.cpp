@@ -16,20 +16,32 @@
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
+// bifrost_add
 #define _bf_func_decl_ret_hook_plugin_1__bifrost_add bifrost_add_func_decl_ret
 #define _bf_func_decl_args_hook_plugin_1__bifrost_add bifrost_add_func_decl_args
 #define _bf_func_hook_plugin_1__bifrost_add bifrost_add_func
 
-#define _bf_func_hook_plugin_1__bifrost_add bifrost_add_func
 #define _bf_args_hook_plugin_1__bifrost_add bifrost_add_args
-
 #define _bf_arg_1_hook_plugin_1__bifrost_add bifrost_add_arg_1
 #define _bf_arg_2_hook_plugin_1__bifrost_add bifrost_add_arg_2
+
+// bifrost::Adder::add
+#define _bf_func_decl_ret_hook_plugin_1__bifrost_Adder_add bifrost_Adder_add_func_decl_ret
+#define _bf_func_decl_args_hook_plugin_1__bifrost_Adder_add bifrost_Adder_add_func_decl_args
+#define _bf_func_hook_plugin_1__bifrost_Adder_add bifrost_Adder_add_func
+
+#define _bf_this_hook_plugin_1__bifrost_Adder_add bifrost_Adder_add_this
+#define _bf_args_hook_plugin_1__bifrost_Adder_add bifrost_Adder_add_args
+#define _bf_arg_1_hook_plugin_1__bifrost_Adder_add bifrost_Adder_add_arg_1
+#define _bf_arg_2_hook_plugin_1__bifrost_Adder_add bifrost_Adder_add_arg_2
 
 #include "bifrost/api/test/data/shared.h"
 
 using namespace bifrost;
 
+//
+// bifrost_add
+//
 #define bf_id bifrost_add
 
 /// Call original function
@@ -45,6 +57,18 @@ bf_override(bifrost_add__modify_2) { return bf_original(bf_arg(1), 5); }
 
 /// Modify both arguments
 bf_override(bifrost_add__modify_3) { return bf_original(5, 5); }
+
+#undef bf_id
+
+//
+// bifrost_Adder_add
+//
+#define bf_id bifrost_Adder_add
+
+/// Call original function
+bf_override(bifrost_Adder_add__original_1) { return bf_original(bf_this, bf_args); }
+
+#undef bf_id
 
 class HookTestPlugin1 final : public hook_plugin_1::Plugin {
  public:
