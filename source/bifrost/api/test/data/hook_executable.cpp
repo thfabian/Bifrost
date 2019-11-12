@@ -9,6 +9,11 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+//
+// This executable is called by the hook test in source/bifrost/api/test/hook_test.cpp - it's main purpose is to call the hook function and write it's result to
+// the log file for validation.
+//
+
 #include <Windows.h>
 #include <cstdlib>
 

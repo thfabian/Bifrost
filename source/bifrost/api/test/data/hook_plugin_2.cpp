@@ -12,9 +12,15 @@
 #define BIFROST_NAMESPACE hook_plugin_2
 #include "bifrost/api/test/data/plugin_def.h"
 
+#define BIFROST_DEBUG 1
 #define BIFROST_IMPLEMENTATION
 #include "bifrost/template/plugin_main.h"
 
+//
+// DSL definition
+//
+
+// bifrost_add
 #define _bf_func_decl_ret_hook_plugin_2__bifrost_add bifrost_add_func_decl_ret
 #define _bf_func_decl_args_hook_plugin_2__bifrost_add bifrost_add_func_decl_args
 #define _bf_func_hook_plugin_2__bifrost_add bifrost_add_func

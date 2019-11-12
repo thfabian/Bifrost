@@ -429,6 +429,9 @@ enum class Module : std::uint32_t {
   BIFROST_PLUGIN_MODULE NumModule,
 };
 
+/// Hooking types
+enum class HookType : std::uint32_t { __bifrost_first__ = 0, CFunction, VTable };
+
 namespace {
 
 /// Function used to determine the name of this DLL
@@ -663,7 +666,8 @@ static Plugin::Identifier StringToIdentifier(const char* identifer) {
 static const char* IdentifierToString(Plugin::Identifier identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifier::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_STRING "<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_STRING 
+			"<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
@@ -672,7 +676,8 @@ static const char* IdentifierToString(Plugin::Identifier identifier) {
 static const char* IdentiferToFunctionName(Plugin::Identifier identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifier::NumIdentifier + 1> map{
       "<invalid>",
-      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "<invalid>",
+      BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME 
+			"<invalid>",
   };
   return map[(std::uint64_t)identifier];
 }
@@ -681,7 +686,18 @@ static const char* IdentiferToFunctionName(Plugin::Identifier identifier) {
 static Module IdentifierToModule(Plugin::Identifier identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<Module, (std::uint64_t)Plugin::Identifier::NumIdentifier + 1> map{
       Module::__bifrost_first__,
-      BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::__bifrost_first__,
+      BIFROST_PLUGIN_IDENTIFIER_TO_MODULE 
+			Module::__bifrost_first__,
+  };
+  return map[(std::uint64_t)identifier];
+}
+
+/// Convert an Identifier to the associated module
+static HookType IdentifierToHookType(Plugin::Identifier identifier) {
+  static constexpr BIFROST_CACHE_ALIGN std::array<HookType, (std::uint64_t)Plugin::Identifier::NumIdentifier + 1> map{
+      HookType::__bifrost_first__,
+      BIFROST_PLUGIN_IDENTIFIER_TO_HOOK_TYPE 
+			HookType::__bifrost_first__,
   };
   return map[(std::uint64_t)identifier];
 }
@@ -690,7 +706,8 @@ static Module IdentifierToModule(Plugin::Identifier identifier) {
 static const wchar_t* ModuleToString(Module module) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const wchar_t*, (std::uint32_t)Module::NumModule + 1> map{
       L"<invalid>",
-      BIFROST_PLUGIN_MODULE_TO_STRING L"<invalid>",
+      BIFROST_PLUGIN_MODULE_TO_STRING 
+			L"<invalid>",
   };
   return map[(std::uint32_t)module];
 }
@@ -954,33 +971,34 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
     m_impl->Modules[moduleIndex] = hModule;
   }
 
-  // Load all referenced functions
+  // Load all referenced C functions
   for (std::uint64_t identiferIndex = (std::uint64_t)Identifier::__bifrost_first__ + 1; identiferIndex < (std::uint64_t)Identifier::NumIdentifier;
        ++identiferIndex) {
     Identifier identifer = (Identifier)identiferIndex;
-    const char* functionName = IdentiferToFunctionName(identifer);
+    if (IdentifierToHookType(identifer) == HookType::CFunction) {
+      const char* functionName = IdentiferToFunctionName(identifer);
 
 #ifdef BIFROST_ENABLE_DEBUG
-    Log(LogLevel::Debug, StringFormat("Loading function %s", functionName).c_str());
+      Log(LogLevel::Debug, StringFormat("Loading function %s", functionName).c_str());
 #endif
 
-    // Check if the associated module has been loaded
-    Module module = IdentifierToModule(identifer);
-    HMODULE hModule = m_impl->Modules[(std::uint32_t)module];
-    if (hModule == nullptr) {
-      Log(LogLevel::Warn, StringFormat("Skipping loading of function %s: associated library \"%s\" was not successfully loaded", functionName,
-                                       WStringToString(ModuleToString(module)).c_str())
-                              .c_str());
-      continue;
-    }
+      // Check if the associated module has been loaded
+      Module module = IdentifierToModule(identifer);
+      HMODULE hModule = m_impl->Modules[(std::uint32_t)module];
+      if (hModule == nullptr) {
+        Log(LogLevel::Warn, StringFormat("Skipping loading of function %s: associated library \"%s\" was not successfully loaded", functionName,
+                                         WStringToString(ModuleToString(module)).c_str())
+                                .c_str());
+        continue;
+      }
 
-    // Load the target function
-    Hook& hook = s_hooks[identiferIndex].hook;
-    hook._SetTarget(::GetProcAddress(hModule, functionName));
-    hook._SetOriginal(hook._GetTarget());
-
-    if (hook._GetTarget() == nullptr) {
-      Log(LogLevel::Warn, StringFormat("Failed to load function %s: %s", functionName, GetLastWin32Error().c_str()).c_str());
+      // Load the target function
+      Hook& hook = s_hooks[identiferIndex].hook;
+      hook._SetTarget(::GetProcAddress(hModule, functionName));
+      hook._SetOriginal(hook._GetTarget());
+      if (hook._GetTarget() == nullptr) {
+        Log(LogLevel::Warn, StringFormat("Failed to load function %s: %s", functionName, GetLastWin32Error().c_str()).c_str());
+      }
     }
   }
 

@@ -15,6 +15,7 @@
 #define BIFROST_PLUGIN_STRING_TO_IDENTIFIER {"saxpy", Plugin::Identifier::saxpy},
 #define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "saxpy",
 #define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "saxpy",
+#define BIFROST_PLUGIN_IDENTIFIER_TO_HOOK_TYPE HookType::CFunction,
 
 #define BIFROST_PLUGIN_MODULE example_saxpy_dll,
 #define BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::example_saxpy_dll,

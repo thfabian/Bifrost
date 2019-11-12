@@ -76,10 +76,10 @@ class HookTestPlugin1 final : public hook_plugin_1::Plugin {
     std::string args(GetArguments());
     return args.substr(0, args.find(";"));
   }
-  int GetFunction() {
+  Function GetFunction() {
     std::string args(GetArguments());
     auto s = std::atoi(args.substr(args.find(";") + 1).c_str());
-    return s;
+    return (Function)s;
   }
 
   virtual void SetUp() override {

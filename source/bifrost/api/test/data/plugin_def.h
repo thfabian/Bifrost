@@ -9,11 +9,16 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+//
+// This file contains some shorthands for defining the hook DLS by hand which would normally be done by the bifrost compiler.
+//
+
 #define BIFROST_PLUGIN_IDENTIFIER bifrost_add, bifrost_Adder_add,
 #define BIFROST_PLUGIN_STRING_TO_IDENTIFIER \
   {"bifrost_add", Plugin::Identifier::bifrost_add}, { "bifrost_Adder_add", Plugin::Identifier::bifrost_Adder_add }
 #define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "bifrost_add", "bifrost_Adder_add",
 #define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "bifrost_add", "",
+#define BIFROST_PLUGIN_IDENTIFIER_TO_HOOK_TYPE HookType::CFunction, HookType::VTable,
 
 #define BIFROST_PLUGIN_MODULE test_bifrost_api_hook_dll_dll,
 #define BIFROST_PLUGIN_MODULE_TO_STRING L"test-bifrost-api-hook-dll.dll",
@@ -39,8 +44,8 @@
 // bifrost::Adder::add
 #define bifrost_Adder_add_func_decl_ret int
 #define bifrost_Adder_add_func_decl_args bifrost::Adder *__this__, int arg1, int arg2
-#define bifrost_Adder_add_func \
-  ((int (*)(bifrost::Adder*, int, int))BIFROST_NAMESPACE## ::Plugin::Get()     \
+#define bifrost_Adder_add_func                                                 \
+  ((int (*)(bifrost::Adder *, int, int))BIFROST_NAMESPACE## ::Plugin::Get()    \
        .GetHook<BIFROST_NAMESPACE## ::Plugin::Identifier::bifrost_Adder_add>() \
        ->GetOriginal())
 

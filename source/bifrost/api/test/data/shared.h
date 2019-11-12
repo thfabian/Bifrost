@@ -9,6 +9,10 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
+//
+// This file contains shared functions between the executable, dll and test plugins.
+//
+
 #pragma once
 
 #include <cstdlib>
@@ -34,6 +38,7 @@ inline void WriteToFileImpl(ErrorFuncT&& error, std::string file, std::string_vi
 
 }  // namespace internal
 
+/// Write `msg` to `file`
 template <class PluginT>
 inline void WriteToFile(std::string file, std::string_view msg, PluginT* plugin) {
   internal::WriteToFileImpl([&plugin](std::string str) { return plugin->FatalError(str.c_str()); }, file, msg);
