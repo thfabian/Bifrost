@@ -56,7 +56,7 @@
 
 namespace bifrost {
 
-enum class Function : int {
+enum class Mode : int {
   none = 0,
   bifrost_add__original_1,
   bifrost_add__original_2,
@@ -64,6 +64,7 @@ enum class Function : int {
   bifrost_add__modify_1,
   bifrost_add__modify_2,
   bifrost_add__modify_3,
+  bifrost_add__replace_1,
 
   bifrost_Adder_add__original_1,
 };

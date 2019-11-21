@@ -76,31 +76,35 @@ class HookTestPlugin1 final : public hook_plugin_1::Plugin {
     std::string args(GetArguments());
     return args.substr(0, args.find(";"));
   }
-  Function GetFunction() {
+  Mode GetFunction() {
     std::string args(GetArguments());
     auto s = std::atoi(args.substr(args.find(";") + 1).c_str());
-    return (Function)s;
+    return (Mode)s;
   }
 
   virtual void SetUp() override {
     switch (GetFunction()) {
-      case Function::bifrost_add__original_1:
-        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__original_1));
+      case Mode::bifrost_add__original_1:
+        SetHook(Identifier::bifrost_add, bifrost_add__original_1);
         break;
-      case Function::bifrost_add__original_2:
-        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__original_2));
+      case Mode::bifrost_add__original_2:
+				SetHook(Identifier::bifrost_add, bifrost_add__original_2);
         break;
-      case Function::bifrost_add__original_3:
-        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__original_3));
+      case Mode::bifrost_add__original_3:
+				SetHook(Identifier::bifrost_add, bifrost_add__original_3);
         break;
-      case Function::bifrost_add__modify_1:
-        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__modify_1));
+      case Mode::bifrost_add__modify_1:
+				SetHook(Identifier::bifrost_add, bifrost_add__modify_1);
         break;
-      case Function::bifrost_add__modify_2:
-        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__modify_2));
+      case Mode::bifrost_add__modify_2:
+				SetHook(Identifier::bifrost_add, bifrost_add__modify_2);
         break;
-      case Function::bifrost_add__modify_3:
-        EnableHook(CreateHook(Identifier::bifrost_add, bifrost_add__modify_3));
+      case Mode::bifrost_add__modify_3:
+				SetHook(Identifier::bifrost_add, bifrost_add__modify_3);
+        break;
+      case Mode::bifrost_add__replace_1:
+        SetHook(Identifier::bifrost_add, bifrost_add__modify_3);
+        SetHook(Identifier::bifrost_add, bifrost_add__original_1);
         break;
       default:
         break;

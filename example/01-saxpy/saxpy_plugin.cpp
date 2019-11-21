@@ -82,8 +82,8 @@ bf_override(my_saxpy3) {
 class MySaxpyPlugin final : public ::saxpy::Plugin {
  public:
   virtual void SetUp() override {
-    CreateHook(Identifier::saxpy, my_saxpy1);
-    CreateHook("saxpy", my_saxpy2);
+    SetHook(Identifier::saxpy, my_saxpy1);
+		SetHook("saxpy", my_saxpy2);
   }
 
   virtual void TearDown() override {}

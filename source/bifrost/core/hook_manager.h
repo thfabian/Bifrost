@@ -13,6 +13,7 @@
 
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
+#include "bifrost/core/hook_settings.h"
 
 namespace bifrost {
 
@@ -33,19 +34,13 @@ class HookManager {
   void TearDown(Context* ctx);
 
   /// Get a new unique identifier
-  u32 GetId();
+  u32 MakeUniqueId();
 
-  /// Create the hook and return the pointer to the original function
-  void HookCreate(u32 id, Context* ctx, void* target, void* detour, void** original);
+  /// Set `detour` as the new function for `target` and return the originally registered function in `original`
+  void SetHook(Context* ctx, EHookType type, u32 id, u32 priority, void* target, void* detour, void** original);
 
-  /// Remove the hook
-  void HookRemove(u32 id, Context* ctx, void* target);
-
-  /// Enable the hook
-  void HookEnable(u32 id, Context* ctx, void** targets, u32 num);
-
-  /// Disable the hook
-  void HookDisable(u32 id, Context* ctx, void** targets, u32 num);
+  /// Remove the hook registered at `target`
+  void RemoveHook(Context* ctx, EHookType type, u32 id, void* target);
 
   /// Enable debug mode
   void EnableDebug(Context* ctx);

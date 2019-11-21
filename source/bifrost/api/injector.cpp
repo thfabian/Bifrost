@@ -103,11 +103,13 @@ class InjectorContext {
       injectArguments.TimeoutInMs = args->InjectorArguments->TimeoutInS * 1000;
 
       // Launch the process and perform injection
+			std::vector<u32> threads;
       switch (args->Executable->Mode) {
         case BFI_LAUNCH: {
           Process::LaunchArguments arguments{args->Executable->ExecutablePath ? args->Executable->ExecutablePath : L"",
                                              args->Executable->ExecutableArguments ? args->Executable->ExecutableArguments : "", true};
           proc = std::make_unique<Process>(m_ctx.get(), std::move(arguments));
+					threads = proc->GetThreads(); // get the main thread
           break;
         }
         case BFI_CONNECT_VIA_PID: {
@@ -130,8 +132,8 @@ class InjectorContext {
       // Inject and load the plugins
       proc->Inject(std::move(injectArguments));
 
-      // Resume execution..
-      if (args->Executable->Mode == BFI_LAUNCH) proc->Resume();
+      // Resume execution of all threads..
+      if (args->Executable->Mode == BFI_LAUNCH) proc->Resume(threads);
 
     } catch (...) {
       if (proc && args->Executable->Mode == BFI_LAUNCH) {

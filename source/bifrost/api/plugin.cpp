@@ -14,6 +14,7 @@
 #include "bifrost/api/helper.h"
 #include "bifrost/api/plugin_context.h"
 #include "bifrost/core/hook_manager.h"
+
 #include "bifrost/core/macros.h"
 #include "bifrost/core/mutex.h"
 
@@ -62,6 +63,16 @@ static void TearDownHookManager(PluginContext* ctx) {
   }
 }
 
+static EHookType ToType(bfp_HookType type) {
+  switch (type) {
+    case BFP_CFUNCTION:
+      return EHookType::E_CFunction;
+    case BFP_VTABLE:
+      return EHookType::E_VTable;
+  }
+  return EHookType::E_NumTypes;
+}
+
 }  // namespace
 
 #pragma region Version
@@ -83,9 +94,9 @@ bfp_PluginContext* bfp_PluginInit(const char** errMsg) {
   try {
     (*errMsg) = nullptr;
     SetUpHookManger(Get(ctx));
-    Get(ctx)->SetId(g_manager->GetId());
+    Get(ctx)->SetId(g_manager->MakeUniqueId());
   } catch (std::exception& e) {
-    (*errMsg) = StringCopy(StringFormat("Failed to initialize hooking mechanism: %s", e.what())).release();
+    (*errMsg) = StringCopy(StringFormat("Failed to initialize hooking maanger: %s", e.what())).release();
     Free<bfp_PluginContext, PluginContext>(ctx);
   }
 
@@ -98,7 +109,7 @@ void bfp_PluginFree(bfp_PluginContext* ctx, const char** errMsg) {
     TearDownHookManager(Get(ctx));
     Free<bfp_PluginContext, PluginContext>(ctx);
   } catch (std::exception& e) {
-    (*errMsg) = StringCopy(StringFormat("Failed to uninitialize hooking mechanism: %s", e.what())).release();
+    (*errMsg) = StringCopy(StringFormat("Failed to uninitialize hooking maanger: %s", e.what())).release();
     Free<bfp_PluginContext, PluginContext>(ctx);
   }
 }
@@ -129,30 +140,16 @@ bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* mod
 
 const char* bfp_PluginGetLastError(bfp_PluginContext* ctx) { return Get(ctx)->GetLastError(); }
 
-bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, void** original) {
+BIFROST_PLUGIN_API bfp_Status bfp_HookSet(bfp_PluginContext* ctx, const bfp_HookSetDesc* desc, void** original) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->HookCreate(Get(ctx)->GetId(), Get(ctx)->GetContext(), target, detour, original);
+    g_manager->SetHook(Get(ctx)->GetContext(), ToType(desc->Type), Get(ctx)->GetId(), desc->Priority, desc->Target, desc->Detour, original);
     return BFP_OK;
   });
 }
 
-bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, void* target) {
+bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, const bfp_HookRemoveDesc* desc) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->HookRemove(Get(ctx)->GetId(), Get(ctx)->GetContext(), target);
-    return BFP_OK;
-  });
-}
-
-bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void** targets, uint32_t num) {
-  BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->HookEnable(Get(ctx)->GetId(), Get(ctx)->GetContext(), targets, num);
-    return BFP_OK;
-  });
-}
-
-bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void** targets, uint32_t num) {
-  BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->HookDisable(Get(ctx)->GetId(), Get(ctx)->GetContext(), targets, num);
+    g_manager->RemoveHook(Get(ctx)->GetContext(), ToType(desc->Type), Get(ctx)->GetId(), desc->Target);
     return BFP_OK;
   });
 }
