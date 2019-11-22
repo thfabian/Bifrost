@@ -50,7 +50,7 @@ TEST_F(SharedLogStashTest, SingleSharedMemory) {
   consumer.StopAndFlush();
 
   // Check
-  ASSERT_EQ(3, sink.Buffer.size());
+  ASSERT_EQ(4, sink.Buffer.size());
   EXPECT_EQ(ILogger::LogLevel::Debug, sink.Buffer[0].Level);
   EXPECT_STREQ("module1", sink.Buffer[0].Module.c_str());
   EXPECT_STREQ("msg1", sink.Buffer[0].Msg.c_str());

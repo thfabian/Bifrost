@@ -12,7 +12,11 @@
 #include "hook_plugin.h"
 
 #ifndef PLUGIN_NAME
-#define PLUGIN_NAME HookTestPlugin
+#define PLUGIN_NAME HookTestPlugin1
+#endif
+
+#ifndef PLUGIN_INDEX
+#define PLUGIN_INDEX "1"
 #endif
 
 #define BIFROST_NAMESPACE hook_plugin
@@ -116,13 +120,13 @@ class PLUGIN_NAME final : public hook_plugin::Plugin {
 
   virtual void SetUp() override {
     switch (GetMode()) {
-      case Mode::CFunction_Single_Orignal1:
+      case Mode::CFunction_Single_Original1:
         SetHook(Identifier::bifrost_add, bifrost_add__original_1);
         break;
-      case Mode::CFunction_Single_Orignal2:
+      case Mode::CFunction_Single_Original2:
         SetHook(Identifier::bifrost_add, bifrost_add__original_2);
         break;
-      case Mode::CFunction_Single_Orignal3:
+      case Mode::CFunction_Single_Original3:
         SetHook(Identifier::bifrost_add, bifrost_add__original_3);
         break;
       case Mode::CFunction_Single_Modify1:
@@ -138,13 +142,17 @@ class PLUGIN_NAME final : public hook_plugin::Plugin {
         SetHook(Identifier::bifrost_add, bifrost_add__modify_3);
         SetHook(Identifier::bifrost_add, bifrost_add__original_1);
         break;
+      case Mode::CFunction_Multi_Original_P1:
+      case Mode::CFunction_Multi_Original_P2:
+        SetHook(Identifier::bifrost_add, bifrost_add__original_1);
+        break;
       default:
         break;
     }
-    WriteToFile(GetFile(), "SetUp1", this);
+    WriteToFile(GetFile(), "SetUp" PLUGIN_INDEX, this);
   }
 
-  virtual void TearDown() override { WriteToFile(GetFile(), "TearDown1", this); }
+  virtual void TearDown() override { WriteToFile(GetFile(), "TearDown" PLUGIN_INDEX, this); }
 };
 
 BIFROST_REGISTER_PLUGIN(PLUGIN_NAME)

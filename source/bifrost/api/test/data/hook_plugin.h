@@ -15,13 +15,16 @@ namespace bifrost {
 
 enum class Mode : int {
   none = 0,
-  CFunction_Single_Orignal1,
-  CFunction_Single_Orignal2,
-  CFunction_Single_Orignal3,
+  CFunction_Single_Original1,
+  CFunction_Single_Original2,
+  CFunction_Single_Original3,
   CFunction_Single_Modify1,
   CFunction_Single_Modify2,
   CFunction_Single_Modify3,
   CFunction_Single_Replace1,
+
+  CFunction_Multi_Original_P1,
+  CFunction_Multi_Original_P2,
 };
 
 }
