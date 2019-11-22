@@ -23,7 +23,7 @@ std::wstring TestEnviroment::GetHookExecutable() const { return GetFile(L"execut
 
 std::wstring TestEnviroment::GetHookDll() const { return GetFile(L"plugin", L"test-bifrost-api-hook-dll.dll"); }
 
-std::wstring TestEnviroment::GetHookPlugin1() const { return GetFile(L"dll", L"test-bifrost-api-hook-plugin-1.dll"); }
+std::wstring TestEnviroment::GetHookPlugin() const { return GetFile(L"dll", L"test-bifrost-api-hook-plugin.dll"); }
 
 std::wstring TestEnviroment::GetHookPlugin2() const { return GetFile(L"dll", L"test-bifrost-api-hook-plugin-2.dll"); }
 

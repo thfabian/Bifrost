@@ -45,11 +45,12 @@ TEST_F(SharedLogStashTest, SingleSharedMemory) {
   ::Sleep(200);
   Log(GetContext(), ILogger::LogLevel::Warn, "module2", "msg2");
   Log(GetContext(), ILogger::LogLevel::Error, "module3", "msg3");
+  Log(GetContext(), ILogger::LogLevel::Trace, "module4", "msg4");
 
   consumer.StopAndFlush();
 
   // Check
-  ASSERT_EQ(3, sink.Buffer.size());
+  ASSERT_EQ(4, sink.Buffer.size());
   EXPECT_EQ(ILogger::LogLevel::Debug, sink.Buffer[0].Level);
   EXPECT_STREQ("module1", sink.Buffer[0].Module.c_str());
   EXPECT_STREQ("msg1", sink.Buffer[0].Msg.c_str());
@@ -61,6 +62,10 @@ TEST_F(SharedLogStashTest, SingleSharedMemory) {
   EXPECT_EQ(ILogger::LogLevel::Error, sink.Buffer[2].Level);
   EXPECT_STREQ("module3", sink.Buffer[2].Module.c_str());
   EXPECT_STREQ("msg3", sink.Buffer[2].Msg.c_str());
+
+  EXPECT_EQ(ILogger::LogLevel::Trace, sink.Buffer[3].Level);
+  EXPECT_STREQ("module4", sink.Buffer[3].Module.c_str());
+  EXPECT_STREQ("msg4", sink.Buffer[3].Msg.c_str());
 }
 
 TEST_F(SharedLogStashTest, MultiSharedMemory) {

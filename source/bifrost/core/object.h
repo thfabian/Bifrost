@@ -28,6 +28,8 @@ class Object {
   /// Access the context
   inline Context& GetContext() { return *m_ctx; }
   inline const Context& GetContext() const { return *m_ctx; }
+  inline Context* GetContextPtr() { return m_ctx; }
+  inline const Context* GetContextPtr() const { return m_ctx; }
 
   /// Get the logger
   inline ILogger& Logger() { return m_ctx->Logger(); }

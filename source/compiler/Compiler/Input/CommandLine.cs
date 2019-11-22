@@ -248,7 +248,7 @@ namespace Bifrost.Compiler.Input
             HandleOption = (opt, cmd, ctx, cfg) =>
             {
                 var config = new Configuration();
-                config.Hook.Descriptions.Add(new Configuration.HookT.DescriptionT());
+                //config.Hook.Descriptions.Add("SomeClassMethod", new Configuration.HookT.DescriptionT());
                 Console.WriteLine(ConfigurationPrinter.Print(config));
                 cmd.Stop = true;
             }
@@ -318,7 +318,7 @@ namespace Bifrost.Compiler.Input
                 Stage = OptionAction.StageEnum.ConfigurationBuilder,
                 HandleOption = (opt, cmd, ctx, cfg) =>
                 {
-                    var output = cmd.ParseResult.ValueForOption<string>("output");
+                    cfg.General.OutputPath = cmd.ParseResult.ValueForOption<string>("output");
                 }
             };
         }

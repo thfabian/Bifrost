@@ -39,11 +39,18 @@ class Process : public Object {
   Process& operator=(Process&&) = default;
   ~Process();
 
-  /// Suspend the thread - throws std::runtime_error on failure
-  void Suspend();
+  /// Get the ids of all threads of this process (clears `threadIds` first)
+  void GetThreads(std::vector<u32>& threadIds);
+  std::vector<u32> GetThreads();
 
-  /// Resume the process after suspension - throws std::runtime_error on failure
-  void Resume();
+  /// Get the ids of all threads but the currently executing one of this process (clears `threadIds` first)
+  void GetOtherThreads(std::vector<u32>& threadIds);
+
+  /// Suspend the threads - throws std::runtime_error on failure
+  void Suspend(const std::vector<u32>& threads, bool verbose = true);
+
+  /// Resume the threads after suspension - throws std::runtime_error on failure
+  void Resume(const std::vector<u32>& threads, bool verbose = true);
 
   /// Wait for the process to return (blocks the calling thread) returns the return value of `WaitForSingleObject`
   u32 Wait(u32 timeout = INFINITE);
@@ -61,25 +68,15 @@ class Process : public Object {
   /// Inject the DLL - throws std::runtime_error on failure
   void Inject(InjectArguments args);
 
-  /// Attach a debugger
-  void AttachDebugger();
-
   /// Return the exit code or NULL if the process has not yet exited
   const u32* GetExitCode();
 
   /// Get the process identifier
   u32 GetPid();
 
-  /// Get the main thread identifier
-  u32 GetTid();
-
-  /// Get the main thread handle
-  HANDLE GetThreadHandle();
-
  private:
   bool TrySetExitCode();
   void OpenProcess(u32 pid);
-  void OpenThread();
   DWORD RunRemoteThread(const char* functionName, LPTHREAD_START_ROUTINE threadFunc, void* threadParam, u32 timeoutInMs);
   std::shared_ptr<void> AllocateRemoteMemory(const void* data, u32 sizeInBytes, DWORD protectionFlag, const char* reason);
 
@@ -89,6 +86,7 @@ class Process : public Object {
   std::optional<u32> m_pid;
   std::optional<u32> m_tid;
   std::optional<u32> m_exitCode;
+  std::vector<u32> m_frozenThreads;
 };
 
 /// Kill the process given by `pid`

@@ -19,6 +19,7 @@
 #include "bifrost/core/context.h"
 #include "bifrost/core/module_loader.h"
 #include "bifrost/core/shared_memory.h"
+#include "bifrost/core/timer.h"
 
 namespace bifrost::api {
 
@@ -70,6 +71,8 @@ class PluginContext {
 
   std::unique_ptr<BufferedLogger> m_bufferedLogger;
   std::unique_ptr<SharedLogger> m_sharedLogger;
+
+  Timer m_timer;
 };
 
 }  // namespace bifrost::api

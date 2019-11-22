@@ -42,9 +42,9 @@ namespace Bifrost.Compiler.Core
         {
             foreach (var section in m_sections)
             {
-                Console.WriteLine(string.Format("{0,-40} {1,-10} ms",
+                Console.WriteLine(string.Format("{0,-40} {1,-5} ms",
                                                 new string(' ', section.Level * 2) + section.Identifier,
-                                                new string(' ', section.Level * 2) + string.Format("{0,5}", section.ElapsedMilliseconds)));
+                                                string.Format("{0,5}", section.ElapsedMilliseconds)));
             }
         }
 

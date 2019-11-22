@@ -37,14 +37,17 @@ static void FlushImpl(StreamT& os, const std::vector<BufferedLogger::LogMessage>
     os << "[" << timeStr << "]";
 
     switch (msg.Level) {
-      case ILogger::LogLevel::Debug:
+      case ILogger::LogLevel::Trace:
+        os << " [TRACE]";
+        break;
+    case ILogger::LogLevel::Debug:
         os << " [DEBUG]";
         break;
       case ILogger::LogLevel::Info:
-        os << " [INFO]";
+        os << " [INFO ]";
         break;
       case ILogger::LogLevel::Warn:
-        os << " [WARN]";
+        os << " [WARN ]";
         break;
       case ILogger::LogLevel::Error:
         os << " [ERROR]";

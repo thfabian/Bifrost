@@ -1,17 +1,12 @@
 ﻿version: 0.1.1
 
 #
-# Clang specific options.
-#
-clang:
-  language: Cpp17
-
-#
 # Hook description.
 #
 hook:
   descriptions:
-    - name: D3D12CreateDevice
+    D3D12CreateDevice:
+      name: D3D12CreateDevice
       type: Function
       input: [ "d3d12.h" ]
       module: d3d12.dll
@@ -21,4 +16,4 @@ hook:
 #
 plugin:
   name: HookD3D12
-  namespace: hook_d3d12
+  namespace: d3d12

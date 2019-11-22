@@ -25,7 +25,7 @@ class TestEnviroment final : public ::testing::Environment, public BaseTestEnvir
   std::wstring GetInjectorPlugin() const;
   std::wstring GetHookExecutable() const;
   std::wstring GetHookDll() const;
-  std::wstring GetHookPlugin1() const;
+  std::wstring GetHookPlugin() const;
   std::wstring GetHookPlugin2() const;
 
   /// Create a temporary file

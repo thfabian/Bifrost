@@ -19,7 +19,7 @@
 namespace bifrost {
 
 SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) : m_name(std::move(name)), m_dataSizeInBytes(dataSizeInBytes), m_ctx(ctx) {
-  m_ctx->Logger().DebugFormat("Trying to allocate shared memory \"%s\" (%lu bytes) ...", GetName(), m_dataSizeInBytes);
+  m_ctx->Logger().TraceFormat("Trying to allocate shared memory \"%s\" (%lu bytes) ...", GetName(), m_dataSizeInBytes);
 
   // Create file mapping if possible
   m_handle = ::CreateFileMappingA(INVALID_HANDLE_VALUE,  // Use paging file
@@ -31,7 +31,7 @@ SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) 
   if (alreadyExist) {
     if (m_handle != NULL) ::CloseHandle(m_handle);
 
-    m_ctx->Logger().DebugFormat("Shared memory \"%s\" already exists, opening shared memory mapping", GetName());
+    m_ctx->Logger().TraceFormat("Shared memory \"%s\" already exists, opening shared memory mapping", GetName());
     m_handle = ::OpenFileMappingA(FILE_MAP_ALL_ACCESS,  // Read/write access
                                   FALSE,                // Propagate handles
                                   GetName());
@@ -42,7 +42,7 @@ SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) 
     m_ctx->Logger().Error(msg.c_str());
     throw std::runtime_error(msg.c_str());
   } else {
-    if (alreadyExist) m_ctx->Logger().DebugFormat("Opened shared memory mapping \"%s\"", GetName());
+    if (alreadyExist) m_ctx->Logger().TraceFormat("Opened shared memory mapping \"%s\"", GetName());
   }
 
   m_startAddress = ::MapViewOfFile(m_handle,             // Handle to map object
@@ -81,13 +81,13 @@ SharedMemory::SharedMemory(Context* ctx, std::string name, u64 dataSizeInBytes) 
     }
   }
 
-  m_ctx->Logger().DebugFormat("Allocated shared memory \"%s\"", GetName());
+  m_ctx->Logger().TraceFormat("Allocated shared memory \"%s\"", GetName());
 }
 
 SharedMemory::~SharedMemory() {
   SMContext::Destruct(this, m_sharedCtx);
 
-  m_ctx->Logger().DebugFormat("Deallocating shared memory \"%s\" ...", GetName());
+  m_ctx->Logger().TraceFormat("Deallocating shared memory \"%s\" ...", GetName());
 
   if (::UnmapViewOfFile(m_startAddress) == 0) {
     m_ctx->Logger().WarnFormat("Failed to unmap shared memory \"%s\": %s", GetName(), GetLastWin32Error().c_str());
@@ -97,7 +97,7 @@ SharedMemory::~SharedMemory() {
     m_ctx->Logger().WarnFormat("Failed to deallocate shared memory: \"%s\": %s", GetName(), GetLastWin32Error().c_str());
   }
 
-  m_ctx->Logger().DebugFormat("Deallocated shared memory \"%s\"", GetName());
+  m_ctx->Logger().TraceFormat("Deallocated shared memory \"%s\"", GetName());
 }
 
 SMLogStash* SharedMemory::GetSMLogStash() noexcept { return m_sharedCtx->GetSMLogStash(this); }

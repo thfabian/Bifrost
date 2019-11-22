@@ -19,10 +19,13 @@ namespace bifrost::api {
 
 bfp_Status PluginContext::SetUpStart(bfp_PluginContext* ctx, const char* name, const void* setUpParam, bfp_PluginSetUpArguments** args) {
   SetUpParam* param = (SetUpParam*)setUpParam;
+
   try {
+    m_timer.Start();
+
     // Set the module
     m_bufferedLogger->SetModule(name);
-    m_ctx->Logger().InfoFormat("Setting up plugin: %s", name);
+    m_ctx->Logger().InfoFormat("Setting up plugin: %s ...", name);
 
     // Connect to the shared memory
     m_memory = std::make_unique<SharedMemory>(m_ctx.get(), param->SharedMemoryName, param->SharedMemorySize);
@@ -56,6 +59,8 @@ bfp_Status PluginContext::SetUpEnd(bfp_PluginContext* ctx, const char* name, con
     m_ctx->Logger().ErrorFormat("Failed to set up plugin: %s", name);
     throw;
   }
+
+  m_ctx->Logger().InfoFormat("Done setting up plugin %s (took %u ms)", name, m_timer.Stop());
   return BFP_OK;
 }
 
@@ -64,8 +69,9 @@ bfp_Status PluginContext::TearDownStart(bfp_PluginContext* ctx, const void* tear
   std::string name = m_bufferedLogger->GetModule();
 
   try {
-    m_ctx->Logger().InfoFormat("Tearing down plugin: %s", name.c_str());
-
+    m_timer.Start();
+    m_ctx->Logger().InfoFormat("Tearing down plugin: %s ...", name.c_str());
+    
     // Allocate arguments
     (*args) = new bfp_PluginTearDownArguments;
     (*args)->NoFail = param->NoFail;
@@ -74,6 +80,7 @@ bfp_Status PluginContext::TearDownStart(bfp_PluginContext* ctx, const void* tear
     m_ctx->Logger().ErrorFormat("Failed to tear down plugin: %s", name.c_str());
     throw;
   }
+
   return BFP_OK;
 }
 
@@ -97,6 +104,8 @@ bfp_Status PluginContext::TearDownEnd(bfp_PluginContext* ctx, const void* tearDo
     m_ctx->Logger().ErrorFormat("Failed to tear down plugin: %s", name.c_str());
     throw;
   }
+
+  m_ctx->Logger().InfoFormat("Done tearing down plugin %s (took %u ms)", name.c_str(), m_timer.Stop());
   return BFP_OK;
 }
 

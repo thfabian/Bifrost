@@ -17,63 +17,89 @@
 #include "bifrost/core/ilogger.h"
 #include "bifrost/core/util.h"
 #include "bifrost/core/mutex.h"
+
 #include <gtest/gtest.h>
+
+#define SPDLOG_NO_THREAD_ID
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/sinks/msvc_sink.h>
 
 namespace bifrost {
 
 class TestLogger final : public ILogger {
  public:
+  TestLogger() {
+    auto consoleSink = std::make_shared<spdlog::sinks::stderr_color_sink_st>();
+    consoleSink->set_color(spdlog::level::trace, 8);
+    consoleSink->set_color(spdlog::level::debug, 7);
+    consoleSink->set_color(spdlog::level::info, 15);
+    consoleSink->set_color(spdlog::level::warn, 14);
+    consoleSink->set_color(spdlog::level::err, 12);
+
+    auto msvcSink = std::make_shared<spdlog::sinks::msvc_sink_st>();
+    std::vector<spdlog::sink_ptr> sinkVec = {consoleSink, msvcSink};
+
+    try {
+      m_logger = std::make_shared<spdlog::logger>("bifrost_test", sinkVec.begin(), sinkVec.end());
+      m_logger->set_level(spdlog::level::trace);
+      m_logger->set_pattern("[%H:%M:%S.%e] [%-5l] %v");
+    } catch (const spdlog::spdlog_ex& ex) {
+      throw std::runtime_error(fmt::format("Cannot create logger: {}", ex.what()));
+    }
+  }
+
   virtual void SetModule(const char* module) override {
     BIFROST_LOCK_GUARD(m_mutex);
     m_module = module;
   }
 
   virtual void Sink(LogLevel level, const char* module, const char* msg) override {
-    if (level == ILogger::LogLevel::Disable) return;
+    if (!m_logger) return;
 
-    // Get current date-time (up to ms accuracy)
-    std::chrono::system_clock::time_point now = std::chrono::system_clock::now();
-    auto now_ms = now.time_since_epoch();
-    auto now_sec = std::chrono::duration_cast<std::chrono::seconds>(now_ms);
-    auto tm_ms = std::chrono::duration_cast<std::chrono::milliseconds>(now_ms - now_sec);
+    auto logLevel = (ILogger::LogLevel)level;
+    auto spdLevel = spdlog::level::off;
 
-    std::time_t currentTime = std::chrono::system_clock::to_time_t(now);
-    struct tm* localTime = std::localtime(&currentTime);
-
-    auto timeStr = StringFormat("%02i:%02i:%02i.%03i", localTime->tm_hour, localTime->tm_min, localTime->tm_sec, tm_ms.count());
-
-    std::stringstream ss;
-    ss << "[" << timeStr << "]";
-
-    switch (level) {
+    switch (logLevel) {
+      case ILogger::LogLevel::Trace:
+        spdLevel = spdlog::level::trace;
+        break;
       case ILogger::LogLevel::Debug:
-        ss << " [DEBUG]";
+        spdLevel = spdlog::level::debug;
         break;
       case ILogger::LogLevel::Info:
-        ss << " [INFO ]";
+        spdLevel = spdlog::level::info;
         break;
       case ILogger::LogLevel::Warn:
-        ss << " [WARN ]";
+        spdLevel = spdlog::level::warn;
         break;
       case ILogger::LogLevel::Error:
-        ss << " [ERROR]";
+        spdLevel = spdlog::level::err;
+        break;
+      case ILogger::LogLevel::Disable:
+      default:
+        spdLevel = spdlog::level::off;
         break;
     }
 
-    auto moduleStr = std::string_view(module);
-    if (!moduleStr.empty()) ss << StringFormat("[%-20s]", moduleStr.data());
-
-    ss << ": " << msg << std::endl;
-
-    auto outMsg = ss.str();
-    std::cout << outMsg;
-    ::OutputDebugStringA(outMsg.c_str());
+    BIFROST_LOCK_GUARD(m_mutex);
+    m_buffer.clear();
+    if (!std::string_view(module).empty()) {
+      m_buffer += "[";
+      m_buffer += module;
+      m_buffer += "] ";
+    }
+    m_buffer += msg;
+    m_logger->log(spdLevel, m_buffer.c_str());
   }
   virtual void Sink(LogLevel level, const char* msg) override { Sink(level, m_module.empty() ? "" : m_module.c_str(), msg); }
 
  private:
   std::mutex m_mutex;
   std::string m_module;
+
+  std::shared_ptr<spdlog::logger> m_logger;
+  std::string m_buffer;
 };
 
 class BaseTestEnviroment {

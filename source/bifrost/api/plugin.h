@@ -33,6 +33,12 @@ enum bfp_Status {
   BFP_ERROR = 1  ///< An error occurred, call bfp_GetLastError to get the message
 };
 
+/// @brief Type of hooks
+enum bfp_HookType {
+  BFP_CFUNCTION = 0,  ///< C-Function hook
+  BFP_VTABLE          ///< VTable method hook
+};
+
 #pragma endregion
 
 #pragma region Structs
@@ -58,6 +64,22 @@ typedef struct bfp_PluginSetUpArguments_t {
 typedef struct bfp_PluginTearDownArguments_t {
   bool NoFail;  ///< Allow the tear-down to fail?
 } bfp_PluginTearDownArguments;
+
+/// @brief Arguments required to set a hook
+typedef struct bfp_HookSetDesc_t {
+  bfp_HookType Type;  ///< The type of hook to use
+  uint32_t Priority;  ///< The higher the priority the earlier the function will placed in the hook chain (the highest priority function will be called first)
+  void* Target;       ///< A pointer to the target function, which will be overridden by the detour function
+  void* Detour;       ///< A pointer to the detour function, which will override the target function
+} bfp_HookSetDesc;
+
+#define BIFROST_PLUGIN_DEFAULT_HookSetDesc_Priority (100)
+
+/// @brief Arguments required to remove a hook
+typedef struct bfp_HookRemoveDesc_t {
+  bfp_HookType Type;  ///< The type of hook which was used
+  void* Target;       ///< A pointer to the target function, which was used during set (used to identify the hook)
+} bfp_HookRemoveDesc;
 
 #pragma endregion
 
@@ -134,31 +156,17 @@ BIFROST_PLUGIN_API bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t lev
 /// @param[in] plugin   Plugin context description
 BIFROST_PLUGIN_API const char* bfp_PluginGetLastError(bfp_PluginContext* plugin);
 
-/// @brief Creates a Hook for the specified target function in disabled state
+/// @brief Creates and enables a hook for the specified target function
 /// @param[in] ctx				Plugin context description
-/// @param[in] target			A pointer to the target function, which will be overridden by the detour function
-/// @param[in] detour			A pointer to the detour function, which will override the target function
+/// @param[in] desc       Description to set the hook
 /// @param[out] original  A pointer to the trampoline function, which will be used to call the original target function. This parameter can be NULL.
-BIFROST_PLUGIN_API bfp_Status bfp_HookCreate(bfp_PluginContext* ctx, void* target, void* detour, void** original);
+BIFROST_PLUGIN_API bfp_Status bfp_HookSet(bfp_PluginContext* ctx, const bfp_HookSetDesc* desc, void** original);
 
-/// @brief Removes an already created hook
+/// @brief Removes an existing hook and restores the behavior before `bfp_HookSet` was called
 /// @param[in] ctx				Plugin context description
+/// @param[in] desc       Description to remove the hook
 /// @param[in] target			A pointer to the target function
-BIFROST_PLUGIN_API bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, void* target);
-
-/// @brief Enables created hooks - this operation suspends and resumes all threads and is potentially costly!
-/// @param[in] ctx					Plugin context description
-/// @param[inout] targets		An array of pointer of size `num` to the target functions, on return this will contain pointer to the potentially new
-///												  original functions. If a pointer is NULL, the operation for that hook will be skipped.
-/// @param[in] num					Number of elements in `targets`
-BIFROST_PLUGIN_API bfp_Status bfp_HookEnable(bfp_PluginContext* ctx, void** targets, uint32_t num);
-
-/// @brief Disables created hooks - this operation suspends and resumes all threads and is potentially costly!
-/// @param[in] ctx					Plugin context description
-/// @param[inout] targets		An array of pointer of size `num` to the target functions, on return this will contain pointer to the potentially new
-///													original functions. If a pointer is NULL, the operation for that hook will be skipped.
-/// @param[in] num					Number of elements in `targets`
-BIFROST_PLUGIN_API bfp_Status bfp_HookDisable(bfp_PluginContext* ctx, void** targets, uint32_t num);
+BIFROST_PLUGIN_API bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, const bfp_HookRemoveDesc* desc);
 
 /// @brief Enable debug mode
 /// @param[in] ctx				Plugin context description
