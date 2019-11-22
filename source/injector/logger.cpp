@@ -28,10 +28,11 @@ Logger& Logger::Get() {
 
 std::shared_ptr<Logger::StderrSinkT> Logger::MakeStderrSink() {
   auto sink = std::make_shared<StderrSinkT>();
-  sink->set_color(spdlog::level::debug, sink->WHITE);
-  sink->set_color(spdlog::level::info, sink->WHITE | sink->BOLD);
-  sink->set_color(spdlog::level::warn, sink->YELLOW | sink->BOLD);
-  sink->set_color(spdlog::level::err, sink->RED | sink->BOLD);
+  sink->set_color(spdlog::level::trace, 8);
+  sink->set_color(spdlog::level::debug, 7);
+  sink->set_color(spdlog::level::info, 15);
+  sink->set_color(spdlog::level::warn, 14);
+  sink->set_color(spdlog::level::err, 12);
   return sink;
 }
 
@@ -46,6 +47,9 @@ void Logger::Log(u32 level, const char* module, const char* msg) {
   auto spdLevel = spdlog::level::off;
 
   switch (logLevel) {
+    case ILogger::LogLevel::Trace:
+      spdLevel = spdlog::level::trace;
+      break;
     case ILogger::LogLevel::Debug:
       spdLevel = spdlog::level::debug;
       break;

@@ -215,7 +215,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   const char* GetArguments() const noexcept;
 
   /// Severity level
-  enum class LogLevel : unsigned int { Debug = 0, Info, Warn, Error, Disable };
+  enum class LogLevel : unsigned int { Trace = 0, Debug, Info, Warn, Error, Disable };
 
   /// Log a message - calls Error on failure
   ///
@@ -797,89 +797,6 @@ Plugin::Hook* Plugin::SetHook(Plugin::Identifier identifier, void* override, std
 //  for (std::uint32_t i = 0; i < num; ++i) identiferEnums[i] = StringToIdentifier(identifers[i]);
 //  EnableHooks(identiferEnums, num);
 //}
-//
-//void Plugin::EnableHooks(Identifier* identifers, std::uint32_t num) {
-//  Hook** hooks = (Hook**)::_alloca(sizeof(Hook*) * num);
-//  for (std::uint32_t i = 0; i < num; ++i) hooks[i] = GetHook(identifers[i]);
-//  EnableHooks(hooks, num);
-//}
-//
-//void Plugin::EnableHooks(Hook** hooks, std::uint32_t num) {
-//  void** targets = (void**)::_alloca(sizeof(void*) * num);
-//
-//  // Obtain the targets
-//  for (std::uint32_t i = 0; i < num; ++i) {
-//    if (!hooks[i]->IsEnabled()) {
-//      if (hooks[i]->GetOverride() == nullptr) {
-//        FatalError(StringFormat("Failed to enable hook %s: hook has not been created", IdentiferToFunctionName(hooks[i]->GetIdentifier())).c_str());
-//      }
-//      targets[i] = hooks[i]->_GetTarget();
-//    } else {
-//      targets[i] = nullptr;
-//    }
-//  }
-//
-//  // Enable the hooks
-//  auto& api = GetApi();
-//  if (api.bfp_HookEnable(m_impl->Context, targets, num) != BFP_OK) {
-//    FatalError(api.bfp_PluginGetLastError(m_impl->Context));
-//  }
-//
-//  // Apply the changes
-//  for (std::uint32_t i = 0; i < num; ++i) {
-//    if (!targets[i]) continue;
-//
-//    hooks[i]->_SetEnabled(true);
-//    // hooks[i]->_SetOriginal(targets[i]);
-//  }
-//}
-//
-//void Plugin::EnableAllHooks() {
-//  std::uint32_t size = (std::uint32_t)Identifier::NumIdentifiers - 1;
-//  std::uint64_t* identifers = (std::uint64_t*)::_alloca(sizeof(Identifier) * size);
-//  std::iota(identifers, identifers + size, (std::uint64_t)Identifier::__bifrost_first__ + 1);
-//  EnableHooks((Identifier*)identifers, size);
-//}
-//
-//void Plugin::DisableHook(Identifier identifier) { DisableHook(GetHook(identifier)); }
-//
-//void Plugin::DisableHook(const char* identifier) { DisableHook(StringToIdentifier(identifier)); }
-//
-//void Plugin::DisableHook(Hook* hook) { DisableHooks(&hook, 1); }
-//
-//void Plugin::DisableHooks(Identifier* identifers, std::uint32_t num) {
-//  Hook** hooks = (Hook**)::_alloca(sizeof(Hook*) * num);
-//  for (std::uint32_t i = 0; i < num; ++i) hooks[i] = GetHook(identifers[i]);
-//  DisableHooks(hooks, num);
-//}
-//
-//void Plugin::DisableHooks(const char** identifers, std::uint32_t num) {
-//  Identifier* identifierEnums = (Identifier*)::_alloca(sizeof(Identifier) * num);
-//  for (std::uint32_t i = 0; i < num; ++i) identifierEnums[i] = StringToIdentifier(identifers[i]);
-//  DisableHooks(identifierEnums, num);
-//}
-//
-//void Plugin::DisableHooks(Hook** hooks, std::uint32_t num) {
-//  void** targets = (void**)::_alloca(sizeof(void*) * num);
-//
-//  // Obtain the targets
-//  for (std::uint32_t i = 0; i < num; ++i) targets[i] = hooks[i]->IsEnabled() ? hooks[i]->_GetTarget() : nullptr;
-//
-//  // Enable the hooks
-//  auto& api = GetApi();
-//  if (api.bfp_HookDisable(m_impl->Context, targets, num) != BFP_OK) {
-//    FatalError(api.bfp_PluginGetLastError(m_impl->Context));
-//  }
-//
-//  // Apply the changes
-//  for (std::uint32_t i = 0; i < num; ++i) {
-//    if (!targets[i]) continue;
-//
-//    hooks[i]->_SetEnabled(false);
-//    // hooks[i]->_SetOriginal(targets[i]);
-//  }
-//}
-//
 
 void Plugin::RemoveAllHooks() noexcept {
   ForEachIdentifer([this](Identifier identifier) { RemoveHook(identifier); });
@@ -965,7 +882,7 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
       const char* functionName = IdentiferToFunctionName(identifer);
 
 #ifdef BIFROST_ENABLE_DEBUG
-      Log(LogLevel::Debug, StringFormat("Loading function %s", functionName).c_str());
+      Log(LogLevel::Trace, StringFormat("Loading function %s", functionName).c_str());
 #endif
 
       // Check if the associated module has been loaded

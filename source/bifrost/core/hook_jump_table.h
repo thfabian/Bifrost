@@ -13,32 +13,34 @@
 
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
-#include "bifrost/core/object.h"
+#include "bifrost/core/hook_object.h"
 
 namespace bifrost {
 
 class IHookMechanism;
-class HookDebugger;
 
 /// Region of memory which can be used to JMP to arbitrary functions
-class HookJumpTable : Object {
+class HookJumpTable : HookObject {
  public:
-  HookJumpTable(Context* ctx, void* target);
+  HookJumpTable(Context* ctx, HookSettings* settings, HookDebugger* debugger, IHookMechanism* mechanism, void* target);
   ~HookJumpTable();
 
   /// Set the target of the jump table, meaning if the table is called it will jump to this function
-  void SetJumpTarget(IHookMechanism* mechanism, HookDebugger* debugger, void* jumpTarget, bool verbose);
+  void SetTarget(void* jumpTarget);
 
   /// Get the target address i.e the entry point to this jump table
   void* GetTableEntryPoint() const;
 
  private:
-  void RemoveJumpTarget(IHookMechanism* mechanism, HookDebugger* debugger);
+  /// Remove and existing jump target
+  void RemoveJumpTarget();
 
  private:
-  void* m_mem = nullptr;
-  void* m_target = nullptr;
-  bool m_tableSet = false;
+  void* m_tableEntryPoint;
+  void* m_target;
+  bool m_tableSet;
+  IHookMechanism* m_mechanism;
+  Context* m_ctx;
 };
 
 }  // namespace bifrost

@@ -26,8 +26,8 @@ namespace bifrost {
 
 namespace {
 
-#define BIFROST_LOG_DEBUG(...)              \
-  if (m_debugMode) {                        \
+#define BIFROST_HOOK_DEBUG(...)             \
+  if (GetSettings()->Debug) {               \
     ctx->Logger().DebugFormat(__VA_ARGS__); \
   }
 
@@ -62,8 +62,8 @@ class HookManager::Impl {
     if (m_settings->Debug) EnableDebugImpl(ctx);
 
     // Initialize the hooking mechanisms
-    m_hookMechanisms[static_cast<u32>(EHookType::E_CFunction)] = new MinHook();
-    m_hookMechanisms[static_cast<u32>(EHookType::E_VTable)] = new VTableHook();
+    m_hookMechanisms[static_cast<u32>(EHookType::E_CFunction)] = new MinHook(GetSettings(), GetDebugger());
+    m_hookMechanisms[static_cast<u32>(EHookType::E_VTable)] = new VTableHook(GetSettings(), GetDebugger());
 
     ForEachHookType([this, &ctx](EHookType type) { Get(type)->SetUp(ctx); });
   }
@@ -81,8 +81,8 @@ class HookManager::Impl {
 
   void SetHook(Context* ctx, EHookType type, u32 id, u32 priority, void* target, void* detour, void** original) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_LOG_DEBUG("Setting %s hook from %s to %s (priority = %u)...", ToString(type), m_debugger->SymbolFromAdress(ctx, target),
-                      m_debugger->SymbolFromAdress(ctx, detour), priority);
+    BIFROST_HOOK_DEBUG("Setting %s hook from %s to %s ...", ToString(type), m_debugger->SymbolFromAdress(ctx, target),
+                       m_debugger->SymbolFromAdress(ctx, detour));
     Timer timer;
 
     HookChain* chain = GetHookChain(target);
@@ -97,24 +97,24 @@ class HookManager::Impl {
       *original = chain->Insert(ctx, id, priority, detour);
     }
 
-    BIFROST_LOG_DEBUG("Done setting hook from %s to %s (took %u ms)", m_debugger->SymbolFromAdress(ctx, target), m_debugger->SymbolFromAdress(ctx, detour),
-                      timer.Stop());
+    BIFROST_HOOK_DEBUG("Done setting hook from %s to %s (took %u ms)", m_debugger->SymbolFromAdress(ctx, target), m_debugger->SymbolFromAdress(ctx, detour),
+                       timer.Stop());
   }
 
   void RemoveHook(Context* ctx, EHookType type, u32 id, void* target) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_LOG_DEBUG("Removing %s hook %s ...", ToString(type), m_debugger->SymbolFromAdress(ctx, target));
+    BIFROST_HOOK_DEBUG("Removing %s hook %s ...", ToString(type), m_debugger->SymbolFromAdress(ctx, target));
     Timer timer;
 
     HookChain* chain = GetHookChain(target);
     if (!chain) {
-      BIFROST_LOG_DEBUG("Skipped removing hook from %s: target has no hook");
+      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook");
       return;
     }
 
     HookChainNode* node = chain->GetById(id);
     if (!node) {
-      BIFROST_LOG_DEBUG("Skipped removing hook from %s: target has no hook for the specified id");
+      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook for the specified id");
       return;
     }
 
@@ -124,7 +124,7 @@ class HookManager::Impl {
       chain->Remove(ctx, node);
     }
 
-    BIFROST_LOG_DEBUG("Done removing hook from %s (took %u ms)", m_debugger->SymbolFromAdress(ctx, target), timer.Stop());
+    BIFROST_HOOK_DEBUG("Done removing hook from %s (took %u ms)", m_debugger->SymbolFromAdress(ctx, target), timer.Stop());
   }
 
   void EnableDebug(Context* ctx) {
@@ -138,16 +138,13 @@ class HookManager::Impl {
   }
 
   /// Access the hook settings
-  const HookSettings& GetSettings() const { return *m_settings; }
+  HookSettings* GetSettings() { return m_settings.get(); }
 
   /// Access the current process
   Process* GetProcess() { return m_process.get(); }
 
   /// Get a reference to the debugger
   HookDebugger* GetDebugger() { return m_debugger.get(); }
-
-  /// Are we debugging i.e. verbose logging?
-  bool GetDebugMode() const { return m_debugMode; }
 
   /// Access the mechanisms
   IHookMechanism* Get(EHookType type) {
@@ -167,11 +164,6 @@ class HookManager::Impl {
     u32 Priority;                              ///< Priority of this node
     void* Detour;                              ///< The address of the detour function
     std::unique_ptr<HookJumpTable> JumpTable;  ///< Table which allows to jump to the original function
-
-    void SetJumpTarget(HookManager::Impl* manager, void* target) {
-      BIFROST_ASSERT(JumpTable);
-      JumpTable->SetJumpTarget(manager->Get(EHookType::E_CFunction), manager->GetDebugger(), target, manager->GetDebugMode());
-    }
   };
 
   /// Chain of hooks
@@ -232,7 +224,7 @@ class HookManager::Impl {
       if (nodeForThisId) Remove(ctx, nodeForThisId);
 
       // Enforce the condition of "Single" hook strategy
-      if (m_manager->GetSettings().HookStrategy == EHookStrategy::E_Single && Size() > 0) {
+      if (m_manager->GetSettings()->HookStrategy == EHookStrategy::E_Single && Size() > 0) {
         throw Exception("Multiple hooks per target are not allowed with hook strategy '%s'", ToString(EHookStrategy::E_Single));
       }
 
@@ -241,7 +233,7 @@ class HookManager::Impl {
 
       if (Size() == 0) {
         // This will be the first node in the chain, make sure our detour function is called from the APP ...
-        mechanism->SetHook(ctx, m_manager->GetDebugger(), m_target, detour, &m_original);
+        mechanism->SetHook(ctx, m_target, detour, &m_original);
 
         // ... and we jump to the the ORIGINAL function
         newNode.JumpTable = MakeTable(ctx, detour, m_original);
@@ -254,8 +246,8 @@ class HookManager::Impl {
         switch (insertCase) {
           // 1) We have a higher or equal priority to head node -> Change the APP hook to our function and our JMP to the detour of the previous head
           case E_First:
-            mechanism->RemoveHook(ctx, m_manager->GetDebugger(), m_target);
-            mechanism->SetHook(ctx, m_manager->GetDebugger(), m_target, detour, &m_original);
+            mechanism->RemoveHook(ctx, m_target);
+            mechanism->SetHook(ctx, m_target, detour, &m_original);
 
             newNode.JumpTable = MakeTable(ctx, detour, m_hookChain[0].Detour);
 
@@ -265,7 +257,7 @@ class HookManager::Impl {
           // 2) We have the lowest priority of all nodes -> We will be instered in the back, the previous tail will jump to us and our JMP table will call
           //    ORIGINAL
           case E_Last:
-            m_hookChain[m_hookChain.size() - 1].SetJumpTarget(m_manager, detour);
+            m_hookChain[m_hookChain.size() - 1].JumpTable->SetTarget(detour);
 
             newNode.JumpTable = MakeTable(ctx, detour, m_original);
 
@@ -277,7 +269,7 @@ class HookManager::Impl {
             u32 prevIndex = insertIndex - 1;
             u32 nextIndex = insertIndex;
 
-            m_hookChain[prevIndex].SetJumpTarget(m_manager, detour);
+            m_hookChain[prevIndex].JumpTable->SetTarget(detour);
 
             newNode.JumpTable = MakeTable(ctx, detour, m_hookChain[nextIndex].Detour);
 
@@ -293,9 +285,9 @@ class HookManager::Impl {
     /// Make a HookJumpTable
     std::unique_ptr<HookJumpTable> MakeTable(Context* ctx, void* detour, void* target) const {
       std::unique_ptr<HookJumpTable> table = nullptr;
-      if (m_manager->GetSettings().HookStrategy != EHookStrategy::E_Single) {
-        table = std::make_unique<HookJumpTable>(ctx, detour);
-        table->SetJumpTarget(m_manager->Get(EHookType::E_CFunction), m_manager->GetDebugger(), target, m_manager->GetDebugMode());
+      if (m_manager->GetSettings()->HookStrategy != EHookStrategy::E_Single) {
+        table = std::make_unique<HookJumpTable>(ctx, m_manager->GetSettings(), m_manager->GetDebugger(), m_manager->Get(EHookType::E_CFunction), detour);
+        table->SetTarget(target);
       }
       return table;
     }
@@ -322,22 +314,23 @@ class HookManager::Impl {
       IHookMechanism* mechanism = m_manager->Get(m_type);
 
       if (Size() == 1) {
-        m_hookChain.clear();
-        mechanism->RemoveHook(ctx, m_manager->GetDebugger(), m_target);
+        m_hookChain.pop_back();
+        mechanism->RemoveHook(ctx, m_target);
+
       } else {
         auto idx = node - &m_hookChain[0];
 
         if (idx == 0) {
           // This is the head node, remove it and set the APP hook
-          mechanism->RemoveHook(ctx, m_manager->GetDebugger(), m_target);
-          mechanism->SetHook(ctx, m_manager->GetDebugger(), m_target, m_hookChain[idx + 1].Detour, &m_original);
+          mechanism->RemoveHook(ctx, m_target);
+          mechanism->SetHook(ctx, m_target, m_hookChain[idx + 1].Detour, &m_original);
 
         } else if (idx == m_hookChain.size() - 1) {
           // This is the tail node, make the one node before the current tail the new tail by setting it's jump table to ORIGINAL
-          m_hookChain[idx - 1].SetJumpTarget(m_manager, m_original);
+          m_hookChain[idx - 1].JumpTable->SetTarget(m_original);
         } else {
           // This is a node in the middle, make the previous jump table call the next function
-          m_hookChain[idx - 1].SetJumpTarget(m_manager, m_hookChain[idx + 1].Detour);
+          m_hookChain[idx - 1].JumpTable->SetTarget(m_hookChain[idx + 1].Detour);
         }
 
         m_hookChain.erase(m_hookChain.begin() + idx);
@@ -374,7 +367,8 @@ class HookManager::Impl {
   }
 
   void EnableDebugImpl(Context* ctx) {
-    m_debugMode = true;
+    ctx->Logger().DebugFormat("Enabling Hook debugging");
+    m_settings->Debug = true;
     m_debugger->SetSymbolResolving(true);
   }
 

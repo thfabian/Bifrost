@@ -234,6 +234,8 @@ workspace "bifrost"
     files { "source/bifrost/core/test/*" }
 	
     bifrost_add_external_gtest()
+    bifrost_add_external_spdlog()
+    
     bifrost_add_bifrost_core()
     dependson { "bifrost_core_test_mock_executable", "bifrost_core_test_mock_dll" }
     
@@ -278,6 +280,8 @@ workspace "bifrost"
     files { "source/bifrost/api/test/*" }
 	
     bifrost_add_external_gtest()
+    bifrost_add_external_spdlog()
+
     bifrost_add_bifrost_core()
     bifrost_add_bifrost_injector()
 

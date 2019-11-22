@@ -35,18 +35,26 @@ class HookDebugger : public Object {
   bool GetSymbolResolving();
 
   /// Add a trampoline mapping for symbol resolving
-  void AddTrampoline(void* target, void* trampoline);
-  void RemoveTrampoline(void* target);
+  void RegisterTrampoline(void* trampoline, void* target);
+  void UnregisterTrampoline(void* target);
+
+  /// Add the jump table for symbol resolving
+  void RegisterJumpTable(void* tableEntryPoint, void* target);
+  void UnregisterJumpTable(void* target);
 
  private:
   HookSettings* m_settings;
 
-  /// Cache of address to symbol name
+  // Cache of address to symbol name
   std::unordered_map<u64, std::string> m_symbolCache;
 
-  /// Resolving of trampolines
+  // Resolving of trampolines
   std::unordered_map<u64, u64> m_trampolineToTarget;
   std::unordered_map<u64, std::unordered_map<u64, u64>::iterator> m_targetToTrampoline;
+
+  // Resolving jump tables
+  std::unordered_map<u64, u64> m_jumpTableToTarget;
+  std::unordered_map<u64, std::unordered_map<u64, u64>::iterator> m_targetToJumpTable;
 
   bool m_symbolResolving = false;
   bool m_dbgHelpSetup = false;

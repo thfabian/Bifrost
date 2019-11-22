@@ -20,7 +20,19 @@ class ILogger {
  public:
   virtual ~ILogger() {}
 
-  enum class LogLevel : u32 { Debug = 0, Info, Warn, Error, Disable };
+  enum class LogLevel : u32 { Trace = 0, Debug, Info, Warn, Error, Disable };
+
+  /// Log message at trace level
+  void Trace(const char* msg) { Sink(LogLevel::Trace, msg); }
+  void Trace(const wchar_t* msg) { Sink(LogLevel::Trace, WStringToString(msg).c_str()); }
+  template <class... Args>
+  void TraceFormat(const char* fmt, Args&&... args) {
+    Sink(LogLevel::Trace, StringFormat(fmt, std::forward<Args>(args)...).c_str());
+  }
+  template <class... Args>
+  void TraceFormat(const wchar_t* fmt, Args&&... args) {
+    Sink(LogLevel::Trace, WStringToString(StringFormat(fmt, std::forward<Args>(args)...)).c_str());
+  }
 
   /// Log message at debug level
   void Debug(const char* msg) { Sink(LogLevel::Debug, msg); }

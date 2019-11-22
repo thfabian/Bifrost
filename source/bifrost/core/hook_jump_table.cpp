@@ -15,42 +15,50 @@
 #include "bifrost/core/error.h"
 #include "bifrost/core/hook_jump_table.h"
 #include "bifrost/core/hook_mechanism.h"
-#include "bifrost/core/hook_debugger.h"
-#include "bifrost/core/hook_debugger.h"
 
 #define BIFROST_JUMP_TABLE_MEM_SIZE 64
 
 namespace bifrost {
 
-HookJumpTable::HookJumpTable(Context* ctx, void* target) : Object(ctx), m_target(target) {
-  BIFROST_ASSERT_CALL((m_mem = ::VirtualAlloc(NULL, BIFROST_JUMP_TABLE_MEM_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)) != nullptr);
-}
-
-HookJumpTable::~HookJumpTable() { BIFROST_ASSERT_CALL(::VirtualFree(m_mem, 0, MEM_RELEASE)); }
-
-void HookJumpTable::SetJumpTarget(IHookMechanism* mechanism, HookDebugger* debugger, void* jumpTarget, bool verbose) {
+HookJumpTable::HookJumpTable(Context* ctx, HookSettings* settings, HookDebugger* debugger, IHookMechanism* mechanism, void* target)
+    : HookObject(settings, debugger), m_target(target), m_tableSet(false), m_mechanism(mechanism), m_ctx(ctx) {
   BIFROST_ASSERT(mechanism->GetType() == EHookType::E_CFunction);
 
-  if (verbose) {
-    Logger().DebugFormat("Setting jump table of %s to %s", debugger->SymbolFromAdress(GetContextPtr(), m_target),
-      debugger->SymbolFromAdress(GetContextPtr(), jumpTarget));
-  }
+  // Allocate a block of executable memory
+  BIFROST_ASSERT_CALL_CTX(m_ctx, (m_tableEntryPoint = ::VirtualAlloc(NULL, BIFROST_JUMP_TABLE_MEM_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)) != nullptr);
+  Debugger().RegisterJumpTable(m_tableEntryPoint, m_target);
+}
 
-  if (m_tableSet) RemoveJumpTarget(mechanism, debugger);
+HookJumpTable::~HookJumpTable() {
+  if (m_tableSet) RemoveJumpTarget();
 
+  // Free the allocated block
+  BIFROST_ASSERT_CALL_CTX(m_ctx, ::VirtualFree(m_tableEntryPoint, 0, MEM_RELEASE));
+  Debugger().UnregisterJumpTable(m_tableEntryPoint);
+}
+
+void HookJumpTable::SetTarget(void* jumpTarget) {
+  BIFROST_HOOK_TRACE(m_ctx, "Setting jump table of %s to %s", Sym(m_ctx, m_target), Sym(m_ctx, jumpTarget));
+
+  if (m_tableSet) RemoveJumpTarget();
+
+  // Make the entry point of the table jump to `jumpTarget`
   void* original = nullptr;
-  mechanism->SetHook(GetContextPtr(), debugger, m_mem, jumpTarget, &original);
+  m_mechanism->SetHook(m_ctx, m_tableEntryPoint, jumpTarget, &original);
   m_tableSet = true;
 }
 
-void HookJumpTable::RemoveJumpTarget(IHookMechanism* mechanism, HookDebugger* debugger) {
-  mechanism->RemoveHook(GetContextPtr(), debugger, m_mem);
+void HookJumpTable::RemoveJumpTarget() {
+  BIFROST_HOOK_TRACE(m_ctx, "Removing jump table of %s", Sym(m_ctx, m_target));
+
+  // Restore the default behavior
+  m_mechanism->RemoveHook(m_ctx, m_tableEntryPoint);
   m_tableSet = false;
 }
 
 void* HookJumpTable::GetTableEntryPoint() const {
   BIFROST_ASSERT(m_tableSet && "Jump table not set");
-  return m_mem;
+  return m_tableEntryPoint;
 }
 
 }  // namespace bifrost

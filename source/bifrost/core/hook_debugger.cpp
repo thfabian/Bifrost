@@ -62,6 +62,13 @@ const char* HookDebugger::SymbolFromAdress(Context* ctx, u64 addr) {
     DWORD64 dwAddress = addr;
     SymbolInfoPackage info;
 
+    // Resolve jump tables
+    bool isJumpTable = false;
+    if (auto it = m_jumpTableToTarget.find(dwAddress); it != m_jumpTableToTarget.end()) {
+      dwAddress = it->second;
+      isJumpTable = true;
+    }
+
     // Resolve trampolines
     bool isTrampoline = false;
     if (auto it = m_trampolineToTarget.find(dwAddress); it != m_trampolineToTarget.end()) {
@@ -81,6 +88,7 @@ const char* HookDebugger::SymbolFromAdress(Context* ctx, u64 addr) {
       symbolName = StringFormat("0x%08x", dwAddress);
     }
 
+    if (isJumpTable) symbolName += " [jump-table]";
     if (isTrampoline) symbolName += " [trampoline]";
 
     return m_symbolCache.emplace(addr, std::move(symbolName)).first->second.c_str();
@@ -97,9 +105,14 @@ void HookDebugger::SetSymbolResolving(bool symbolResolving) {
     options |= SYMOPT_UNDNAME;
     ::SymSetOptions(options);
 
-    Logger().Info("Loading symbols ...");
+    Logger().Debug("Loading symbols ...");
     BIFROST_CHECK_WIN_CALL(::SymInitialize(::GetCurrentProcess(), NULL, TRUE) == TRUE);
-    m_symbolCache.reserve(512);
+    m_symbolCache.reserve(1024);
+
+    m_trampolineToTarget.reserve(512);
+    m_targetToTrampoline.reserve(512);
+
+    m_jumpTableToTarget.reserve(512);
 
     m_dbgHelpSetup = true;
   }
@@ -107,18 +120,30 @@ void HookDebugger::SetSymbolResolving(bool symbolResolving) {
 
 bool HookDebugger::GetSymbolResolving() { return m_symbolResolving; }
 
-void HookDebugger::AddTrampoline(void* trampoline, void* target) {
+void HookDebugger::RegisterTrampoline(void* trampoline, void* target) {
   if (!m_symbolResolving || !m_dbgHelpSetup) return;
 
   m_trampolineToTarget[(u64)trampoline] = (u64)target;
   m_targetToTrampoline[(u64)target] = m_trampolineToTarget.find((u64)trampoline);
 }
 
-void HookDebugger::RemoveTrampoline(void* target) {
+void HookDebugger::UnregisterTrampoline(void* target) {
   if (!m_symbolResolving || !m_dbgHelpSetup) return;
 
   m_trampolineToTarget.erase(m_targetToTrampoline[(u64)target]);
   m_targetToTrampoline.erase((u64)target);
+}
+
+void HookDebugger::RegisterJumpTable(void* tableEntryPoint, void* target) {
+  if (!m_symbolResolving || !m_dbgHelpSetup) return;
+
+  m_jumpTableToTarget[(u64)tableEntryPoint] = (u64)target;
+}
+
+void HookDebugger::UnregisterJumpTable(void* tableEntryPoint) {
+  if (!m_symbolResolving || !m_dbgHelpSetup) return;
+
+  m_jumpTableToTarget.erase((u64)tableEntryPoint);
 }
 
 }  // namespace bifrost
