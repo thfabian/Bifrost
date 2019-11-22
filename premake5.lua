@@ -243,7 +243,7 @@ workspace "bifrost"
   for p, k in pairs({ 
       injector_plugin="SharedLib", 
       injector_executable="ConsoleApp", 
-      hook_plugin_1="SharedLib", 
+      hook_plugin="SharedLib", 
       hook_plugin_2="SharedLib", 
       hook_executable="ConsoleApp",
       hook_dll="SharedLib"
@@ -289,7 +289,7 @@ workspace "bifrost"
       "bifrost_api_test_injector_executable", 
       "bifrost_api_test_injector_plugin",
       "bifrost_api_test_injector_plugin",
-      "bifrost_api_test_hook_plugin_1", 
+      "bifrost_api_test_hook_plugin", 
       "bifrost_api_test_hook_plugin_2",
       "bifrost_api_test_hook_executable",
       "bifrost_api_test_hook_dll",

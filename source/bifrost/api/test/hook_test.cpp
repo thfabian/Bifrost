@@ -11,7 +11,7 @@
 
 #include "bifrost/api/test/test.h"
 
-#include "bifrost/api/test/data/plugin_def.h"
+#include "bifrost/api/test/data/hook_plugin.h"
 
 namespace {
 
@@ -24,9 +24,9 @@ class TestHook : public TestInjectorBase {
                                                 file + " " + std::to_string(arg1) + " " + std::to_string(arg2) + " " + std::to_string(sleep));
   }
 
-  std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string file, Mode function = Mode::none, i32 plugin = 1) {
-    return MakePluginLoadDescImpl("InjectorTestPlugin", plugin == 1 ? TestEnviroment::Get().GetHookPlugin1() : TestEnviroment::Get().GetHookPlugin2(),
-                                  file + ";" + std::to_string((int)function), false);
+  std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string file, Mode mode = Mode::none, i32 plugin = 1) {
+    return MakePluginLoadDescImpl("InjectorTestPlugin", plugin == 1 ? TestEnviroment::Get().GetHookPlugin() : TestEnviroment::Get().GetHookPlugin2(),
+                                  file + ";" + std::to_string((int)mode), false);
   }
 };
 
@@ -47,8 +47,8 @@ TEST_F(TestHook, NoHooks) {
 #pragma region bifrost_add Tests
 
 // The tests work the following:
-// 1) We pass the function <id> we want to call via plugin argument. The plugin argument has the form "<tmp-file>;<id>"
-// 2) The plugin will hook the function we specified in <id>.
+// 1) We pass the mode <id> we want to call via plugin argument. The plugin argument has the form "<tmp-file>;<id>"
+// 2) The plugin will hook the mode we specified in <id>.
 // 3) The executable will call bifrost_add and the hook should be called.
 //
 // The executable and the plugin write to the tmp file so we can check the results.
@@ -56,12 +56,12 @@ TEST_F(TestHook, NoHooks) {
 //
 //  APP -> bifrost_add__original_1 -> ORIGINAL
 //
-TEST_F(TestHook, Original1) {
+TEST_F(TestHook, CFunction_Single_Orignal1) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::bifrost_add__original_1);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Orignal1);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
@@ -73,12 +73,12 @@ TEST_F(TestHook, Original1) {
 //
 //  APP -> bifrost_add__original_2 -> ORIGINAL
 //
-TEST_F(TestHook, Original2) {
+TEST_F(TestHook, CFunction_Single_Orignal2) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::bifrost_add__original_2);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Orignal2);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
@@ -90,12 +90,12 @@ TEST_F(TestHook, Original2) {
 //
 //  APP -> bifrost_add__original_3 -> ORIGINAL
 //
-TEST_F(TestHook, Original3) {
+TEST_F(TestHook, CFunction_Single_Orignal3) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::bifrost_add__original_3);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Orignal3);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
@@ -107,12 +107,12 @@ TEST_F(TestHook, Original3) {
 //
 //  APP -> bifrost_add__modify_1 -> ORIGINAL
 //
-TEST_F(TestHook, Modify1) {
+TEST_F(TestHook, CFunction_Single_Modify1) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::bifrost_add__modify_1);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Modify1);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
@@ -124,12 +124,12 @@ TEST_F(TestHook, Modify1) {
 //
 //  APP -> bifrost_add__modify_2 -> ORIGINAL
 //
-TEST_F(TestHook, Modify2) {
+TEST_F(TestHook, CFunction_Single_Modify2) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::bifrost_add__modify_2);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Modify2);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
@@ -141,12 +141,12 @@ TEST_F(TestHook, Modify2) {
 //
 //  APP -> bifrost_add__modify_3 -> ORIGINAL
 //
-TEST_F(TestHook, Modify3) {
+TEST_F(TestHook, CFunction_Single_Modify3) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::bifrost_add__modify_3);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Modify3);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
@@ -156,14 +156,14 @@ TEST_F(TestHook, Modify3) {
 }
 
 //
-//  APP -> bifrost_add__original_1 -> ORIGINAL
+//  APP -> CFunction_Single_Orignal1 -> ORIGINAL
 //
-TEST_F(TestHook, Replace1) {
+TEST_F(TestHook, CFunction_Single_Replace1) {
   auto tmpFile = GetTmpFile();
 
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
   auto injectorArgs = MakeInjectorArguments();
-  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::bifrost_add__replace_1);
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Replace1);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);

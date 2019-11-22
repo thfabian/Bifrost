@@ -10,7 +10,7 @@
 // See LICENSE.txt for details.
 
 //
-// This dll implements the functionality which can be hooked by the test plugins (source/bifrost/api/test/data/hook_plugin_1.cpp). It is called in the hook
+// This dll implements the functionality which can be hooked by the test plugin (source/bifrost/api/test/data/hook_plugin.cpp). It is called in the hook
 // executable (source/bifrost/api/test/data/hook_executable.cpp)
 //
 

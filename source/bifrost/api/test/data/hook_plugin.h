@@ -9,6 +9,19 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#define PLUGIN_NAME HookTestPlugin2
+#pragma once
 
-#include "hook_plugin.cpp"
+namespace bifrost {
+
+enum class Mode : int {
+  none = 0,
+  CFunction_Single_Orignal1,
+  CFunction_Single_Orignal2,
+  CFunction_Single_Orignal3,
+  CFunction_Single_Modify1,
+  CFunction_Single_Modify2,
+  CFunction_Single_Modify3,
+  CFunction_Single_Replace1,
+};
+
+}

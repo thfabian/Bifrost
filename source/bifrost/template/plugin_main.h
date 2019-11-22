@@ -246,7 +246,9 @@ BIFROST_NAMESPACE_END
 /// Register a plugin
 ///
 /// (!) Do not place this macro inside a namespace
-#define BIFROST_REGISTER_PLUGIN(plugin)       \
+#define BIFROST_REGISTER_PLUGIN(plugin) BIFROST_REGISTER_PLUGIN_IMPL(plugin)
+
+#define BIFROST_REGISTER_PLUGIN_IMPL(plugin)  \
   BIFROST_NAMESPACE_BEGIN                     \
   Plugin& Plugin::Get() {                     \
     if (!s_instance) s_instance = new plugin; \
