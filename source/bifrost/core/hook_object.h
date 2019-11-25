@@ -34,6 +34,8 @@ class HookObject {
   /// Get the symbol name
   inline const char* Sym(Context* ctx, void* addr) { return m_debugger->SymbolFromAdress(ctx, addr); }
   inline const char* Sym(Context& ctx, void* addr) { return m_debugger->SymbolFromAdress(&ctx, addr); }
+  inline const char* Sym(Context* ctx, const HookTarget& target) { return m_debugger->SymbolFromAdress(ctx, target); }
+  inline const char* Sym(Context& ctx, const HookTarget& target) { return m_debugger->SymbolFromAdress(&ctx, target); }
 
  private:
   HookSettings* m_settings;

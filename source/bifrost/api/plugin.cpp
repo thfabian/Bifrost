@@ -17,6 +17,7 @@
 
 #include "bifrost/core/macros.h"
 #include "bifrost/core/mutex.h"
+#include "bifrost/core/error.h"
 
 using namespace bifrost;
 using namespace bifrost::api;
@@ -63,14 +64,21 @@ static void TearDownHookManager(PluginContext* ctx) {
   }
 }
 
-static EHookType ToType(bfp_HookType type) {
-  switch (type) {
+template <class DescT>
+static HookTarget MakeHookTarget(DescT* desc) {
+  HookTarget target;
+  switch (desc->Type) {
     case BFP_CFUNCTION:
-      return EHookType::E_CFunction;
+      target.Type = EHookType::E_CFunction;
+      target.CFunction.Target = desc->Target;
+      break;
     case BFP_VTABLE:
-      return EHookType::E_VTable;
+      target.Type = EHookType::E_VTable;
+      target.VTable.Table = desc->Target;
+      target.VTable.Offset = desc->TargetOffset;
+      break;
   }
-  return EHookType::E_NumTypes;
+  return target;
 }
 
 }  // namespace
@@ -142,14 +150,14 @@ const char* bfp_PluginGetLastError(bfp_PluginContext* ctx) { return Get(ctx)->Ge
 
 BIFROST_PLUGIN_API bfp_Status bfp_HookSet(bfp_PluginContext* ctx, const bfp_HookSetDesc* desc, void** original) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->SetHook(Get(ctx)->GetContext(), ToType(desc->Type), Get(ctx)->GetId(), desc->Priority, desc->Target, desc->Detour, original);
+    g_manager->SetHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), desc->Priority, MakeHookTarget(desc), desc->Detour, original);
     return BFP_OK;
   });
 }
 
 bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, const bfp_HookRemoveDesc* desc) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->RemoveHook(Get(ctx)->GetContext(), ToType(desc->Type), Get(ctx)->GetId(), desc->Target);
+    g_manager->RemoveHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), MakeHookTarget(desc));
     return BFP_OK;
   });
 }

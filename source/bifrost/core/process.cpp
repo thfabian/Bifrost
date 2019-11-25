@@ -156,7 +156,7 @@ Process::Process(Context* ctx, LaunchArguments args) : Object(ctx) {
 }
 
 Process::Process(Context* ctx, u32 pid) : Object(ctx) {
-  Logger().InfoFormat("Opening process with pid: %u", pid);
+  Logger().DebugFormat("Opening process with pid: %u", pid);
   OpenProcess(pid);
 }
 

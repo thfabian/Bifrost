@@ -120,16 +120,6 @@ HookSettings::HookSettings(Context* ctx) {
       [](EHookStrategy strategy) { return ToString(strategy); });
 }
 
-const char* ToString(EHookType type) {
-  switch (type) {
-    case EHookType::E_CFunction:
-      return "function";
-    case EHookType::E_VTable:
-      return "vtable";
-  };
-  return "unknown";
-}
-
 const char* ToString(EHookStrategy type) {
   switch (type) {
     case EHookStrategy::E_Multi:

@@ -16,6 +16,11 @@
 #define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "saxpy",
 #define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "saxpy",
 #define BIFROST_PLUGIN_IDENTIFIER_TO_HOOK_TYPE HookType::CFunction,
+#define BIFROST_PLUGIN_IDENTIFIER_TO_VTABLE_OFFSET 0,
+
+#define BIFROST_PLUGIN_OBJECT_TYPE
+#define BIFROST_PLUGIN_OBJECT_TYPE_TO_STRING
+#define BIFROST_PLUGIN_IDENTIFIER_TO_OBJECT_TYPE Plugin::ObjectType::__invalid__,
 
 #define BIFROST_PLUGIN_MODULE example_saxpy_dll,
 #define BIFROST_PLUGIN_IDENTIFIER_TO_MODULE Module::example_saxpy_dll,
@@ -74,6 +79,8 @@ bf_override(my_saxpy3) {
   // In the end we are going to call the original function again but now with our new argument a3. Note that bf_arg can expand into multiple arguments!
   return bf_original(bf_arg(1), a3, bf_arg(3, 4));
 }
+
+#undef bf_id
 
 //
 // 4) Here we define our plugin. The plugin provides functionality to hook functions/methods and utilities such as error handling or logging. The plugin is a

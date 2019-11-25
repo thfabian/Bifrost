@@ -14,6 +14,7 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
 #include "bifrost/core/object.h"
+#include "bifrost/core/hook_target.h"
 
 namespace bifrost {
 
@@ -29,6 +30,7 @@ class HookDebugger : public Object {
   /// Get the name of the symbol pointed to by `addr` (requires `SymbolResolving` to be enabled, otherwise returns a string representation of the hex address)
   const char* SymbolFromAdress(Context* ctx, void* addr);
   const char* SymbolFromAdress(Context* ctx, u64 addr);
+  const char* SymbolFromAdress(Context* ctx, const HookTarget& target);
 
   /// Enable symbol resolving or refresh the module list if resolving is already enabled
   void EnablerOrRefreshSymbolResolving();

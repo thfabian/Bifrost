@@ -27,6 +27,8 @@ std::wstring TestEnviroment::GetHookPlugin() const { return GetFile(L"dll", L"te
 
 std::wstring TestEnviroment::GetHookPlugin2() const { return GetFile(L"dll", L"test-bifrost-api-hook-plugin-2.dll"); }
 
+std::wstring TestEnviroment::GetHookPlugin3() const { return GetFile(L"dll", L"test-bifrost-api-hook-plugin-3.dll"); }
+
 std::string TestEnviroment::GetTmpFile(Context* ctx) const { return (std::filesystem::temp_directory_path() / UUID(ctx)).string(); }
 
 void LogCallback(u32 level, const char* module, const char* msg) { TestEnviroment::Get().GetLogger()->Sink((ILogger::LogLevel)level, module, msg); }

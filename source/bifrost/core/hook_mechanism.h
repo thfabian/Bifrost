@@ -14,6 +14,7 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
 #include "bifrost/core/hook_object.h"
+#include "bifrost/core/hook_target.h"
 
 namespace bifrost {
 
@@ -30,10 +31,10 @@ class IHookMechanism {
   virtual void TearDown(Context* ctx) = 0;
 
   /// Set the hook from `target` to `detour` and return the originally registered function in `original`
-  virtual void SetHook(Context* ctx, void* target, void* detour, void** original) = 0;
+  virtual void SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) = 0;
 
   /// Remove any hook that has been set to `target`
-  virtual void RemoveHook(Context* ctx, void* target) = 0;
+  virtual void RemoveHook(Context* ctx, const HookTarget& target) = 0;
 
   /// Get the type of hooking
   virtual EHookType GetType() const noexcept = 0;
@@ -46,8 +47,8 @@ class MinHook : public IHookMechanism, public HookObject {
 
   virtual void SetUp(Context* ctx) override;
   virtual void TearDown(Context* ctx) override;
-  virtual void SetHook(Context* ctx, void* target, void* detour, void** original) override;
-  virtual void RemoveHook(Context* ctx, void* target) override;
+  virtual void SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) override;
+  virtual void RemoveHook(Context* ctx, const HookTarget& target) override;
   virtual EHookType GetType() const noexcept;
 };
 
@@ -58,9 +59,12 @@ class VTableHook : public IHookMechanism, public HookObject {
 
   virtual void SetUp(Context* ctx) override;
   virtual void TearDown(Context* ctx) override;
-  virtual void SetHook(Context* ctx, void* target, void* detour, void** original) override;
-  virtual void RemoveHook(Context* ctx, void* target) override;
+  virtual void SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) override;
+  virtual void RemoveHook(Context* ctx, const HookTarget& target) override;
   virtual EHookType GetType() const noexcept;
+
+ private:
+  std::unordered_map<void*, std::intptr_t> m_targetToOiginal;
 };
 
 }  // namespace bifrost

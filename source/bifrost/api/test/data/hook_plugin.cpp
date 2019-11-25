@@ -17,7 +17,7 @@
 #define STR(s) STR_(s)
 #define STR_(s) #s
 
-// This plugin is compiled twice so we can test the chain hooking (PLUGIN_INDEX=1 and =2, respectively)
+// This plugin is compiled three times so we can test the chain hooking
 #ifndef PLUGIN_INDEX
 #define PLUGIN_INDEX 1
 #endif
@@ -26,7 +26,7 @@
 #define PLUGIN_NAME CAT(HookTestPlugin, PLUGIN_INDEX)
 #endif
 
-// Make sure we can distinguish the function of the two plugins
+// Make sure we can distinguish the function of the three plugins
 #if PLUGIN_INDEX == 1
 #define PLUGIN_PREFIX(x) x
 #else
@@ -35,12 +35,17 @@
 
 #define BIFROST_NAMESPACE hook_plugin
 
-#define BIFROST_PLUGIN_IDENTIFIER bifrost_add, bifrost_Adder_add,
-#define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "bifrost_add", "bifrost_Adder_add",
-#define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "bifrost_add", "",
+#define BIFROST_PLUGIN_IDENTIFIER bifrost_add, bifrost_IAdder_add,
+#define BIFROST_PLUGIN_IDENTIFIER_TO_STRING "bifrost_add", "bifrost_IAdder_add",
+#define BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME "bifrost_add", "IAdder::add",
 #define BIFROST_PLUGIN_IDENTIFIER_TO_HOOK_TYPE HookType::CFunction, HookType::VTable,
 #define BIFROST_PLUGIN_STRING_TO_IDENTIFIER \
-  {"bifrost_add", Plugin::Identifier::bifrost_add}, { "bifrost_Adder_add", Plugin::Identifier::bifrost_Adder_add }
+  {"bifrost_add", Plugin::Identifier::bifrost_add}, { "bifrost_Adder_add", Plugin::Identifier::bifrost_IAdder_add }
+#define BIFROST_PLUGIN_IDENTIFIER_TO_VTABLE_OFFSET -1, 0,
+
+#define BIFROST_PLUGIN_OBJECT_TYPE IAdder,
+#define BIFROST_PLUGIN_OBJECT_TYPE_TO_STRING "IAdder",
+#define BIFROST_PLUGIN_IDENTIFIER_TO_OBJECT_TYPE Plugin::ObjectType::__invalid__, Plugin::ObjectType::IAdder,
 
 #define BIFROST_PLUGIN_MODULE test_bifrost_api_hook_dll_dll,
 #define BIFROST_PLUGIN_MODULE_TO_STRING L"test-bifrost-api-hook-dll.dll",
@@ -70,17 +75,17 @@
 #define _bf_arg_2_hook_plugin__bifrost_add arg2
 
 // bifrost::Adder::add
-#define _bf_func_decl_ret_hook_plugin__bifrost_Adder_add int
-#define _bf_func_decl_args_hook_plugin__bifrost_Adder_add bifrost::Adder *__this__, int arg1, int arg2
-#define _bf_func_hook_plugin__bifrost_Adder_add                                \
-  ((int (*)(bifrost::Adder *, int, int))BIFROST_NAMESPACE## ::Plugin::Get()    \
-       .GetHook<BIFROST_NAMESPACE## ::Plugin::Identifier::bifrost_Adder_add>() \
+#define _bf_func_decl_ret_hook_plugin__bifrost_IAdder_add int
+#define _bf_func_decl_args_hook_plugin__bifrost_IAdder_add bifrost::IAdder *__this__, int arg1, int arg2
+#define _bf_func_hook_plugin__bifrost_IAdder_add                                \
+  ((int (*)(bifrost::IAdder *, int, int))BIFROST_NAMESPACE## ::Plugin::Get()    \
+       .GetHook<BIFROST_NAMESPACE## ::Plugin::Identifier::bifrost_IAdder_add>() \
        ->GetOriginal())
 
-#define _bf_this_hook_plugin__bifrost_Adder_add __this__
-#define _bf_args_hook_plugin__bifrost_Adder_add arg1, arg2
-#define _bf_arg_1_hook_plugin__bifrost_Adder_add arg1
-#define _bf_arg_2_hook_plugin__bifrost_Adder_add arg2
+#define _bf_this_hook_plugin__bifrost_IAdder_add __this__
+#define _bf_args_hook_plugin__bifrost_IAdder_add __this__, arg1, arg2
+#define _bf_arg_1_hook_plugin__bifrost_IAdder_add arg1
+#define _bf_arg_2_hook_plugin__bifrost_IAdder_add arg2
 
 #include "bifrost/api/test/data/shared.h"
 
@@ -105,15 +110,18 @@ bf_override(PLUGIN_PREFIX(bifrost_add__modify_2)) { return bf_original(bf_arg(1)
 /// Modify both arguments
 bf_override(PLUGIN_PREFIX(bifrost_add__modify_3)) { return bf_original(5, 5); }
 
+bf_override(PLUGIN_PREFIX(bifrost_add__times_2)) { return 2 * bf_original(bf_args); }
+bf_override(PLUGIN_PREFIX(bifrost_add__plus_3)) { return 3 + bf_original(bf_args); }
+
 #undef bf_id
 
 //
 // bifrost_Adder_add
 //
-#define bf_id bifrost_Adder_add
+#define bf_id bifrost_IAdder_add
 
 /// Call original function
-// bf_override(bifrost_Adder_add__original_1) { return bf_original(bf_this, bf_args); }
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__original_1)) { return bf_original(bf_args); }
 
 #undef bf_id
 
@@ -134,36 +142,103 @@ class PLUGIN_NAME final : public hook_plugin::Plugin {
 
   virtual void SetUp() override {
     switch (GetMode()) {
+      //
+      // C-Function Single
+      //
       case Mode::CFunction_Single_Original1:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_1));
         break;
+
       case Mode::CFunction_Single_Original2:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_2));
         break;
+
       case Mode::CFunction_Single_Original3:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_3));
         break;
+
       case Mode::CFunction_Single_Modify1:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_1));
         break;
+
       case Mode::CFunction_Single_Modify2:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_2));
         break;
+
       case Mode::CFunction_Single_Modify3:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_3));
         break;
+
       case Mode::CFunction_Single_Replace1:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_3));
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_1));
         break;
+
       case Mode::CFunction_Single_Restore1:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_1));
         RemoveHook(Identifier::bifrost_add);
         break;
+
+      //
+      // C-Function Multi
+      //
       case Mode::CFunction_Multi_Original_P1:
       case Mode::CFunction_Multi_Original_P2:
+      case Mode::CFunction_Multi_Original_P3:
         SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_1));
         break;
+
+      case Mode::CFunction_Multi_Modify1_P1:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__times_2));
+        break;
+      case Mode::CFunction_Multi_Modify1_P2:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__plus_3));
+        break;
+
+      case Mode::CFunction_Multi_Modify2_P1:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__times_2), 50);
+        break;
+      case Mode::CFunction_Multi_Modify2_P2:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__plus_3), 100);
+        break;
+
+      case Mode::CFunction_Multi_Modify3_P1:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__times_2), 100);
+        break;
+      case Mode::CFunction_Multi_Modify3_P2:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__plus_3), 50);
+        break;
+
+      case Mode::CFunction_Multi_Modify4_P1:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__times_2));
+        break;
+      case Mode::CFunction_Multi_Modify4_P2:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__plus_3));
+        break;
+      case Mode::CFunction_Multi_Modify4_P3:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__times_2));
+        break;
+
+      case Mode::CFunction_Multi_Modify5_P1:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__plus_3), 100);
+        break;
+      case Mode::CFunction_Multi_Modify5_P2:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__plus_3), 50);
+        break;
+      case Mode::CFunction_Multi_Modify5_P3:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__times_2), 50);
+        break;
+
+      //
+      // VTable Multi
+      //
+      case Mode::VTable_Single_Original1: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__original_1));
+        delete adder;
+        break;
+      }
+
       default:
         break;
     }

@@ -27,6 +27,7 @@ class TestEnviroment final : public ::testing::Environment, public BaseTestEnvir
   std::wstring GetHookDll() const;
   std::wstring GetHookPlugin() const;
   std::wstring GetHookPlugin2() const;
+  std::wstring GetHookPlugin3() const;
 
   /// Create a temporary file
   std::string GetTmpFile(Context* ctx) const;

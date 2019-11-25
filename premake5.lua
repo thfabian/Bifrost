@@ -241,12 +241,13 @@ workspace "bifrost"
     
   -- *** Bifrost API Test (plugins) ***
   for p, k in pairs({ 
+      hook_dll="SharedLib",
       injector_plugin="SharedLib", 
       injector_executable="ConsoleApp", 
       hook_plugin="SharedLib", 
       hook_plugin_2="SharedLib", 
-      hook_executable="ConsoleApp",
-      hook_dll="SharedLib"
+      hook_plugin_3="SharedLib",
+      hook_executable="ConsoleApp"
     }) 
   do
     project_name = "bifrost_api_test_" .. p
@@ -262,7 +263,7 @@ workspace "bifrost"
         defines { "BIFROST_HOOK_DLL_EXPORTS" }
       end
       
-      if (p == "hook_executable") then
+      if (p == "hook_executable" or p == "hook_plugin" or p == "hook_plugin_2" or p == "hook_plugin_3") then
         links "bifrost_api_test_hook_dll"
         dependson "bifrost_api_test_hook_dll"
       end
@@ -291,12 +292,13 @@ workspace "bifrost"
       "bifrost_api_test_injector_plugin",
       "bifrost_api_test_hook_plugin", 
       "bifrost_api_test_hook_plugin_2",
+      "bifrost_api_test_hook_plugin_3",
       "bifrost_api_test_hook_executable",
       "bifrost_api_test_hook_dll",
       "bifrost_plugin",
       "bifrost_injector",
       "bifrost_loader"
-    }
+    }    
     
   -- *
   -- *** Injector ***

@@ -79,16 +79,16 @@ class HookManager::Impl {
     m_settings.release();
   }
 
-  void SetHook(Context* ctx, EHookType type, u32 id, u32 priority, void* target, void* detour, void** original) {
+  void SetHook(Context* ctx, u32 id, u32 priority, const HookTarget& target, void* detour, void** original) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_HOOK_DEBUG("Setting %s hook from %s to %s ...", ToString(type), m_debugger->SymbolFromAdress(ctx, target),
+    BIFROST_HOOK_DEBUG("Setting %s hook from %s to %s ...", ToString(target.Type), m_debugger->SymbolFromAdress(ctx, target),
                        m_debugger->SymbolFromAdress(ctx, detour));
     Timer timer;
 
     HookChain* chain = GetHookChain(target);
     if (!chain) {
       // First time we see this target, create the chain
-      chain = CreateHookChain(target, this, target, type);
+      chain = CreateHookChain(target, this, target);
     }
 
     // Register the hook
@@ -101,20 +101,20 @@ class HookManager::Impl {
                        timer.Stop());
   }
 
-  void RemoveHook(Context* ctx, EHookType type, u32 id, void* target) {
+  void RemoveHook(Context* ctx, u32 id, const HookTarget& target) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_HOOK_DEBUG("Removing %s hook %s ...", ToString(type), m_debugger->SymbolFromAdress(ctx, target));
+    BIFROST_HOOK_DEBUG("Removing %s hook %s ...", ToString(target.Type), m_debugger->SymbolFromAdress(ctx, target));
     Timer timer;
 
     HookChain* chain = GetHookChain(target);
     if (!chain) {
-      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook");
+      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook", m_debugger->SymbolFromAdress(ctx, target));
       return;
     }
 
     HookChainNode* node = chain->GetById(id);
     if (!node) {
-      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook for the specified id");
+      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook for the specified id", m_debugger->SymbolFromAdress(ctx, target));
       return;
     }
 
@@ -169,7 +169,7 @@ class HookManager::Impl {
   /// Chain of hooks
   class HookChain {
    public:
-    HookChain(HookManager::Impl* manager, void* target, EHookType type) : m_manager(manager), m_target(target), m_type(type), m_original(nullptr) {
+    HookChain(HookManager::Impl* manager, const HookTarget& target) : m_manager(manager), m_target(target), m_original(nullptr) {
       m_hookChain.reserve(8);
     }
 
@@ -217,7 +217,7 @@ class HookManager::Impl {
     /// This function returns the address of the function which should be treated as the original one (the perceived original). For dynamic hooks this will be
     /// entry point of the the jump-table otherwise it's the actual address of the original function.
     void* Insert(Context* ctx, u32 id, u32 priority, void* detour) {
-      IHookMechanism* mechanism = m_manager->Get(m_type);
+      IHookMechanism* mechanism = m_manager->Get(m_target.Type);
 
       // Remove any existing hook from this plugin
       HookChainNode* nodeForThisId = GetById(id);
@@ -312,7 +312,7 @@ class HookManager::Impl {
 
     /// Remove the node and potentially re-hook adjacent node(s)
     void Remove(Context* ctx, const HookChainNode* node) {
-      IHookMechanism* mechanism = m_manager->Get(m_type);
+      IHookMechanism* mechanism = m_manager->Get(m_target.Type);
 
       if (Size() == 1) {
         m_hookChain.pop_back();
@@ -348,23 +348,20 @@ class HookManager::Impl {
     std::vector<HookChainNode> m_hookChain;
 
     /// Target of the function (address or offset into the VTable)
-    void* m_target = nullptr;
-
-    /// Type of hook
-    EHookType m_type;
+    HookTarget m_target;
 
     /// Original function
     void* m_original = nullptr;
   };
 
-  HookChain* GetHookChain(void* target) {
-    auto it = m_hookTargetToDesc.find((u64)target);
+  HookChain* GetHookChain(const HookTarget& target) {
+    auto it = m_hookTargetToDesc.find((u64)target.GetTarget());
     return it != m_hookTargetToDesc.end() ? &it->second : nullptr;
   }
 
   template <class... Args>
-  HookChain* CreateHookChain(void* target, Args&&... args) {
-    return &m_hookTargetToDesc.emplace((u64)target, HookChain{std::forward<Args>(args)...}).first->second;
+  HookChain* CreateHookChain(const HookTarget& target, Args&&... args) {
+    return &m_hookTargetToDesc.emplace((u64)target.GetTarget(), HookChain{std::forward<Args>(args)...}).first->second;
   }
 
   void EnableDebugImpl(Context* ctx) {
@@ -412,11 +409,11 @@ void HookManager::TearDown(Context* ctx) { m_impl->TearDown(ctx); }
 
 u32 HookManager::MakeUniqueId() { return m_impl->MakeUniqueId(); }
 
-void HookManager::SetHook(Context* ctx, EHookType type, u32 id, u32 priority, void* target, void* detour, void** original) {
-  m_impl->SetHook(ctx, type, id, priority, target, detour, original);
+void HookManager::SetHook(Context* ctx, u32 id, u32 priority, const HookTarget& target, void* detour, void** original) {
+  m_impl->SetHook(ctx, id, priority, target, detour, original);
 }
 
-void HookManager::RemoveHook(Context* ctx, EHookType type, u32 id, void* target) { m_impl->RemoveHook(ctx, type, id, target); }
+void HookManager::RemoveHook(Context* ctx, u32 id, const HookTarget& target) { m_impl->RemoveHook(ctx, id, target); }
 
 void HookManager::EnableDebug(Context* ctx) { m_impl->EnableDebug(ctx); }
 

@@ -6,8 +6,6 @@
 //		BIFROST_CACHE_LINE			<int>			Size of a cache-line (default: 64).
 //
 
-// https://clang.llvm.org/doxygen/VTableBuilder_8cpp_source.html
-
 #pragma once
 
 #pragma region Configuration
@@ -84,6 +82,18 @@ BIFROST_CACHE_ALIGN class Plugin {
   static const char* ToString(Identifier identifer);
 
   //
+  // OBJECT
+  //
+  enum class ObjectType : std::uint64_t {
+    __invalid__ = 0,
+    BIFROST_PLUGIN_OBJECT_TYPE
+    NumObjects
+  };
+
+  /// Convert Identifier to string
+  static const char* ToString(ObjectType object);
+
+  //
   // INTERFACE
   //
 
@@ -100,9 +110,9 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// Get the name of the plugin - by default returns the class name of the plugin i.e name passed to `BIFROST_REGISTER_PLUGIN`
   virtual const char* GetName() const;
 
-  /// Called if a fatal exception occurred - by default logs to Error and throws std::runtime_error
+  /// Called if a fatal error occurred - by default logs to Error and throws std::runtime_error
   ///
-  /// Note that this function may be called *before* `SetUp` has been invoked.
+  /// Note that this function may be called *before* `SetUp` has been invoked. This function indicates and unrecoverable sitation. 
   ///
   /// @param[in] msg   Error message which has to be '\0' terminated
   virtual void FatalError(const char* msg) const;
@@ -125,7 +135,7 @@ BIFROST_CACHE_ALIGN class Plugin {
     /// Get the associated identifier
     Identifier GetIdentifier() const noexcept { return m_identifier; }
 
-   private:
+  private:
     void* _GetTarget() const noexcept;
     void _SetTarget(void* target) noexcept;
     void _SetOverride(void* override) noexcept;
@@ -153,21 +163,29 @@ BIFROST_CACHE_ALIGN class Plugin {
   Hook* SetHook(Identifier identifier, void* override, std::uint32_t priority);
   Hook* SetHook(const char* identifier, void* override, std::uint32_t priority);
 
-  /// Get the default hook priority
-  std::uint32_t GetDefaultHookPriority() const noexcept;
-
-  /// Hook the method (`identifier`) in the VTable given by `instance` to call `override` instead
+  /// Hook the method (`identifier`) in the V-Table given by `instance` to call `override` instead
   ///
-  /// The per object VTable is cached after the first call and `SetHook` can be used subsequently. Calls `FatalError` if an error occurred.
+  /// The per object VTable is cached after the first call or if the V-Table has been registered manually via `RegisterVTable`. After the VTable is cached, it's
+  /// possible to simply us `SetHook`. Calls `FatalError` if an error occurred.
   ///
   /// @param[in] identifier Identifier of the method to override
-  /// @param[in] identifier Instance of an object to extract the VTable from
+  /// @param[in] instance   Instance of an object to extract the VTable from
   /// @param[in] override   Function pointer to use for the override (type has to match!)
+  /// @param[in] priority   The higher the priority the earlier the function will placed in the hook chain (the highest priority function will be called first).
   /// @returns a reference to the hook object
   Hook* SetVTableHook(Identifier identifier, void* instance, void* override);
   Hook* SetVTableHook(const char* identifier, void* instance, void* override);
   Hook* SetVTableHook(Identifier identifier, void* instance, void* override, std::uint32_t priority);
   Hook* SetVTableHook(const char* identifier, void* instance, void* override, std::uint32_t priority);
+
+  /// Register the V-Table of `object` by inspecting `instance`
+  ///
+  /// @param[in] object     Identifier of the object
+  /// @param[in] instance   Instance of an object to extract the VTable from
+  void RegisterVTable(ObjectType object, void* instance);
+
+  /// Get the default hook priority
+  std::uint32_t GetDefaultHookPriority() const noexcept;
 
   /// Removes an already created the hook given by `identifier`
   ///
@@ -179,16 +197,16 @@ BIFROST_CACHE_ALIGN class Plugin {
   void RemoveHook(const char* identifier);
   void RemoveHook(Hook* hook);
 
-  /// Remove the hook of each `identifier`
+  /// Remove the hook for each `identifier`
   template <class... IdentifierT>
   void RemoveHooks(IdentifierT&&... identifier) {
     RemoveHook(identifier)...;
   }
 
-	/// Disables all created hooks
+	/// Remove all created hooks
   void RemoveAllHooks() noexcept;
 
-  /// Get an already created hook
+  /// Get a reference to the hook object
   ///
   /// @param[in] identifier  Identifier of the hook
   /// @returns a reference to the hook object
@@ -200,13 +218,6 @@ BIFROST_CACHE_ALIGN class Plugin {
     return &s_hooks[(std::uint64_t)identifer].hook;
   }
 
-  /// Check if there was a hook created for `identifier`
-  ///
-  /// @param[in] identifier  Identifier of the hook
-  /// @returns `true` if a hook has been set, false otherwise.
-  bool HasHook(Identifier identifier) noexcept;
-  bool HasHook(const char* identifier);
-
   //
   // HELPER
   //
@@ -217,7 +228,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// Severity level
   enum class LogLevel : unsigned int { Trace = 0, Debug, Info, Warn, Error, Disable };
 
-  /// Log a message - calls Error on failure
+  /// Log a message - calls FatalError on failure
   ///
   /// @param[in] level         Severity level
   /// @param[in] msg           Message which has to be '\0' terminated
@@ -231,6 +242,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   void _SetUpImpl(bfp_PluginContext_t*);
   void _TearDownImpl(bool);
   void _SetArguments(const char*);
+  void* _GetTarget(Hook* hook, void* instance);
 
  private:
   static BIFROST_CACHE_ALIGN Plugin* s_instance;
@@ -411,11 +423,11 @@ BIFROST_NAMESPACE_BEGIN
 enum class Module : std::uint32_t {
   __bifrost_first__ = 0,
   BIFROST_PLUGIN_MODULE 
-	NumModule,
+	NumModules,
 };
 
 /// Hooking types
-enum class HookType : std::uint32_t { __bifrost_first__ = std::numeric_limits<std::uint32_t>::max(), CFunction = BFP_CFUNCTION, VTable = BFP_VTABLE };
+enum class HookType : std::uint32_t { __invalid__ = std::numeric_limits<std::uint32_t>::max(), CFunction = BFP_CFUNCTION, VTable = BFP_VTABLE };
 
 namespace {
 
@@ -635,7 +647,9 @@ static BifrostPluginApi& GetApi() {
 
 /// Convert a string to the Identifier enum
 static Plugin::Identifier StringToIdentifier(const char* identifer) {
-  static BIFROST_CACHE_ALIGN std::unordered_map<std::string, Plugin::Identifier> map{BIFROST_PLUGIN_STRING_TO_IDENTIFIER};
+  static BIFROST_CACHE_ALIGN std::unordered_map<std::string, Plugin::Identifier> map{ 
+    BIFROST_PLUGIN_STRING_TO_IDENTIFIER 
+  };
 
   auto it = map.find(identifer);
   if (it != map.end()) Plugin::Get().FatalError(StringFormat("Identifier \"%s\" does not exist", identifer).c_str());
@@ -676,16 +690,46 @@ static Module IdentifierToModule(Plugin::Identifier identifier) {
 /// Convert an Identifier to the associated module
 static HookType IdentifierToHookType(Plugin::Identifier identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<HookType, (std::uint64_t)Plugin::Identifier::NumIdentifiers + 1> map{
-      HookType::__bifrost_first__,
+      HookType::__invalid__,
       BIFROST_PLUGIN_IDENTIFIER_TO_HOOK_TYPE 
-			HookType::__bifrost_first__,
+			HookType::__invalid__,
   };
   return map[(std::uint64_t)identifier];
 }
 
+/// Convert an Identifier to the associated VTable Offset
+static std::uint64_t IdentifierToVTableOffset(Plugin::Identifier identifier) {
+  static constexpr BIFROST_CACHE_ALIGN std::array<std::uint64_t, (std::uint64_t)Plugin::Identifier::NumIdentifiers + 1> map{
+    -1,
+    BIFROST_PLUGIN_IDENTIFIER_TO_VTABLE_OFFSET 
+    -1,
+  };
+  return map[(std::uint64_t)identifier];
+}
+
+/// Convert an Identifier to the associated object
+static Plugin::ObjectType IdentifierToObject(Plugin::Identifier identifier) {
+  static constexpr BIFROST_CACHE_ALIGN std::array<Plugin::ObjectType, (std::uint64_t)Plugin::Identifier::NumIdentifiers + 1> map{
+    Plugin::ObjectType::__invalid__,
+    BIFROST_PLUGIN_IDENTIFIER_TO_OBJECT_TYPE 
+    Plugin::ObjectType::__invalid__,
+  };
+  return map[(std::uint64_t)identifier];
+}
+
+/// Convert an ObjectType to string
+static const char* ObjectTypeToString(Plugin::ObjectType object) {
+  static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::ObjectType::NumObjects + 1> map{
+      "<invalid>",
+      BIFROST_PLUGIN_OBJECT_TYPE_TO_STRING 
+      "<invalid>",
+  };
+  return map[(std::uint64_t)object];
+}
+
 /// Convert a Module enum to string
 static const wchar_t* ModuleToString(Module module) {
-  static constexpr BIFROST_CACHE_ALIGN std::array<const wchar_t*, (std::uint32_t)Module::NumModule + 1> map{
+  static constexpr BIFROST_CACHE_ALIGN std::array<const wchar_t*, (std::uint32_t)Module::NumModules + 1> map{
       L"<invalid>",
       BIFROST_PLUGIN_MODULE_TO_STRING 
 			L"<invalid>",
@@ -708,10 +752,15 @@ BIFROST_CACHE_ALIGN Plugin::AlignedHook Plugin::s_hooks[(std::uint64_t)Plugin::I
 
 const char* Plugin::ToString(Identifier identifer) { return IdentifierToString(identifer); }
 
+const char* Plugin::ToString(ObjectType object) { return ObjectTypeToString(object); }
+
 BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
  public:
   /// Map of modules to HMODULE
-  BIFROST_CACHE_ALIGN HMODULE Modules[(std::uint64_t)Module::NumModule] = {nullptr};
+  BIFROST_CACHE_ALIGN HMODULE Modules[(std::uint64_t)Module::NumModules] = {nullptr};
+
+  /// Map of objects to VTables
+  BIFROST_CACHE_ALIGN void* VTables[(std::uint64_t)ObjectType::NumObjects] = {nullptr};
 
   /// Context of the plugin (holds shared memory etc.)
   bfp_PluginContext* Context = nullptr;
@@ -721,7 +770,7 @@ BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
 
   /// Arguments passed to the plugin
   std::string Arguments;
-};
+  };
 
 Plugin::Plugin() { m_impl = new PluginImpl; }
 
@@ -758,6 +807,35 @@ void Plugin::Hook::_SetOriginal(void* original) noexcept { m_original = original
 
 void Plugin::Hook::_SetIdentifier(Identifier identifer) noexcept { m_identifier = identifer; }
 
+// Get the address of the function of the VTable pointer
+void* Plugin::_GetTarget(Hook* hook, void* instance) {
+  switch (IdentifierToHookType(hook->GetIdentifier())) {
+    case HookType::CFunction: {
+      if (hook->_GetTarget() == nullptr) {
+        FatalError(StringFormat("Failed to set hook for %s: function was not loaded successfully", IdentiferToFunctionName(hook->GetIdentifier())).c_str());
+      }
+      return hook->_GetTarget();
+    }
+    case HookType::VTable: {
+      RegisterVTable(IdentifierToObject(hook->GetIdentifier()), instance);
+      return m_impl->VTables[(std::uint64_t)hook->GetIdentifier()];
+    }
+  }
+  FatalError(StringFormat("Failed to set hook for %s: internal error invalid hook type", IdentiferToFunctionName(hook->GetIdentifier())).c_str());
+  return nullptr;
+}
+
+void Plugin::RegisterVTable(Plugin::ObjectType object, void* instance) {
+  if (!m_impl->VTables[(std::uint64_t)object]) {
+    if (!instance) {
+      FatalError(StringFormat("Failed to obtain VTable of %s: instance pointer is NULL", ObjectTypeToString(object)).c_str());
+    }
+
+    // Assume VTable is stored in the first 8 bytes
+    m_impl->VTables[(std::uint64_t)object] = (void*)(*(std::intptr_t*)instance);
+  }
+}
+
 Plugin::Hook* Plugin::SetHook(Plugin::Identifier identifier, void* override) { return SetHook(identifier, override, GetDefaultHookPriority()); }
 
 Plugin::Hook* Plugin::SetHook(const char* identifier, void* override) { return SetHook(identifier, override, GetDefaultHookPriority()); }
@@ -767,22 +845,34 @@ Plugin::Hook* Plugin::SetHook(const char* identifier, void* override, std::uint3
 }
 
 Plugin::Hook* Plugin::SetHook(Plugin::Identifier identifier, void* override, std::uint32_t priority) {
+  return SetVTableHook(identifier, nullptr, override, priority);
+}
+
+Plugin::Hook* Plugin::SetVTableHook(Plugin::Identifier identifier, void* instance, void* override) {
+  return SetVTableHook(identifier, instance, override, GetDefaultHookPriority());
+}
+
+Plugin::Hook* Plugin::SetVTableHook(const char* identifier, void* instance, void* override) {
+  return SetVTableHook(identifier, instance, override, GetDefaultHookPriority());
+}
+
+Plugin::Hook* Plugin::SetVTableHook(const char* identifier, void* instance, void* override, std::uint32_t priority) {
+  return SetVTableHook(StringToIdentifier(identifier), instance, override, priority);
+}
+
+Plugin::Hook* Plugin::SetVTableHook(Plugin::Identifier identifier, void* instance, void* override, std::uint32_t priority) {
   auto& api = GetApi();
   Hook* hook = GetHook(identifier);
-
-  // Do we have a target?
-  if (hook->_GetTarget() == nullptr) {
-    FatalError(StringFormat("Failed to set hook for %s: function was not loaded successfully", IdentiferToFunctionName(identifier)).c_str());
-  }
 
   // Set the hook
   void* newOriginal = hook->GetOriginal();
   void* newOverride = override;
 
   bfp_HookSetDesc desc = {};
-  desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(hook->GetIdentifier()));
+  desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(identifier));
   desc.Priority = priority;
-  desc.Target = hook->_GetTarget();
+  desc.Target = _GetTarget(hook, instance);
+  desc.TargetOffset = desc.Type == BFP_CFUNCTION ? 0 : IdentifierToVTableOffset(identifier);
   desc.Detour = newOverride;
 
   if (api.bfp_HookSet(m_impl->Context, &desc, &newOriginal) != BFP_OK) {
@@ -793,12 +883,6 @@ Plugin::Hook* Plugin::SetHook(Plugin::Identifier identifier, void* override, std
   hook->_SetOverride(newOverride);
   return hook;
 }
-
-//void Plugin::EnableHooks(const char** identifers, std::uint32_t num) {
-//  Identifier* identiferEnums = (Identifier*)::_alloca(sizeof(Identifier) * num);
-//  for (std::uint32_t i = 0; i < num; ++i) identiferEnums[i] = StringToIdentifier(identifers[i]);
-//  EnableHooks(identiferEnums, num);
-//}
 
 void Plugin::RemoveAllHooks() noexcept {
   ForEachIdentifer([this](Identifier identifier) { RemoveHook(identifier); });
@@ -819,7 +903,8 @@ void Plugin::RemoveHook(Hook* hook) {
 
   bfp_HookRemoveDesc desc = {};
   desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(hook->GetIdentifier()));
-  desc.Target = hook->_GetTarget();
+  desc.Target = _GetTarget(hook, nullptr);
+  desc.TargetOffset = desc.Type == BFP_CFUNCTION ? 0 : IdentifierToVTableOffset(hook->GetIdentifier());
 
   if (api.bfp_HookRemove(m_impl->Context, &desc) != BFP_OK) {
     FatalError(api.bfp_PluginGetLastError(m_impl->Context));
@@ -834,10 +919,6 @@ std::uint32_t Plugin::GetDefaultHookPriority() const noexcept { return BIFROST_P
 Plugin::Hook* Plugin::GetHook(Plugin::Identifier identifier) noexcept { return &s_hooks[(std::uint64_t)identifier].hook; }
 
 Plugin::Hook* Plugin::GetHook(const char* identifier) { return GetHook(StringToIdentifier(identifier)); }
-
-bool Plugin::HasHook(Plugin::Identifier identifier) noexcept { return GetHook(identifier) != nullptr; }
-
-bool Plugin::HasHook(const char* identifier) { return HasHook(StringToIdentifier(identifier)); }
 
 const char* Plugin::GetName() const { return s_name; }
 
@@ -862,7 +943,7 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
   }
 
   // Load all externally referenced libraries
-  for (std::uint32_t moduleIndex = (std::uint32_t)Identifier::__bifrost_first__ + 1; moduleIndex < (std::uint32_t)Module::NumModule; ++moduleIndex) {
+  for (std::uint32_t moduleIndex = (std::uint32_t)Identifier::__bifrost_first__ + 1; moduleIndex < (std::uint32_t)Module::NumModules; ++moduleIndex) {
     auto moduleString = ModuleToString((Module)moduleIndex);
 
 #ifdef BIFROST_ENABLE_DEBUG

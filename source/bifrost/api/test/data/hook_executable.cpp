@@ -24,12 +24,23 @@ using namespace bifrost;
 
 int main(int argc, const char* argv[]) {
   const char* file = argv[1];
-  int arg1 = std::atoi(argv[2]);
-  int arg2 = std::atoi(argv[3]);
-  int sleep = std::atoi(argv[4]);
+  int mode = std::atoi(argv[2]);  // 0 == CFunction, 1 == VTable
+  int arg1 = std::atoi(argv[3]);
+  int arg2 = std::atoi(argv[4]);
+  int sleep = std::atoi(argv[5]);
 
-  int result1 = bifrost_add(arg1, arg2);
-  WriteToFile(file, "Result=" + std::to_string(result1));
+  int result = -1;
+  if (mode == 0) {
+    // CFunction
+    result = bifrost_add(arg1, arg2);
+  } else {
+    // VTable
+    IAdder* adder = new Adder();
+    result = adder->add(arg1, arg2);
+    delete adder;
+  }
+
+  WriteToFile(file, "Result=" + std::to_string(result));
 
   if (sleep > 0) {
     ::Sleep(sleep);

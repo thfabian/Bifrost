@@ -25,7 +25,8 @@ HookJumpTable::HookJumpTable(Context* ctx, HookSettings* settings, HookDebugger*
   BIFROST_ASSERT(mechanism->GetType() == EHookType::E_CFunction);
 
   // Allocate a block of executable memory
-  BIFROST_ASSERT_CALL_CTX(m_ctx, (m_tableEntryPoint = ::VirtualAlloc(NULL, BIFROST_JUMP_TABLE_MEM_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)) != nullptr);
+  BIFROST_ASSERT_CALL_CTX(m_ctx,
+                          (m_tableEntryPoint = ::VirtualAlloc(NULL, BIFROST_JUMP_TABLE_MEM_SIZE, MEM_COMMIT | MEM_RESERVE, PAGE_EXECUTE_READWRITE)) != nullptr);
   Debugger().RegisterJumpTable(m_tableEntryPoint, m_target);
 }
 
@@ -44,7 +45,11 @@ void HookJumpTable::SetTarget(void* jumpTarget) {
 
   // Make the entry point of the table jump to `jumpTarget`
   void* original = nullptr;
-  m_mechanism->SetHook(m_ctx, m_tableEntryPoint, jumpTarget, &original);
+
+  HookTarget target;
+  target.Type = EHookType::E_CFunction;
+  target.CFunction.Target = m_tableEntryPoint;
+  m_mechanism->SetHook(m_ctx, target, jumpTarget, &original);
   m_tableSet = true;
 }
 
@@ -52,7 +57,10 @@ void HookJumpTable::RemoveJumpTarget() {
   BIFROST_HOOK_TRACE(m_ctx, "Removing jump table of %s", Sym(m_ctx, m_target));
 
   // Restore the default behavior
-  m_mechanism->RemoveHook(m_ctx, m_tableEntryPoint);
+  HookTarget target;
+  target.Type = EHookType::E_CFunction;
+  target.CFunction.Target = m_tableEntryPoint;
+  m_mechanism->RemoveHook(m_ctx, target);
   m_tableSet = false;
 }
 

@@ -134,7 +134,7 @@ class LoaderContext {
     bool success = bifrost_PluginSetUp((void*)&param) == 0;
     if (success) {
       // Add the plugin to loaded plugin map
-      m_pluginMap.emplace(p.Identifier, Plugin{handle});
+      RegisterPlugin(p.Identifier, Plugin{handle});
     }
     return success;
   }
@@ -165,7 +165,7 @@ class LoaderContext {
     bool success = bifrost_PluginTearDown((void*)&param) == 0;
     if (success) {
       // Remove the plugin from the loaded plugin map
-      m_pluginMap.erase(identifier);
+      UnregisterPlugin(identifier);
     }
     return success;
   }
@@ -175,8 +175,9 @@ class LoaderContext {
     bool success = true;
 
     if (p.UnloadAll) {
-      for (const auto& pair : m_pluginMap) {
-        pluginsToUnload.emplace_back(pair);
+      // Unload in reverse order
+      for (auto it = m_pluginOrder.rbegin(); it != m_pluginOrder.rend(); ++it) {
+        pluginsToUnload.emplace_back(*it, m_pluginMap[*it]);
       }
     } else {
       for (const auto& plugin : p.Plugins) {
@@ -268,9 +269,24 @@ class LoaderContext {
 
   Storage* GetStorage() const { return m_storage.get(); }
 
+  void RegisterPlugin(std::string identifier, Plugin plugin) {
+    m_pluginMap.emplace(identifier, std::move(plugin));
+    m_pluginOrder.emplace_back(std::move(identifier));
+  }
+
+  void UnregisterPlugin(const std::string& identifier) {
+    m_pluginMap.erase(identifier);
+    m_pluginOrder.erase(std::remove(m_pluginOrder.begin(), m_pluginOrder.end(), identifier), m_pluginOrder.end());
+  }
+
  private:
   std::unique_ptr<Storage> m_storage;
+
+  /// String to plugin
   std::unordered_map<std::string, Plugin> m_pluginMap;
+
+  /// Order in which the plugins were loaded - plugins will be unloaded in reverse order
+  std::vector<std::string> m_pluginOrder;
 };
 
 // Singleton context

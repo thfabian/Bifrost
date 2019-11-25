@@ -18,11 +18,6 @@ namespace bifrost {
 
 class Context;
 
-/// Types of hooking approaches
-enum class EHookType : u32 { E_CFunction = 0, E_VTable, E_NumTypes };
-
-const char* ToString(EHookType type);
-
 /// Strategy used when creating the hook chains
 enum class EHookStrategy : u32 {
   E_Multi = 0,  ///< Allow multiple hook's per target and runtime rehooking

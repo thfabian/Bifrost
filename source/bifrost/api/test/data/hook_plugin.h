@@ -26,6 +26,21 @@ enum class Mode : int {
 
   CFunction_Multi_Original_P1,
   CFunction_Multi_Original_P2,
+  CFunction_Multi_Original_P3,
+  CFunction_Multi_Modify1_P1,
+  CFunction_Multi_Modify1_P2,
+  CFunction_Multi_Modify2_P1,
+  CFunction_Multi_Modify2_P2,
+  CFunction_Multi_Modify3_P1,
+  CFunction_Multi_Modify3_P2,
+  CFunction_Multi_Modify4_P1,
+  CFunction_Multi_Modify4_P2,
+  CFunction_Multi_Modify4_P3,
+  CFunction_Multi_Modify5_P1,
+  CFunction_Multi_Modify5_P2,
+  CFunction_Multi_Modify5_P3,
+
+  VTable_Single_Original1,
 };
 
 }

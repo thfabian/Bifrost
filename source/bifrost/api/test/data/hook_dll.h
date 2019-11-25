@@ -39,14 +39,9 @@ class BIFROST_HOOK_DLL_API IAdder {
   int virtual add(int arg1, int arg2) = 0;
 };
 
-class BIFROST_HOOK_DLL_API Adder : IAdder {
+class BIFROST_HOOK_DLL_API Adder : public IAdder {
  public:
   int virtual add(int arg1, int arg2) override;
 };
 
 }  // namespace bifrost
-
-//
-// VTable hook
-//
-namespace bifrost {}
