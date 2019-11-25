@@ -82,8 +82,9 @@ class TestInjectorBase : public ::testing::Test {
   /// Create bfi_ExecutableArguments for connecting to the test executable
   std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForConnect(u32 pid);
 
-  /// Create bfi_PluginLoadDesc for the test plugin
-  std::vector<bfi_PluginLoadDesc> MakePluginLoadDescImpl(std::string name, std::wstring path, std::string arguments = "", bool forceLoad = false);
+  /// Create bfi_PluginLoadDesc vector for the test plugin
+  std::vector<bfi_PluginLoadDesc> MakePluginLoadDescVecImpl(std::string name, std::wstring path, std::string arguments = "", bool forceLoad = false);
+  bfi_PluginLoadDesc MakePluginLoadDescImpl(std::string name, std::wstring path, std::string arguments = "", bool forceLoad = false);
 
   /// Create bfi_PluginUnloadDesc for the test plugin
   std::vector<bfi_PluginUnloadDesc> MakePluginUnloadDescImpl(std::string name);

@@ -22,6 +22,7 @@ enum class Mode : int {
   CFunction_Single_Modify2,
   CFunction_Single_Modify3,
   CFunction_Single_Replace1,
+  CFunction_Single_Restore1,
 
   CFunction_Multi_Original_P1,
   CFunction_Multi_Original_P2,

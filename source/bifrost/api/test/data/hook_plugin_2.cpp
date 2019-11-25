@@ -9,7 +9,5 @@
 // This file is distributed under the MIT License (MIT).
 // See LICENSE.txt for details.
 
-#define PLUGIN_NAME HookTestPlugin2
-#define PLUGIN_INDEX "2"
-
+#define PLUGIN_INDEX 2
 #include "hook_plugin.cpp"

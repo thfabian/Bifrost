@@ -30,9 +30,8 @@ class HookDebugger : public Object {
   const char* SymbolFromAdress(Context* ctx, void* addr);
   const char* SymbolFromAdress(Context* ctx, u64 addr);
 
-  /// Enable/Disable verbose debugging (i.e symbol resolving)
-  void SetSymbolResolving(bool symbolResolving);
-  bool GetSymbolResolving();
+  /// Enable symbol resolving or refresh the module list if resolving is already enabled
+  void EnablerOrRefreshSymbolResolving();
 
   /// Add a trampoline mapping for symbol resolving
   void RegisterTrampoline(void* trampoline, void* target);
@@ -57,7 +56,7 @@ class HookDebugger : public Object {
   std::unordered_map<u64, std::unordered_map<u64, u64>::iterator> m_targetToJumpTable;
 
   bool m_symbolResolving = false;
-  bool m_dbgHelpSetup = false;
+  bool m_init = false;
 };
 
 }  // namespace bifrost

@@ -80,10 +80,13 @@ std::shared_ptr<bfi_ExecutableArguments> TestInjectorBase::MakeExecutableArgumen
   return args;
 }
 
-std::vector<bfi_PluginLoadDesc> TestInjectorBase::MakePluginLoadDescImpl(std::string name, std::wstring path, std::string arguments, bool forceLoad) {
+bfi_PluginLoadDesc TestInjectorBase::MakePluginLoadDescImpl(std::string name, std::wstring path, std::string arguments, bool forceLoad) {
+  return bfi_PluginLoadDesc {m_mem.CopyString(name.c_str()), m_mem.CopyString(path), arguments.empty() ? "" : m_mem.CopyString(arguments), forceLoad};
+}
+
+std::vector<bfi_PluginLoadDesc> TestInjectorBase::MakePluginLoadDescVecImpl(std::string name, std::wstring path, std::string arguments, bool forceLoad) {
   std::vector<bfi_PluginLoadDesc> plugins;
-  plugins.emplace_back(
-      bfi_PluginLoadDesc{m_mem.CopyString(name.c_str()), m_mem.CopyString(path), arguments.empty() ? "" : m_mem.CopyString(arguments), forceLoad});
+  plugins.emplace_back(MakePluginLoadDescImpl(name, path, arguments, forceLoad));
   return plugins;
 }
 

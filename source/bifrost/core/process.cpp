@@ -409,6 +409,9 @@ void Process::Inject(InjectArguments args) {
                   std::to_wstring(errorCode).c_str());
           }
           break;
+        default:
+          error(StringFormat(L"failed, unknown error or crash in init procedure '%s', returned", StringToWString(args.InitProcName).c_str()).c_str(),
+                std::to_wstring(errorCode).c_str());
       }
 
       Logger().Info(L"Injection successful");

@@ -15,7 +15,7 @@
 #include "bifrost/core/hook_settings.h"
 #include "bifrost/core/exception.h"
 #include "bifrost/core/error.h"
-#include "bifrost/core/process.h"
+#include "bifrost/core/timer.h"
 
 #pragma warning(push)
 #pragma warning(disable : 4091)
@@ -45,7 +45,7 @@ struct ImageHlpLine64 : public IMAGEHLP_LINE64 {
 HookDebugger::HookDebugger(Context* ctx, HookSettings* settings) : Object(ctx), m_settings(settings) {}
 
 HookDebugger::~HookDebugger() {
-  if (m_dbgHelpSetup) {
+  if (m_init) {
     BIFROST_CHECK_WIN_CALL(::SymCleanup(::GetCurrentProcess()));
   }
 }
@@ -57,7 +57,7 @@ const char* HookDebugger::SymbolFromAdress(Context* ctx, u64 addr) {
   auto it = m_symbolCache.find(addr);
   if (it != m_symbolCache.end()) return it->second.c_str();
 
-  if (m_symbolResolving && m_dbgHelpSetup) {
+  if (m_symbolResolving && m_init) {
     DWORD64 dwDisplacement = 0;
     DWORD64 dwAddress = addr;
     SymbolInfoPackage info;
@@ -97,51 +97,59 @@ const char* HookDebugger::SymbolFromAdress(Context* ctx, u64 addr) {
   }
 }
 
-void HookDebugger::SetSymbolResolving(bool symbolResolving) {
-  m_symbolResolving = symbolResolving;
-  if (m_symbolResolving && !m_dbgHelpSetup) {
-    DWORD options = ::SymGetOptions();
-    if (m_settings->VerboseDbgHelp) options |= SYMOPT_DEBUG;
-    options |= SYMOPT_UNDNAME;
-    ::SymSetOptions(options);
+void HookDebugger::EnablerOrRefreshSymbolResolving() {
+  m_symbolResolving = true;
+  if (m_symbolResolving) {
+    if (!m_init) {
+      DWORD options = ::SymGetOptions();
+      if (m_settings->VerboseDbgHelp) options |= SYMOPT_DEBUG;
+      options |= SYMOPT_UNDNAME;
+      ::SymSetOptions(options);
 
+      BIFROST_CHECK_WIN_CALL(::SymInitialize(::GetCurrentProcess(), NULL, FALSE) == TRUE);
+
+      m_symbolCache.reserve(1024);
+
+      m_trampolineToTarget.reserve(512);
+      m_targetToTrampoline.reserve(512);
+
+      m_jumpTableToTarget.reserve(512);
+
+      m_init = true;
+    }
+
+    Timer timer;
     Logger().Debug("Loading symbols ...");
-    BIFROST_CHECK_WIN_CALL(::SymInitialize(::GetCurrentProcess(), NULL, TRUE) == TRUE);
-    m_symbolCache.reserve(1024);
 
-    m_trampolineToTarget.reserve(512);
-    m_targetToTrampoline.reserve(512);
+    // The documentation of this function is not accurate, the return value is non-zero on success..
+    BIFROST_CHECK_WIN_CALL(::SymRefreshModuleList(::GetCurrentProcess()) != FALSE);
 
-    m_jumpTableToTarget.reserve(512);
-
-    m_dbgHelpSetup = true;
+    Logger().DebugFormat("Done loading symbols (took %u ms)", timer.Stop());
   }
 }
 
-bool HookDebugger::GetSymbolResolving() { return m_symbolResolving; }
-
 void HookDebugger::RegisterTrampoline(void* trampoline, void* target) {
-  if (!m_symbolResolving || !m_dbgHelpSetup) return;
+  if (!m_symbolResolving || !m_init) return;
 
   m_trampolineToTarget[(u64)trampoline] = (u64)target;
   m_targetToTrampoline[(u64)target] = m_trampolineToTarget.find((u64)trampoline);
 }
 
 void HookDebugger::UnregisterTrampoline(void* target) {
-  if (!m_symbolResolving || !m_dbgHelpSetup) return;
+  if (!m_symbolResolving || !m_init) return;
 
   m_trampolineToTarget.erase(m_targetToTrampoline[(u64)target]);
   m_targetToTrampoline.erase((u64)target);
 }
 
 void HookDebugger::RegisterJumpTable(void* tableEntryPoint, void* target) {
-  if (!m_symbolResolving || !m_dbgHelpSetup) return;
+  if (!m_symbolResolving || !m_init) return;
 
   m_jumpTableToTarget[(u64)tableEntryPoint] = (u64)target;
 }
 
 void HookDebugger::UnregisterJumpTable(void* tableEntryPoint) {
-  if (!m_symbolResolving || !m_dbgHelpSetup) return;
+  if (!m_symbolResolving || !m_init) return;
 
   m_jumpTableToTarget.erase((u64)tableEntryPoint);
 }

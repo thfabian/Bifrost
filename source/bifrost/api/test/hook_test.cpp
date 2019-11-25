@@ -19,14 +19,21 @@ using namespace bifrost;
 
 class TestHook : public TestInjectorBase {
  public:
-  std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForLaunch(std::string file, i32 arg1 = 1, i32 arg2 = 2, i32 sleep = 0) {
+  std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForLaunch(std::string file, i32 arg1 = 1, i32 arg2 = 2, i32 sleep = 200) {
     return MakeExecutableArgumentsForLaunchImpl(TestEnviroment::Get().GetHookExecutable(),
                                                 file + " " + std::to_string(arg1) + " " + std::to_string(arg2) + " " + std::to_string(sleep));
   }
 
   std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string file, Mode mode = Mode::none, i32 plugin = 1) {
-    return MakePluginLoadDescImpl("HookTestPlugin", plugin == 1 ? TestEnviroment::Get().GetHookPlugin() : TestEnviroment::Get().GetHookPlugin2(),
-                                  file + ";" + std::to_string((int)mode), false);
+    return MakePluginLoadDescVecImpl("HookTestPlugin", plugin == 1 ? TestEnviroment::Get().GetHookPlugin() : TestEnviroment::Get().GetHookPlugin2(),
+                                     file + ";" + std::to_string((int)mode), false);
+  }
+
+  std::vector<bfi_PluginLoadDesc> MakePluginLoadDescs(std::string file, Mode mode1, Mode mode2) {
+    std::vector<bfi_PluginLoadDesc> loadDescs;
+    loadDescs.emplace_back(MakePluginLoadDescImpl("HookTestPlugin1", TestEnviroment::Get().GetHookPlugin(), file + ";" + std::to_string((int)mode1), false));
+    loadDescs.emplace_back(MakePluginLoadDescImpl("HookTestPlugin2", TestEnviroment::Get().GetHookPlugin2(), file + ";" + std::to_string((int)mode2), false));
+    return loadDescs;
   }
 };
 
@@ -172,6 +179,23 @@ TEST_F(TestHook, CFunction_Single_Replace1) {
   ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
 }
 
+//
+//  APP -> ORIGINAL
+//
+TEST_F(TestHook, CFunction_Single_Restore1) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::CFunction_Single_Restore1);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
 #pragma endregion
 
 #pragma region CFunction Mutli
@@ -179,21 +203,19 @@ TEST_F(TestHook, CFunction_Single_Replace1) {
 //
 //  APP -> HookTestPlugin1:bifrost_add__original_1 -> HookTestPlugin2:bifrost_add__original_1 -> ORIGINAL
 //
-//TEST_F(TestHook, CFunction_Multi_Original) {
-//  auto tmpFile = GetTmpFile();
-//
-//  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
-//  auto injectorArgs = MakeInjectorArguments();
-//  
-//  auto pluginLoadDesc1 = MakePluginLoadDesc(tmpFile, Mode::CFunction_Multi_Original_P1, 1);
-//  auto pluginLoadDesc2 = MakePluginLoadDesc(tmpFile, Mode::CFunction_Multi_Original_P2, 2);
-//
-//  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc1, pluginLoadDesc2);
-//  auto loadResult = Load(loadArgs);
-//  ASSERT_EQ(Wait(loadResult1.Process), 0);
-//
-//  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
-//}
+TEST_F(TestHook, CFunction_Multi_Original) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDescs = MakePluginLoadDescs(tmpFile, Mode::CFunction_Multi_Original_P1, Mode::CFunction_Multi_Original_P2);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDescs);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:Result=3:TearDown1:TearDown2:") << "File: " << tmpFile;
+}
 
 #pragma endregion
 

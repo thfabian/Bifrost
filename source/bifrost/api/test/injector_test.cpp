@@ -22,7 +22,7 @@ class TestInjector : public TestInjectorBase {
   }
 
   std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string arguments = "", bool forceLoad = false) {
-    return MakePluginLoadDescImpl("InjectorTestPlugin", TestEnviroment::Get().GetInjectorPlugin(), arguments, forceLoad);
+    return MakePluginLoadDescVecImpl("InjectorTestPlugin", TestEnviroment::Get().GetInjectorPlugin(), arguments, forceLoad);
   }
 
   std::vector<bfi_PluginUnloadDesc> MakePluginUnloadDesc() { return MakePluginUnloadDescImpl("InjectorTestPlugin"); }

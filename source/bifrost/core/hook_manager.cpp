@@ -244,7 +244,7 @@ class HookManager::Impl {
         auto [insertCase, insertIndex] = GetInsertLocation(priority);
 
         switch (insertCase) {
-          // 1) We have a higher or equal priority to head node -> Change the APP hook to our function and our JMP to the detour of the previous head
+            // 1) We have a higher or equal priority to head node -> Change the APP hook to our function and our JMP to the detour of the previous head
           case E_First:
             mechanism->RemoveHook(ctx, m_target);
             mechanism->SetHook(ctx, m_target, detour, &m_original);
@@ -254,8 +254,8 @@ class HookManager::Impl {
             insertedNode = m_hookChain.insert(m_hookChain.begin(), std::move(newNode));
             break;
 
-          // 2) We have the lowest priority of all nodes -> We will be instered in the back, the previous tail will jump to us and our JMP table will call
-          //    ORIGINAL
+            // 2) We have the lowest priority of all nodes -> We will be instered in the back, the previous tail will jump to us and our JMP table will call
+            //    ORIGINAL
           case E_Last:
             m_hookChain[m_hookChain.size() - 1].JumpTable->SetTarget(detour);
 
@@ -264,7 +264,8 @@ class HookManager::Impl {
             insertedNode = m_hookChain.insert(m_hookChain.end(), std::move(newNode));
             break;
 
-          // 3) We are in-between two existing nodes -> We have to modify the previous JMP table to call our function and our JMP table has to call the next one
+            // 3) We are in-between two existing nodes -> We have to modify the previous JMP table to call our function and our JMP table has to call the next
+            // one
           case E_Middle:
             u32 prevIndex = insertIndex - 1;
             u32 nextIndex = insertIndex;
@@ -302,7 +303,7 @@ class HookManager::Impl {
     std::tuple<EInsertCase, u32> GetInsertLocation(u32 priority) const {
       for (u32 idx = 0; idx < m_hookChain.size(); ++idx) {
         if (priority >= m_hookChain[idx].Priority) {
-          if (priority == 0) return std::make_tuple(E_First, 0);
+          if (idx == 0) return std::make_tuple(E_First, 0);
           return std::make_tuple(E_Middle, idx);
         }
       }
@@ -367,9 +368,11 @@ class HookManager::Impl {
   }
 
   void EnableDebugImpl(Context* ctx) {
-    ctx->Logger().DebugFormat("Enabling Hook debugging");
-    m_settings->Debug = true;
-    m_debugger->SetSymbolResolving(true);
+    if (!m_settings->Debug) {
+      ctx->Logger().DebugFormat("Enabling Hook debugging");
+      m_settings->Debug = true;
+    }
+    m_debugger->EnablerOrRefreshSymbolResolving();
   }
 
  private:

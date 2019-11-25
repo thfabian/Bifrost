@@ -11,12 +11,26 @@
 
 #include "hook_plugin.h"
 
-#ifndef PLUGIN_NAME
-#define PLUGIN_NAME HookTestPlugin1
+#define CAT(A, B) CAT_(A, B)
+#define CAT_(A, B) A##B
+
+#define STR(s) STR_(s)
+#define STR_(s) #s
+
+// This plugin is compiled twice so we can test the chain hooking (PLUGIN_INDEX=1 and =2, respectively)
+#ifndef PLUGIN_INDEX
+#define PLUGIN_INDEX 1
 #endif
 
-#ifndef PLUGIN_INDEX
-#define PLUGIN_INDEX "1"
+#ifndef PLUGIN_NAME
+#define PLUGIN_NAME CAT(HookTestPlugin, PLUGIN_INDEX)
+#endif
+
+// Make sure we can distinguish the function of the two plugins
+#if PLUGIN_INDEX == 1
+#define PLUGIN_PREFIX(x) x
+#else
+#define PLUGIN_PREFIX(x) CAT(CAT(CAT(p, PLUGIN_INDEX), _), x)
 #endif
 
 #define BIFROST_NAMESPACE hook_plugin
@@ -78,18 +92,18 @@ using namespace bifrost;
 #define bf_id bifrost_add
 
 /// Call original function
-bf_override(bifrost_add__original_1) { return bf_original(bf_args); }
-bf_override(bifrost_add__original_2) { return bf_original(bf_arg(1), bf_arg(2)); }
-bf_override(bifrost_add__original_3) { return bf_original(bf_arg(1, 2)); }
+bf_override(PLUGIN_PREFIX(bifrost_add__original_1)) { return bf_original(bf_args); }
+bf_override(PLUGIN_PREFIX(bifrost_add__original_2)) { return bf_original(bf_arg(1), bf_arg(2)); }
+bf_override(PLUGIN_PREFIX(bifrost_add__original_3)) { return bf_original(bf_arg(1, 2)); }
 
 /// Modify arg1
-bf_override(bifrost_add__modify_1) { return bf_original(5, bf_arg(2)); }
+bf_override(PLUGIN_PREFIX(bifrost_add__modify_1)) { return bf_original(5, bf_arg(2)); }
 
 /// Modify arg2
-bf_override(bifrost_add__modify_2) { return bf_original(bf_arg(1), 5); }
+bf_override(PLUGIN_PREFIX(bifrost_add__modify_2)) { return bf_original(bf_arg(1), 5); }
 
 /// Modify both arguments
-bf_override(bifrost_add__modify_3) { return bf_original(5, 5); }
+bf_override(PLUGIN_PREFIX(bifrost_add__modify_3)) { return bf_original(5, 5); }
 
 #undef bf_id
 
@@ -121,38 +135,42 @@ class PLUGIN_NAME final : public hook_plugin::Plugin {
   virtual void SetUp() override {
     switch (GetMode()) {
       case Mode::CFunction_Single_Original1:
-        SetHook(Identifier::bifrost_add, bifrost_add__original_1);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_1));
         break;
       case Mode::CFunction_Single_Original2:
-        SetHook(Identifier::bifrost_add, bifrost_add__original_2);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_2));
         break;
       case Mode::CFunction_Single_Original3:
-        SetHook(Identifier::bifrost_add, bifrost_add__original_3);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_3));
         break;
       case Mode::CFunction_Single_Modify1:
-        SetHook(Identifier::bifrost_add, bifrost_add__modify_1);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_1));
         break;
       case Mode::CFunction_Single_Modify2:
-        SetHook(Identifier::bifrost_add, bifrost_add__modify_2);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_2));
         break;
       case Mode::CFunction_Single_Modify3:
-        SetHook(Identifier::bifrost_add, bifrost_add__modify_3);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_3));
         break;
       case Mode::CFunction_Single_Replace1:
-        SetHook(Identifier::bifrost_add, bifrost_add__modify_3);
-        SetHook(Identifier::bifrost_add, bifrost_add__original_1);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_3));
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_1));
+        break;
+      case Mode::CFunction_Single_Restore1:
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_1));
+        RemoveHook(Identifier::bifrost_add);
         break;
       case Mode::CFunction_Multi_Original_P1:
       case Mode::CFunction_Multi_Original_P2:
-        SetHook(Identifier::bifrost_add, bifrost_add__original_1);
+        SetHook(Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__original_1));
         break;
       default:
         break;
     }
-    WriteToFile(GetFile(), "SetUp" PLUGIN_INDEX, this);
+    WriteToFile(GetFile(), "SetUp" STR(PLUGIN_INDEX), this);
   }
 
-  virtual void TearDown() override { WriteToFile(GetFile(), "TearDown" PLUGIN_INDEX, this); }
+  virtual void TearDown() override { WriteToFile(GetFile(), "TearDown" STR(PLUGIN_INDEX), this); }
 };
 
 BIFROST_REGISTER_PLUGIN(PLUGIN_NAME)

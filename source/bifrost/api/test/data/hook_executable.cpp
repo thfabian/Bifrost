@@ -33,8 +33,6 @@ int main(int argc, const char* argv[]) {
 
   if (sleep > 0) {
     ::Sleep(sleep);
-    int result2 = bifrost_add(arg1, arg2);
-    WriteToFile(file, "Result=" + std::to_string(result2));
   }
   return 0;
 }
