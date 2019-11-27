@@ -41,6 +41,14 @@ enum class Mode : int {
   CFunction_Multi_Modify5_P3,
 
   VTable_Single_Original1,
+  VTable_Single_Original2,
+  VTable_Single_Original3,
+  VTable_Single_Original4,
+  VTable_Single_Modify1,
+  VTable_Single_Modify2,
+  VTable_Single_Modify3,
+  VTable_Single_Replace1,
+  VTable_Single_Restore1,
 };
 
 }

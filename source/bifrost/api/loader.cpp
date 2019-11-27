@@ -110,7 +110,7 @@ class LoaderContext {
     if (p.ForceLoad && loaded) {
       UnloadPluginsImpl(ctx, PluginUnloadParam{{p.Identifier}, false});
     } else if (loaded) {
-      ctx->Logger().InfoFormat("Plugin \"%s\" has already been loaded. Skipping.", p.Identifier);
+      ctx->Logger().InfoFormat("Plugin \"%s\" has already been loaded. Skipping.", p.Identifier.c_str());
       return true;
     }
 
@@ -121,7 +121,7 @@ class LoaderContext {
     // Get the init procedure
     auto bifrost_PluginSetUp = (BIFROST_PLUGIN_SETUP_PROC_TYPE)::GetProcAddress(handle, BIFROST_PLUGIN_SETUP_PROC_NAME_STRING);
     if (!bifrost_PluginSetUp) {
-      ctx->Logger().WarnFormat("Failed to load plugin \"%s\": Failed to get set up procedure \"%s\": %s", p.Identifier, BIFROST_PLUGIN_SETUP_PROC_NAME_STRING,
+      ctx->Logger().WarnFormat("Failed to load plugin \"%s\": Failed to get set up procedure \"%s\": %s", p.Identifier.c_str(), BIFROST_PLUGIN_SETUP_PROC_NAME_STRING,
                                GetLastWin32Error().c_str());
       return true;
     }

@@ -664,7 +664,7 @@ static const char* IdentifierToString(Plugin::Identifier identifier) {
 }
 
 /// Get the original function name of an Identifier
-static const char* IdentiferToFunctionName(Plugin::Identifier identifier) {
+static const char* IdentifierToFunctionName(Plugin::Identifier identifier) {
   static constexpr BIFROST_CACHE_ALIGN std::array<const char*, (std::uint64_t)Plugin::Identifier::NumIdentifiers + 1> map{
       "<invalid>",
       BIFROST_PLUGIN_IDENTIFIER_TO_FUNCTION_NAME 
@@ -808,7 +808,7 @@ void* Plugin::_GetTarget(Hook* hook, void* instance) {
   switch (IdentifierToHookType(hook->GetIdentifier())) {
     case HookType::CFunction: {
       if (hook->_GetTarget() == nullptr) {
-        FatalError(StringFormat("Failed to set hook for %s: function was not loaded successfully", IdentiferToFunctionName(hook->GetIdentifier())).c_str());
+        FatalError(StringFormat("Failed to set hook for %s: function was not loaded successfully", IdentifierToFunctionName(hook->GetIdentifier())).c_str());
       }
       return hook->_GetTarget();
     }
@@ -819,7 +819,7 @@ void* Plugin::_GetTarget(Hook* hook, void* instance) {
       return ((std::uint8_t*)m_impl->VTables[(std::uint64_t)obj]) + IdentifierToVTableOffset(hook->GetIdentifier());
     }
   }
-  FatalError(StringFormat("Failed to set hook for %s: internal error invalid hook type", IdentiferToFunctionName(hook->GetIdentifier())).c_str());
+  FatalError(StringFormat("Failed to set hook for %s: internal error invalid hook type", IdentifierToFunctionName(hook->GetIdentifier())).c_str());
   return nullptr;
 }
 
@@ -893,7 +893,7 @@ void Plugin::RemoveHook(Hook* hook) {
   auto& api = GetApi();
 
   // Function was not loaded successfully
-  if (hook->_GetTarget() == nullptr) return;
+  if (IdentifierToHookType(hook->GetIdentifier()) == HookType::CFunction && hook->_GetTarget() == nullptr) return;
 
   // No hook has been registered
   if (hook->GetOverride() == nullptr) return;
@@ -958,7 +958,7 @@ void Plugin::_SetUpImpl(bfp_PluginContext_t* ctx) {
        ++identiferIndex) {
     Identifier identifer = (Identifier)identiferIndex;
     if (IdentifierToHookType(identifer) == HookType::CFunction) {
-      const char* functionName = IdentiferToFunctionName(identifer);
+      const char* functionName = IdentifierToFunctionName(identifer);
 
 #ifdef BIFROST_ENABLE_DEBUG
       Log(LogLevel::Trace, StringFormat("Loading function %s", functionName).c_str());

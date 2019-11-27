@@ -12,10 +12,11 @@
 #include "bifrost/core/common.h"
 
 #include "bifrost/core/hook_manager.h"
-#include "bifrost/core/hook_mechanism.h"
 #include "bifrost/core/hook_settings.h"
 #include "bifrost/core/hook_jump_table.h"
 #include "bifrost/core/hook_debugger.h"
+#include "bifrost/core/hook_cfunction.h"
+#include "bifrost/core/hook_vtable.h"
 #include "bifrost/core/mutex.h"
 #include "bifrost/core/timer.h"
 #include "bifrost/core/exception.h"
@@ -62,7 +63,7 @@ class HookManager::Impl {
     if (m_settings->Debug) EnableDebugImpl(ctx);
 
     // Initialize the hooking mechanisms
-    m_hookMechanisms[static_cast<u32>(EHookType::E_CFunction)] = new MinHook(GetSettings(), GetDebugger());
+    m_hookMechanisms[static_cast<u32>(EHookType::E_CFunction)] = new CFunctionHook(GetSettings(), GetDebugger());
     m_hookMechanisms[static_cast<u32>(EHookType::E_VTable)] = new VTableHook(GetSettings(), GetDebugger());
 
     ForEachHookType([this, &ctx](EHookType type) { Get(type)->SetUp(ctx); });

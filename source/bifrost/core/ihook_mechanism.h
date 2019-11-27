@@ -13,13 +13,11 @@
 
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
-#include "bifrost/core/hook_object.h"
 #include "bifrost/core/hook_target.h"
 
 namespace bifrost {
 
 class Context;
-class HookDebugger;
 
 /// Interface of the hooking implementation
 class IHookMechanism {
@@ -38,33 +36,6 @@ class IHookMechanism {
 
   /// Get the type of hooking
   virtual EHookType GetType() const noexcept = 0;
-};
-
-/// C-Function hooking via Minhook
-class MinHook : public IHookMechanism, public HookObject {
- public:
-  MinHook(HookSettings* settings, HookDebugger* debugger);
-
-  virtual void SetUp(Context* ctx) override;
-  virtual void TearDown(Context* ctx) override;
-  virtual void SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) override;
-  virtual void RemoveHook(Context* ctx, const HookTarget& target) override;
-  virtual EHookType GetType() const noexcept;
-};
-
-/// VTable based hooking mechanism
-class VTableHook : public IHookMechanism, public HookObject {
- public:
-  VTableHook(HookSettings* settings, HookDebugger* debugger);
-
-  virtual void SetUp(Context* ctx) override;
-  virtual void TearDown(Context* ctx) override;
-  virtual void SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) override;
-  virtual void RemoveHook(Context* ctx, const HookTarget& target) override;
-  virtual EHookType GetType() const noexcept;
-
- private:
-  std::unordered_map<void*, std::intptr_t> m_targetToOiginal;
 };
 
 }  // namespace bifrost

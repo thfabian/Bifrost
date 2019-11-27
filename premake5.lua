@@ -55,7 +55,7 @@ workspace "bifrost"
     minhook_dir = bifrost_getenv("BIFROST_MINHOOK_DIR")
 
     kind "StaticLib"
-    files(minhook_dir .. "/src/**")
+    files { minhook_dir .. "/src/**", minhook_dir .. "/include/**" }
     includedirs(minhook_dir .. "/include")
 
     function bifrost_add_external_minhook()

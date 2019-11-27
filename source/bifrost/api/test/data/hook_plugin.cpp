@@ -78,7 +78,7 @@
 #define _bf_func_decl_ret_hook_plugin__bifrost_IAdder_add int
 #define _bf_func_decl_args_hook_plugin__bifrost_IAdder_add bifrost::IAdder *__this__, int arg1, int arg2
 #define _bf_func_hook_plugin__bifrost_IAdder_add                                \
-  ((int (*)(bifrost::IAdder *, int, int))BIFROST_NAMESPACE## ::Plugin::Get()    \
+  ((int (*)(bifrost::IAdder*, int, int))BIFROST_NAMESPACE## ::Plugin::Get()     \
        .GetHook<BIFROST_NAMESPACE## ::Plugin::Identifier::bifrost_IAdder_add>() \
        ->GetOriginal())
 
@@ -96,18 +96,12 @@ using namespace bifrost;
 //
 #define bf_id bifrost_add
 
-/// Call original function
 bf_override(PLUGIN_PREFIX(bifrost_add__original_1)) { return bf_original(bf_args); }
 bf_override(PLUGIN_PREFIX(bifrost_add__original_2)) { return bf_original(bf_arg(1), bf_arg(2)); }
 bf_override(PLUGIN_PREFIX(bifrost_add__original_3)) { return bf_original(bf_arg(1, 2)); }
 
-/// Modify arg1
 bf_override(PLUGIN_PREFIX(bifrost_add__modify_1)) { return bf_original(5, bf_arg(2)); }
-
-/// Modify arg2
 bf_override(PLUGIN_PREFIX(bifrost_add__modify_2)) { return bf_original(bf_arg(1), 5); }
-
-/// Modify both arguments
 bf_override(PLUGIN_PREFIX(bifrost_add__modify_3)) { return bf_original(5, 5); }
 
 bf_override(PLUGIN_PREFIX(bifrost_add__times_2)) { return 2 * bf_original(bf_args); }
@@ -120,8 +114,16 @@ bf_override(PLUGIN_PREFIX(bifrost_add__plus_3)) { return 3 + bf_original(bf_args
 //
 #define bf_id bifrost_IAdder_add
 
-/// Call original function
 bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__original_1)) { return bf_original(bf_args); }
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__original_2)) { return bf_original(bf_this, bf_arg(1), bf_arg(2)); }
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__original_3)) { return bf_original(bf_this, bf_arg(1, 2)); }
+
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__modify_1)) { return bf_original(bf_this, 5, bf_arg(2)); }
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__modify_2)) { return bf_original(bf_this, bf_arg(1), 5); }
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__modify_3)) { return bf_original(bf_this, 5, 5); }
+
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__times_2)) { return 2 * bf_original(bf_args); }
+bf_override(PLUGIN_PREFIX(bifrost_IAdder_add__plus_3)) { return 3 + bf_original(bf_args); }
 
 #undef bf_id
 
@@ -230,11 +232,71 @@ class PLUGIN_NAME final : public hook_plugin::Plugin {
         break;
 
       //
-      // VTable Multi
+      // VTable Single
       //
       case Mode::VTable_Single_Original1: {
         IAdder* adder = new Adder();
         SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__original_1));
+        delete adder;
+        break;
+      }
+
+      case Mode::VTable_Single_Original2: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__original_2));
+        delete adder;
+        break;
+      }
+
+      case Mode::VTable_Single_Original3: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__original_3));
+        delete adder;
+        break;
+      }
+
+      case Mode::VTable_Single_Original4: {
+        IAdder* adder = new Adder();
+        RegisterVTable(ObjectType::IAdder, adder);
+        delete adder;
+
+        SetHook(Identifier::bifrost_IAdder_add, PLUGIN_PREFIX(bifrost_IAdder_add__original_3));
+        break;
+      }
+
+      case Mode::VTable_Single_Modify1: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__modify_1));
+        delete adder;
+        break;
+      }
+
+      case Mode::VTable_Single_Modify2: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__modify_2));
+        delete adder;
+        break;
+      }
+
+      case Mode::VTable_Single_Modify3: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__modify_3));
+        delete adder;
+        break;
+      }
+
+      case Mode::VTable_Single_Replace1: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__modify_3));
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__original_1));
+        delete adder;
+        break;
+      }
+
+      case Mode::VTable_Single_Restore1: {
+        IAdder* adder = new Adder();
+        SetVTableHook(Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__modify_1));
+        RemoveHook(Identifier::bifrost_IAdder_add);
         delete adder;
         break;
       }

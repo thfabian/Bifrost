@@ -18,10 +18,8 @@ namespace {
 
 using namespace bifrost;
 
-
-
 class TestHook : public TestInjectorBase {
-public:
+ public:
   std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForLaunch(std::string file, EHookType type = EHookType::E_CFunction) {
     return MakeExecutableArgumentsForLaunchImpl(TestEnviroment::Get().GetHookExecutable(), file + " " + std::to_string((u32)type) + " 1 2 200");
   }
@@ -344,7 +342,6 @@ TEST_F(TestHook, CFunction_Multi_Modify5) {
   ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:SetUp3:Result=15:TearDown3:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
-
 #pragma endregion
 
 #pragma region VTable Single
@@ -358,6 +355,144 @@ TEST_F(TestHook, VTable_Single_Original1) {
   auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Original1);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> bifrost_IAdder_add__original_2 -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Original2) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Original2);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> bifrost_IAdder_add__original_3 -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Original3) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Original3);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> bifrost_IAdder_add__original_3 -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Original4) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+
+  // Same as VTable_Single_Original3 but uses different method to register the VTable
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Original4);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> bifrost_IAdder_add__modify_1 -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Modify1) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Modify1);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=7:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> bifrost_IAdder_add__modify_2 -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Modify2) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Modify2);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=6:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> bifrost_IAdder_add__modify_3 -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Modify3) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Modify3);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=10:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> bifrost_IAdder_add__original_1 -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Replace1) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Replace1);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+}
+
+//
+//  APP -> ORIGINAL
+//
+TEST_F(TestHook, VTable_Single_Restore1) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Restore1);
 
   auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
   auto loadResult = Load(loadArgs);
