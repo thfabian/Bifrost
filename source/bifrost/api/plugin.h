@@ -69,18 +69,16 @@ typedef struct bfp_PluginTearDownArguments_t {
 typedef struct bfp_HookSetDesc_t {
   bfp_HookType Type;  ///< The type of hook to use
   uint32_t Priority;  ///< The higher the priority the earlier the function will placed in the hook chain (the highest priority function will be called first)
-  void* Target;       ///< A pointer to the target function, which will be overridden by the detour function, or a pointer to the VTable
-  uint64_t TargetOffset;  ///< Offset, in bytes, to the method which will be overriden (VTable hooks only)
-  void* Detour;           ///< A pointer to the detour function, which will override the target function
+  void* Target;       ///< A pointer to the target function, which will be overridden by the detour function
+  void* Detour;       ///< A pointer to the detour function, which will override the target function
 } bfp_HookSetDesc;
 
 #define BIFROST_PLUGIN_DEFAULT_HookSetDesc_Priority (100)
 
 /// @brief Arguments required to remove a hook
 typedef struct bfp_HookRemoveDesc_t {
-  bfp_HookType Type;      ///< The type of hook which was used
-  void* Target;           ///< A pointer to the target function, which will be overridden by the detour function, or a pointer to the VTable
-  uint64_t TargetOffset;  ///< Offset, in bytes, to the method which will be overriden (VTable hooks only)
+  bfp_HookType Type;  ///< The type of hook which was used
+  void* Target;       ///< A pointer to the target function, which will be overridden by the detour function
 } bfp_HookRemoveDesc;
 
 #pragma endregion

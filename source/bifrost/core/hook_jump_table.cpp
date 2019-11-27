@@ -46,10 +46,7 @@ void HookJumpTable::SetTarget(void* jumpTarget) {
   // Make the entry point of the table jump to `jumpTarget`
   void* original = nullptr;
 
-  HookTarget target;
-  target.Type = EHookType::E_CFunction;
-  target.CFunction.Target = m_tableEntryPoint;
-  m_mechanism->SetHook(m_ctx, target, jumpTarget, &original);
+  m_mechanism->SetHook(m_ctx, {EHookType::E_CFunction, m_tableEntryPoint}, jumpTarget, &original);
   m_tableSet = true;
 }
 
@@ -57,10 +54,7 @@ void HookJumpTable::RemoveJumpTarget() {
   BIFROST_HOOK_TRACE(m_ctx, "Removing jump table of %s", Sym(m_ctx, m_target));
 
   // Restore the default behavior
-  HookTarget target;
-  target.Type = EHookType::E_CFunction;
-  target.CFunction.Target = m_tableEntryPoint;
-  m_mechanism->RemoveHook(m_ctx, target);
+  m_mechanism->RemoveHook(m_ctx, {EHookType::E_CFunction, m_tableEntryPoint});
   m_tableSet = false;
 }
 

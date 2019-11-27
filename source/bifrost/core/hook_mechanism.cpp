@@ -42,28 +42,26 @@ MinHook::MinHook(HookSettings* settings, HookDebugger* debugger) : HookObject(se
 
 void MinHook::SetUp(Context* ctx) { BIFROST_CHECK_MH(MH_Initialize(), "initialize MinHook"); }
 
-void MinHook::TearDown(Context* ctx) { 
-  BIFROST_CHECK_MH(MH_Uninitialize(), "uninitialize MinHook"); 
-}
+void MinHook::TearDown(Context* ctx) { BIFROST_CHECK_MH(MH_Uninitialize(), "uninitialize MinHook"); }
 
 void MinHook::SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) {
   BIFROST_ASSERT(target.Type == EHookType::E_CFunction);
   BIFROST_HOOK_TRACE(ctx, "MinHook: Creating hook from %s to %s", Sym(ctx, target), Sym(ctx, detour));
 
-  BIFROST_CHECK_MH(MH_CreateHook(target.CFunction.Target, detour, original), StringFormat("to create hook from %s to %s", Sym(ctx, target), Sym(ctx, detour)));
-  BIFROST_CHECK_MH(MH_EnableHook(target.CFunction.Target), StringFormat("to enable hook from %s", Sym(ctx, target)));
+  BIFROST_CHECK_MH(MH_CreateHook(target.Target, detour, original), StringFormat("to create hook from %s to %s", Sym(ctx, target), Sym(ctx, detour)));
+  BIFROST_CHECK_MH(MH_EnableHook(target.Target), StringFormat("to enable hook from %s", Sym(ctx, target)));
 
-  Debugger().RegisterTrampoline(*original, target.CFunction.Target);
+  Debugger().RegisterTrampoline(*original, target.Target);
 }
 
 void MinHook::RemoveHook(Context* ctx, const HookTarget& target) {
   BIFROST_ASSERT(target.Type == EHookType::E_CFunction);
   BIFROST_HOOK_TRACE(ctx, "MinHook: Removing hook from %s", Sym(ctx, target));
 
-  BIFROST_CHECK_MH(MH_DisableHook(target.CFunction.Target), StringFormat("to disable hook from %s", Sym(ctx, target)));
-  BIFROST_CHECK_MH(MH_RemoveHook(target.CFunction.Target), StringFormat("to remmove hook from %s", Sym(ctx, target)));
+  BIFROST_CHECK_MH(MH_DisableHook(target.Target), StringFormat("to disable hook from %s", Sym(ctx, target)));
+  BIFROST_CHECK_MH(MH_RemoveHook(target.Target), StringFormat("to remmove hook from %s", Sym(ctx, target)));
 
-  Debugger().UnregisterTrampoline(target.CFunction.Target);
+  Debugger().UnregisterTrampoline(target.Target);
 }
 
 EHookType MinHook::GetType() const noexcept { return EHookType::E_CFunction; }
@@ -95,26 +93,22 @@ void VTableHook::TearDown(Context* ctx) {}
 void VTableHook::SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) {
   BIFROST_ASSERT(target.Type == EHookType::E_VTable);
 
-  void* vtablePos = ((std::uint8_t*)target.VTable.Table) + target.VTable.Offset;
-
-  *original = (void*)(*(std::intptr_t*)vtablePos);
-  m_targetToOiginal[vtablePos] = (std::intptr_t)*original;
+  *original = (void*)(*(std::intptr_t*)target.Target);
+  m_targetToOiginal[target.Target] = (std::intptr_t)*original;
 
   BIFROST_HOOK_TRACE(ctx, "VTable: Creating hook from %s to %s", Sym(ctx, *original), Sym(ctx, detour));
 
-  SetVTableHook(ctx, vtablePos, detour);
+  SetVTableHook(ctx, target.Target, detour);
 }
 
 void VTableHook::RemoveHook(Context* ctx, const HookTarget& target) {
   BIFROST_ASSERT(target.Type == EHookType::E_VTable);
-
-  void* vtablePos = ((std::uint8_t*)target.VTable.Table) + target.VTable.Offset;
-  void* original = (void*)m_targetToOiginal[vtablePos];
+  void* original = (void*)m_targetToOiginal[target.Target];
 
   BIFROST_HOOK_TRACE(ctx, "VTable: Removing hook from %s", Sym(ctx, original));
 
-  SetVTableHook(ctx, vtablePos, original);
-  m_targetToOiginal.erase(vtablePos);
+  SetVTableHook(ctx, target.Target, original);
+  m_targetToOiginal.erase(target.Target);
 }
 
 EHookType VTableHook::GetType() const noexcept { return EHookType::E_VTable; }

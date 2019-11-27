@@ -13,7 +13,6 @@
 
 #include "bifrost/core/common.h"
 #include "bifrost/core/type.h"
-#include "bifrost/core/type.h"
 
 namespace bifrost {
 
@@ -24,26 +23,8 @@ const char* ToString(EHookType type);
 
 /// Target of a hook
 struct HookTarget {
-  struct CFunctionT {
-    void* Target;  ///< Address of the function
-  };
-
-  struct VTableT {
-    void* Table;  ///< VTable pointer
-    u64 Offset;   ///< Offset, in bytes, to the target method
-  };
-
-  /// Type of target
-  EHookType Type;
-
-  /// Target function address or offset of the method in the VTable
-  union {
-    VTableT VTable;
-    CFunctionT CFunction;
-  };
-
-  /// Get the address of the function or method
-  inline void* GetTarget() const noexcept { return Type == EHookType::E_CFunction ? CFunction.Target : (((std::uint8_t*)VTable.Table) + VTable.Offset); }
+  EHookType Type;  ///< Type of target
+  void* Target;    ///< Address of the function
 };
 
 }  // namespace bifrost

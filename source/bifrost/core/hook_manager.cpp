@@ -354,13 +354,13 @@ class HookManager::Impl {
   };
 
   HookChain* GetHookChain(const HookTarget& target) {
-    auto it = m_hookTargetToChain.find((u64)target.GetTarget());
+    auto it = m_hookTargetToChain.find((u64)target.Target);
     return it != m_hookTargetToChain.end() ? &it->second : nullptr;
   }
 
   template <class... Args>
   HookChain* CreateHookChain(const HookTarget& target, Args&&... args) {
-    return &m_hookTargetToChain.emplace((u64)target.GetTarget(), HookChain{std::forward<Args>(args)...}).first->second;
+    return &m_hookTargetToChain.emplace((u64)target.Target, HookChain{std::forward<Args>(args)...}).first->second;
   }
 
   void EnableDebugImpl(Context* ctx) {

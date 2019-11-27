@@ -815,7 +815,8 @@ void* Plugin::_GetTarget(Hook* hook, void* instance) {
     case HookType::VTable: {
       auto obj = IdentifierToObject(hook->GetIdentifier());
       RegisterVTable(obj, instance);
-      return m_impl->VTables[(std::uint64_t)obj];
+
+      return ((std::uint8_t*)m_impl->VTables[(std::uint64_t)obj]) + IdentifierToVTableOffset(hook->GetIdentifier());
     }
   }
   FatalError(StringFormat("Failed to set hook for %s: internal error invalid hook type", IdentiferToFunctionName(hook->GetIdentifier())).c_str());
@@ -869,7 +870,6 @@ Plugin::Hook* Plugin::SetVTableHook(Plugin::Identifier identifier, void* instanc
   desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(identifier));
   desc.Priority = priority;
   desc.Target = _GetTarget(hook, instance);
-  desc.TargetOffset = desc.Type == BFP_CFUNCTION ? 0 : IdentifierToVTableOffset(identifier);
   desc.Detour = newOverride;
 
   if (api.bfp_HookSet(m_impl->Context, &desc, &newOriginal) != BFP_OK) {
@@ -901,7 +901,6 @@ void Plugin::RemoveHook(Hook* hook) {
   bfp_HookRemoveDesc desc = {};
   desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(hook->GetIdentifier()));
   desc.Target = _GetTarget(hook, nullptr);
-  desc.TargetOffset = desc.Type == BFP_CFUNCTION ? 0 : IdentifierToVTableOffset(hook->GetIdentifier());
 
   if (api.bfp_HookRemove(m_impl->Context, &desc) != BFP_OK) {
     FatalError(api.bfp_PluginGetLastError(m_impl->Context));

@@ -64,21 +64,14 @@ static void TearDownHookManager(PluginContext* ctx) {
   }
 }
 
-template <class DescT>
-static HookTarget MakeHookTarget(DescT* desc) {
-  HookTarget target;
-  switch (desc->Type) {
+static EHookType GetType(bfp_HookType type) {
+  switch (type) {
     case BFP_CFUNCTION:
-      target.Type = EHookType::E_CFunction;
-      target.CFunction.Target = desc->Target;
-      break;
+      return EHookType::E_CFunction;
     case BFP_VTABLE:
-      target.Type = EHookType::E_VTable;
-      target.VTable.Table = desc->Target;
-      target.VTable.Offset = desc->TargetOffset;
-      break;
+      return EHookType::E_VTable;
   }
-  return target;
+  return EHookType::E_NumTypes;
 }
 
 }  // namespace
@@ -150,14 +143,14 @@ const char* bfp_PluginGetLastError(bfp_PluginContext* ctx) { return Get(ctx)->Ge
 
 BIFROST_PLUGIN_API bfp_Status bfp_HookSet(bfp_PluginContext* ctx, const bfp_HookSetDesc* desc, void** original) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->SetHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), desc->Priority, MakeHookTarget(desc), desc->Detour, original);
+    g_manager->SetHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), desc->Priority, {GetType(desc->Type), desc->Target}, desc->Detour, original);
     return BFP_OK;
   });
 }
 
 bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, const bfp_HookRemoveDesc* desc) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->RemoveHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), MakeHookTarget(desc));
+    g_manager->RemoveHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), {GetType(desc->Type), desc->Target});
     return BFP_OK;
   });
 }

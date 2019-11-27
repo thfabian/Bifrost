@@ -51,11 +51,9 @@ HookDebugger::~HookDebugger() {
 }
 
 const char* HookDebugger::SymbolFromAdress(Context* ctx, const HookTarget& target) {
-  if (target.Type == EHookType::E_VTable) {
-    void* method = (void*)(*(std::intptr_t*)target.GetTarget());
-    return SymbolFromAdress(ctx, method);
-  }
-  return SymbolFromAdress(ctx, target.GetTarget());
+  void* tgt = target.Target;
+  if (target.Type == EHookType::E_VTable) tgt = (void*)(*(std::intptr_t*)tgt); // Resolve the VTable
+  return SymbolFromAdress(ctx, tgt);
 }
 
 const char* HookDebugger::SymbolFromAdress(Context* ctx, void* addr) { return SymbolFromAdress(ctx, (u64)addr); }
