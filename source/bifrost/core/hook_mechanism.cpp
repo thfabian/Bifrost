@@ -42,7 +42,9 @@ MinHook::MinHook(HookSettings* settings, HookDebugger* debugger) : HookObject(se
 
 void MinHook::SetUp(Context* ctx) { BIFROST_CHECK_MH(MH_Initialize(), "initialize MinHook"); }
 
-void MinHook::TearDown(Context* ctx) { BIFROST_CHECK_MH(MH_Uninitialize(), "uninitialize MinHook"); }
+void MinHook::TearDown(Context* ctx) { 
+  BIFROST_CHECK_MH(MH_Uninitialize(), "uninitialize MinHook"); 
+}
 
 void MinHook::SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) {
   BIFROST_ASSERT(target.Type == EHookType::E_CFunction);
@@ -93,21 +95,26 @@ void VTableHook::TearDown(Context* ctx) {}
 void VTableHook::SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) {
   BIFROST_ASSERT(target.Type == EHookType::E_VTable);
 
-  void* method = ((std::uint8_t*)target.VTable.Table) + target.VTable.Offset;
-  BIFROST_HOOK_TRACE(ctx, "VTable: Creating hook from %s to %s", Sym(ctx, method), Sym(ctx, detour));
+  void* vtablePos = ((std::uint8_t*)target.VTable.Table) + target.VTable.Offset;
 
-  m_targetToOiginal[method] = (std::intptr_t)method;
-  SetVTableHook(ctx, method, detour);
+  *original = (void*)(*(std::intptr_t*)vtablePos);
+  m_targetToOiginal[vtablePos] = (std::intptr_t)*original;
+
+  BIFROST_HOOK_TRACE(ctx, "VTable: Creating hook from %s to %s", Sym(ctx, *original), Sym(ctx, detour));
+
+  SetVTableHook(ctx, vtablePos, detour);
 }
 
 void VTableHook::RemoveHook(Context* ctx, const HookTarget& target) {
   BIFROST_ASSERT(target.Type == EHookType::E_VTable);
 
-  void* method = ((std::uint8_t*)target.VTable.Table) + target.VTable.Offset;
-  BIFROST_HOOK_TRACE(ctx, "VTable: Removing hook from %s", Sym(ctx, method));
+  void* vtablePos = ((std::uint8_t*)target.VTable.Table) + target.VTable.Offset;
+  void* original = (void*)m_targetToOiginal[vtablePos];
 
-  SetVTableHook(ctx, method, (void*)m_targetToOiginal[method]);
-  m_targetToOiginal.erase(method);
+  BIFROST_HOOK_TRACE(ctx, "VTable: Removing hook from %s", Sym(ctx, original));
+
+  SetVTableHook(ctx, vtablePos, original);
+  m_targetToOiginal.erase(vtablePos);
 }
 
 EHookType VTableHook::GetType() const noexcept { return EHookType::E_VTable; }

@@ -71,6 +71,8 @@ class HookManager::Impl {
   void TearDown(Context* ctx) {
     BIFROST_LOCK_GUARD(m_mutex);
 
+    m_hookTargetToChain.clear();
+
     // Free the hooking mechanisms
     ForEachHookType([this, &ctx](EHookType type) { Get(type)->TearDown(ctx); });
     ForEachHookType([this](EHookType type) { delete Get(type); });
@@ -97,8 +99,7 @@ class HookManager::Impl {
       *original = chain->Insert(ctx, id, priority, detour);
     }
 
-    BIFROST_HOOK_DEBUG("Done setting hook from %s to %s (took %u ms)", m_debugger->SymbolFromAdress(ctx, target), m_debugger->SymbolFromAdress(ctx, detour),
-                       timer.Stop());
+    BIFROST_HOOK_DEBUG("Done setting hook (took %u ms)", timer.Stop());
   }
 
   void RemoveHook(Context* ctx, u32 id, const HookTarget& target) {
@@ -108,13 +109,13 @@ class HookManager::Impl {
 
     HookChain* chain = GetHookChain(target);
     if (!chain) {
-      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook", m_debugger->SymbolFromAdress(ctx, target));
+      BIFROST_HOOK_DEBUG("Skipped removing hook from: target has no hook");
       return;
     }
 
     HookChainNode* node = chain->GetById(id);
     if (!node) {
-      BIFROST_HOOK_DEBUG("Skipped removing hook from %s: target has no hook for the specified id", m_debugger->SymbolFromAdress(ctx, target));
+      BIFROST_HOOK_DEBUG("Skipped removing hook from: target has no hook for the specified id");
       return;
     }
 
@@ -124,7 +125,7 @@ class HookManager::Impl {
       chain->Remove(ctx, node);
     }
 
-    BIFROST_HOOK_DEBUG("Done removing hook from %s (took %u ms)", m_debugger->SymbolFromAdress(ctx, target), timer.Stop());
+    BIFROST_HOOK_DEBUG("Done removing hook (took %u ms)", timer.Stop());
   }
 
   void EnableDebug(Context* ctx) {
@@ -169,9 +170,7 @@ class HookManager::Impl {
   /// Chain of hooks
   class HookChain {
    public:
-    HookChain(HookManager::Impl* manager, const HookTarget& target) : m_manager(manager), m_target(target), m_original(nullptr) {
-      m_hookChain.reserve(8);
-    }
+    HookChain(HookManager::Impl* manager, const HookTarget& target) : m_manager(manager), m_target(target), m_original(nullptr) { m_hookChain.reserve(8); }
 
     /// Get the node associated with the `id` or NULL
     HookChainNode* GetById(u32 id) {
@@ -265,7 +264,7 @@ class HookManager::Impl {
             break;
 
             // 3) We are in-between two existing nodes -> We have to modify the previous JMP table to call our function and our JMP table has to call the next
-            // one
+            //    one
           case E_Middle:
             u32 prevIndex = insertIndex - 1;
             u32 nextIndex = insertIndex;
@@ -355,13 +354,13 @@ class HookManager::Impl {
   };
 
   HookChain* GetHookChain(const HookTarget& target) {
-    auto it = m_hookTargetToDesc.find((u64)target.GetTarget());
-    return it != m_hookTargetToDesc.end() ? &it->second : nullptr;
+    auto it = m_hookTargetToChain.find((u64)target.GetTarget());
+    return it != m_hookTargetToChain.end() ? &it->second : nullptr;
   }
 
   template <class... Args>
   HookChain* CreateHookChain(const HookTarget& target, Args&&... args) {
-    return &m_hookTargetToDesc.emplace((u64)target.GetTarget(), HookChain{std::forward<Args>(args)...}).first->second;
+    return &m_hookTargetToChain.emplace((u64)target.GetTarget(), HookChain{std::forward<Args>(args)...}).first->second;
   }
 
   void EnableDebugImpl(Context* ctx) {
@@ -377,7 +376,7 @@ class HookManager::Impl {
   SpinMutex m_mutex;
 
   /// Mapping of the target function to the internal description
-  std::unordered_map<u64, HookChain> m_hookTargetToDesc;
+  std::unordered_map<u64, HookChain> m_hookTargetToChain;
 
   /// Hooking mechanisms (C-Function & VTable)
   std::array<IHookMechanism*, (std::size_t)EHookType::E_NumTypes> m_hookMechanisms;

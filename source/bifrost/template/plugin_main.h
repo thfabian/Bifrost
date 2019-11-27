@@ -374,10 +374,6 @@ BIFROST_NAMESPACE_END
 /// bf_arg_type
 #define bf_arg_name(index)
 
-#define bf_arg_name(index)
-#define bf_arg_name(index)
-#define bf_arg_name(index)
-
 /// bf_call_original
 #define bf_call_orignal bf_original(bf_args)
 
@@ -817,8 +813,9 @@ void* Plugin::_GetTarget(Hook* hook, void* instance) {
       return hook->_GetTarget();
     }
     case HookType::VTable: {
-      RegisterVTable(IdentifierToObject(hook->GetIdentifier()), instance);
-      return m_impl->VTables[(std::uint64_t)hook->GetIdentifier()];
+      auto obj = IdentifierToObject(hook->GetIdentifier());
+      RegisterVTable(obj, instance);
+      return m_impl->VTables[(std::uint64_t)obj];
     }
   }
   FatalError(StringFormat("Failed to set hook for %s: internal error invalid hook type", IdentiferToFunctionName(hook->GetIdentifier())).c_str());

@@ -50,7 +50,13 @@ HookDebugger::~HookDebugger() {
   }
 }
 
-const char* HookDebugger::SymbolFromAdress(Context* ctx, const HookTarget& target) { return SymbolFromAdress(ctx, target.GetTarget()); }
+const char* HookDebugger::SymbolFromAdress(Context* ctx, const HookTarget& target) {
+  if (target.Type == EHookType::E_VTable) {
+    void* method = (void*)(*(std::intptr_t*)target.GetTarget());
+    return SymbolFromAdress(ctx, method);
+  }
+  return SymbolFromAdress(ctx, target.GetTarget());
+}
 
 const char* HookDebugger::SymbolFromAdress(Context* ctx, void* addr) { return SymbolFromAdress(ctx, (u64)addr); }
 

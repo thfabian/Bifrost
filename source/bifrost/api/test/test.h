@@ -116,7 +116,7 @@ class TestInjectorBase : public ::testing::Test {
   UnloadResult Unload(std::shared_ptr<bfi_PluginUnloadArguments> unloadArguments, std::shared_ptr<bfi_Process> process);
 
   /// Wait for `timeout` seconds for process to complete
-  i32 Wait(const std::shared_ptr<bfi_Process>& process, i32 timeout = 10);
+  i32 Wait(const std::shared_ptr<bfi_Process>& process, i32 timeout = 60);
 
   /// Get plugin help
   std::shared_ptr<char> HelpImpl(std::wstring plugin);
