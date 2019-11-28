@@ -103,7 +103,7 @@ class InjectorContext {
       injectArguments.TimeoutInMs = args->InjectorArguments->TimeoutInS * 1000;
 
       // Launch the process and perform injection
-			std::vector<u32> threads;
+			std::vector<std::unique_ptr<Thread>> threads;
       switch (args->Executable->Mode) {
         case BFI_LAUNCH: {
           Process::LaunchArguments arguments{args->Executable->ExecutablePath ? args->Executable->ExecutablePath : L"",
@@ -133,7 +133,7 @@ class InjectorContext {
       proc->Inject(std::move(injectArguments));
 
       // Resume execution of all threads..
-      if (args->Executable->Mode == BFI_LAUNCH) proc->Resume(threads);
+      if (args->Executable->Mode == BFI_LAUNCH) Thread::ResumeAll(threads);
 
     } catch (...) {
       if (proc && args->Executable->Mode == BFI_LAUNCH) {

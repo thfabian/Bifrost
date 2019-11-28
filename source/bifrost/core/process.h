@@ -14,6 +14,7 @@
 #include "bifrost/core/common.h"
 #include "bifrost/core/object.h"
 #include "bifrost/core/type.h"
+#include "bifrost/core/thread.h"
 
 namespace bifrost {
 
@@ -35,22 +36,18 @@ class Process : public Object {
   /// Connect to the process `name`
   Process(Context* ctx, std::wstring_view name);
 
+  Process(const Process&) = delete;
+  Process& operator=(const Process&) = delete;
+
   Process(Process&&) = default;
   Process& operator=(Process&&) = default;
   ~Process();
 
-  /// Get the ids of all threads of this process (clears `threadIds` first)
-  void GetThreads(std::vector<u32>& threadIds);
-  std::vector<u32> GetThreads();
+  /// Get the ids of all threads of this process
+  std::vector<std::unique_ptr<Thread>> GetThreads();
 
-  /// Get the ids of all threads but the currently executing one of this process (clears `threadIds` first)
-  void GetOtherThreads(std::vector<u32>& threadIds);
-
-  /// Suspend the threads - throws std::runtime_error on failure
-  void Suspend(const std::vector<u32>& threads, bool verbose = true);
-
-  /// Resume the threads after suspension - throws std::runtime_error on failure
-  void Resume(const std::vector<u32>& threads, bool verbose = true);
+  /// Get the ids of all threads but the currently executing one of this process
+  std::vector<std::unique_ptr<Thread>> GetOtherThreads();
 
   /// Wait for the process to return (blocks the calling thread) returns the return value of `WaitForSingleObject`
   u32 Wait(u32 timeout = INFINITE);
@@ -82,11 +79,9 @@ class Process : public Object {
 
  private:
   HANDLE m_hProcess = NULL;
-  HANDLE m_hThread = NULL;
   std::optional<u32> m_pid;
   std::optional<u32> m_tid;
   std::optional<u32> m_exitCode;
-  std::vector<u32> m_frozenThreads;
 };
 
 /// Kill the process given by `pid`

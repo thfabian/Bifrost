@@ -22,25 +22,23 @@ class IHookMechanism;
 /// Region of memory which can be used to JMP to arbitrary functions
 class HookJumpTable : HookObject {
  public:
-  HookJumpTable(Context* ctx, HookSettings* settings, HookDebugger* debugger, IHookMechanism* mechanism, void* target);
+  HookJumpTable(HookContext* ctx, HookSettings* settings, HookDebugger* debugger, IHookMechanism* mechanism, void* target);
   ~HookJumpTable();
 
   /// Set the target of the jump table, meaning if the table is called it will jump to this function
-  void SetTarget(void* jumpTarget);
+  void SetTarget(HookContext* ctx, void* jumpTarget);
+
+  /// Remove and existing jump target
+  void RemoveTarget(HookContext* ctx);
 
   /// Get the target address i.e the entry point to this jump table
   void* GetTableEntryPoint() const;
-
- private:
-  /// Remove and existing jump target
-  void RemoveJumpTarget();
 
  private:
   void* m_tableEntryPoint;
   void* m_target;
   bool m_tableSet;
   IHookMechanism* m_mechanism;
-  Context* m_ctx;
 };
 
 }  // namespace bifrost

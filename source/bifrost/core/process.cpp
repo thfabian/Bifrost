@@ -112,6 +112,8 @@ void EnumerateThreads(Context* ctx, FilterFunc&& filterFunc) {
   if (::Thread32First(snapshot, &tEntry)) {
     do {
       if (!filterFunc(tEntry)) break;
+
+      tEntry.dwSize = sizeof(THREADENTRY32);
     } while (::Thread32Next(snapshot, &tEntry));
   }
   BIFROST_CHECK_WIN_CALL_CTX(ctx, ::CloseHandle(snapshot) != FALSE);
@@ -149,7 +151,6 @@ Process::Process(Context* ctx, LaunchArguments args) : Object(ctx) {
                               StringFormat("Failed to launch process: %s", WStringToString(cmdStr)).c_str());
 
   m_hProcess = procInfo.hProcess;
-  m_hThread = procInfo.hThread;
   m_pid = procInfo.dwProcessId;
   m_tid = procInfo.dwThreadId;
   Logger().InfoFormat("Launched process with pid: %u", GetPid());
@@ -197,68 +198,34 @@ Process::Process(Context* ctx, std::wstring_view name) : Object(ctx) {
 
 Process::~Process() {
   if (m_hProcess) BIFROST_CHECK_WIN_CALL(::CloseHandle(m_hProcess) != FALSE);
-  if (m_hThread) BIFROST_CHECK_WIN_CALL(::CloseHandle(m_hThread) != FALSE);
 }
 
-static void GetThreadsImpl(Context* ctx, std::vector<u32>& threadIds, u32 pid, u32* ignoreId = nullptr) {
-  threadIds.clear();
+static void GetThreadsImpl(Context* ctx, std::vector<std::unique_ptr<Thread>>& threads, u32 pid, u32* ignoreId = nullptr) {
   EnumerateThreads(ctx, [&](const THREADENTRY32& tEntry) {
     if (tEntry.th32OwnerProcessID == pid) {
       if (!ignoreId || tEntry.th32ThreadID != *ignoreId) {
-        threadIds.emplace_back(tEntry.th32ThreadID);
+        threads.emplace_back(std::make_unique<Thread>(ctx, tEntry.th32ThreadID));
       }
     }
     return true;
   });
 }
 
-void Process::GetThreads(std::vector<u32>& threadIds) {
-    if (Poll()) return;
-    GetThreadsImpl(&GetContext(), threadIds, GetPid(), nullptr);
+std::vector<std::unique_ptr<Thread>> Process::GetThreads() {
+  std::vector<std::unique_ptr<Thread>> threads;
+  if (Poll()) return threads;
+
+  GetThreadsImpl(&GetContext(), threads, GetPid(), nullptr);
+  return threads;
 }
 
-std::vector<bifrost::u32> Process::GetThreads() {
-    std::vector<bifrost::u32> threads;
-    GetThreads(threads);
-    return threads;
-}
+std::vector<std::unique_ptr<Thread>> Process::GetOtherThreads() {
+  std::vector<std::unique_ptr<Thread>> threads;
+  if (Poll()) return threads;
 
-void Process::GetOtherThreads(std::vector<u32>& threadIds) {
-    if (Poll()) return;
-
-    u32 curTid = ::GetCurrentThreadId();
-    GetThreadsImpl(&GetContext(), threadIds, GetPid(), &curTid);
-}
-
-static HANDLE GetThreadHandleImpl(Context* ctx, u32 id, u32 pid) {
-    HANDLE hThread = INVALID_HANDLE_VALUE;
-    BIFROST_ASSERT_WIN_CALL_MSG_CTX(ctx, (hThread = ::OpenThread(THREAD_ALL_ACCESS, FALSE, id)) != NULL,
-                                    StringFormat("Failed to open thread %u of process with pid: %u", id, pid).c_str());
-    return hThread;
-}
-
-void Process::Suspend(const std::vector<u32>& threadIds, bool verbose) {
-    if (Poll()) return;
-
-    for (u32 id : threadIds) {
-      if(verbose) Logger().DebugFormat("Suspending thread %u ...", id);
-      DWORD suspendCount = 0;
-      BIFROST_ASSERT_WIN_CALL((suspendCount = ::SuspendThread(GetThreadHandleImpl(&GetContext(), id, GetPid()))) != ((DWORD)-1));
-      if(verbose) Logger().DebugFormat("Successfully suspended thread %u, thread %s (previous suspend count %u)", id,
-                           suspendCount == 0 ? "was running" : "was already suspended", suspendCount);
-    }
-}
-
-void Process::Resume(const std::vector<u32>& threadIds, bool verbose) {
-    if (Poll()) return;
-
-    for (u32 id : threadIds) {
-      if(verbose) Logger().DebugFormat("Resuming thread %u ...", id);
-      DWORD suspendCount = 0;
-      BIFROST_ASSERT_WIN_CALL((suspendCount = ::ResumeThread(GetThreadHandleImpl(&GetContext(), id, GetPid()))) != ((DWORD)-1));
-      if(verbose) Logger().DebugFormat("Successfully resumed thread %u, thread is %s (previous suspend count %u)", id,
-                           suspendCount <= 1 ? "now running" : "still suspended", suspendCount);
-    }
+  u32 curTid = ::GetCurrentThreadId();
+  GetThreadsImpl(&GetContext(), threads, GetPid(), &curTid);
+  return threads;
 }
 
 u32 Process::Wait(u32 timeout) {
@@ -267,21 +234,20 @@ u32 Process::Wait(u32 timeout) {
     return reason;
 }
 
-bool Process::Poll() {
-    return GetExitCode() != nullptr; }
+bool Process::Poll() { return GetExitCode() != nullptr; }
 
 std::shared_ptr<void> Process::AllocateRemoteMemory(const void* data, u32 sizeInBytes, DWORD protectionFlag, const char* reason) {
-    void* ptr = nullptr;
-    BIFROST_ASSERT_WIN_CALL((ptr = ::VirtualAllocEx(m_hProcess, NULL, sizeInBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) != NULL);
-    std::shared_ptr<void> remoteMem(ptr, [this](void* p) { BIFROST_CHECK_WIN_CALL(::VirtualFreeEx(m_hProcess, p, 0, MEM_RELEASE) != NULL); });
+  void* ptr = nullptr;
+  BIFROST_ASSERT_WIN_CALL((ptr = ::VirtualAllocEx(m_hProcess, NULL, sizeInBytes, MEM_COMMIT, PAGE_EXECUTE_READWRITE)) != NULL);
+  std::shared_ptr<void> remoteMem(ptr, [this](void* p) { BIFROST_CHECK_WIN_CALL(::VirtualFreeEx(m_hProcess, p, 0, MEM_RELEASE) != NULL); });
 
-    SIZE_T numBytesWritten = 0;
-    BIFROST_ASSERT_WIN_CALL_MSG(::WriteProcessMemory(m_hProcess, remoteMem.get(), data, sizeInBytes, &numBytesWritten) != FALSE,
-                                "Failed to write remote process memory");
-    if (numBytesWritten != sizeInBytes) {
-      throw Exception("Failed to write remote process memory for %s: Requested to write %lu bytes, wrote %lu bytes.", reason, sizeInBytes, numBytesWritten);
-    }
-    return remoteMem;
+  SIZE_T numBytesWritten = 0;
+  BIFROST_ASSERT_WIN_CALL_MSG(::WriteProcessMemory(m_hProcess, remoteMem.get(), data, sizeInBytes, &numBytesWritten) != FALSE,
+                              "Failed to write remote process memory");
+  if (numBytesWritten != sizeInBytes) {
+    throw Exception("Failed to write remote process memory for %s: Requested to write %lu bytes, wrote %lu bytes.", reason, sizeInBytes, numBytesWritten);
+  }
+  return remoteMem;
 }
 
 DWORD Process::RunRemoteThread(const char* functionName, LPTHREAD_START_ROUTINE threadFunc, void* threadParam, u32 timeoutInMs) {

@@ -87,23 +87,23 @@ TEST_F(ProcessTest, ResumeAndSuspend) {
   ASSERT_FALSE(proc.Poll());
 
   auto threads = proc.GetThreads();
-	ASSERT_EQ(threads.size(), 1); // should only have 1 thread (main thread)
-  
-	ASSERT_NO_THROW(proc.Suspend(threads));  // thread should already be suspended -> count = 2
+  ASSERT_EQ(threads.size(), 1);  // should only have 1 thread (main thread)
+
+  ASSERT_NO_THROW(Thread::SuspendAll(threads));  // thread should already be suspended -> count = 2
   ::Sleep(250);
   ASSERT_FALSE(proc.Poll());
 
-  ASSERT_NO_THROW(proc.Resume(threads));  // thread should still be suspended -> count = 1
+  ASSERT_NO_THROW(Thread::ResumeAll(threads));  // thread should still be suspended -> count = 1
   ::Sleep(250);
   ASSERT_FALSE(proc.Poll());
 
-  ASSERT_NO_THROW(proc.Resume(threads));  // thread should now run -> cound = 0
-  ASSERT_NO_THROW(proc.Suspend(threads));  // suspend running thread
+  ASSERT_NO_THROW(Thread::ResumeAll(threads));   // thread should now run -> cound = 0
+  ASSERT_NO_THROW(Thread::SuspendAll(threads));  // suspend running thread
   ::Sleep(250);
   ASSERT_FALSE(proc.Poll());
 
-  ASSERT_NO_THROW(proc.Resume(threads));
-  ASSERT_NO_THROW(proc.Resume(threads));  // thread is already running, should be nop
+  ASSERT_NO_THROW(Thread::ResumeAll(threads));
+  ASSERT_NO_THROW(Thread::ResumeAll(threads));  // thread is already running, should be nop
   ASSERT_NO_THROW(proc.Wait());
 
   ASSERT_NE(nullptr, proc.GetExitCode());
@@ -115,15 +115,20 @@ TEST_F(ProcessTest, ConnectPid) {
   Process mproc(GetContext(), {exe, "1 100", true});
   Process cproc(GetContext(), mproc.GetPid());
 
+  auto cthreads = cproc.GetThreads();
+  auto mthreads = mproc.GetThreads();
+
+  ASSERT_EQ(cthreads.size(), 1);
+  ASSERT_EQ(cthreads.size(), mthreads.size());
+  ASSERT_EQ(cthreads[0]->Id(), mthreads[0]->Id());
   ASSERT_EQ(mproc.GetPid(), cproc.GetPid());
-  ASSERT_EQ(mproc.GetThreads(), cproc.GetThreads());
 
   EXPECT_FALSE(mproc.Poll());
   EXPECT_FALSE(cproc.Poll());
   EXPECT_EQ(nullptr, mproc.GetExitCode());
   EXPECT_EQ(nullptr, cproc.GetExitCode());
 
-  ASSERT_NO_THROW(cproc.Resume(cproc.GetThreads()));  // Let the connected thread resume the process
+  ASSERT_NO_THROW(Thread::ResumeAll(cthreads));  // Let the connected thread resume the process
   ASSERT_NO_THROW(cproc.Wait());
 
   EXPECT_NE(nullptr, mproc.GetExitCode());
@@ -137,15 +142,20 @@ TEST_F(ProcessTest, ConnectName) {
   Process mproc(GetContext(), {exe, "1 100", true});
   Process cproc(GetContext(), std::filesystem::path(TestEnviroment::Get().GetMockExecutable()).filename().native());
 
+  auto cthreads = cproc.GetThreads();
+  auto mthreads = mproc.GetThreads();
+
+  ASSERT_EQ(cthreads.size(), 1);
+  ASSERT_EQ(cthreads.size(), mthreads.size());
+  ASSERT_EQ(cthreads[0]->Id(), mthreads[0]->Id());
   ASSERT_EQ(mproc.GetPid(), cproc.GetPid());
-  ASSERT_EQ(mproc.GetThreads(), cproc.GetThreads());
 
   EXPECT_FALSE(mproc.Poll());
   EXPECT_FALSE(cproc.Poll());
   EXPECT_EQ(nullptr, mproc.GetExitCode());
   EXPECT_EQ(nullptr, cproc.GetExitCode());
 
-  ASSERT_NO_THROW(cproc.Resume(cproc.GetThreads()));  // Let the connected thread resume the process
+  ASSERT_NO_THROW(Thread::ResumeAll(cthreads));  // Let the connected thread resume the process
   ASSERT_NO_THROW(cproc.Wait());
 
   EXPECT_NE(nullptr, mproc.GetExitCode());
@@ -159,10 +169,11 @@ TEST_F(ProcessTest, InjectSuccess) {
   auto dll = TestEnviroment::Get().GetMockDll();
 
   Process proc(GetContext(), {exe, "0 200", true});
+  auto threads = proc.GetThreads();
 
   ASSERT_NO_THROW(proc.Inject({dll}));
 
-  ASSERT_NO_THROW(proc.Resume(proc.GetThreads()));
+  ASSERT_NO_THROW(Thread::ResumeAll(threads));
   ASSERT_NO_THROW(proc.Wait());
 
   ASSERT_NE(nullptr, proc.GetExitCode());
@@ -174,10 +185,11 @@ TEST_F(ProcessTest, InjectFail) {
   auto dll = TestEnviroment::Get().GetMockDll();
 
   Process proc(GetContext(), {exe, "0 200", true});
+  auto threads = proc.GetThreads();
 
   ASSERT_THROW(proc.Inject({L"invalid"}), std::runtime_error);
 
-  ASSERT_NO_THROW(proc.Resume(proc.GetThreads()));
+  ASSERT_NO_THROW(Thread::ResumeAll(threads));
   ASSERT_NO_THROW(proc.Wait());
 
   ASSERT_NE(nullptr, proc.GetExitCode());
@@ -206,10 +218,11 @@ TEST_F(ProcessTest, InjectInit) {
   ctx->SetMemory(mem.get());
 
   Process proc(ctx, {exe, "0 200", true});
+  auto threads = proc.GetThreads();
 
   ASSERT_NO_THROW(proc.Inject({dll, "MockDllInit", "foo"}));
 
-  ASSERT_NO_THROW(proc.Resume(proc.GetThreads()));
+  ASSERT_NO_THROW(Thread::ResumeAll(threads));
   ASSERT_NO_THROW(proc.Wait());
 
   ASSERT_NE(nullptr, proc.GetExitCode());

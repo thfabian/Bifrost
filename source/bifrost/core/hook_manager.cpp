@@ -25,30 +25,10 @@
 
 namespace bifrost {
 
-namespace {
-
 #define BIFROST_HOOK_DEBUG(...)             \
   if (GetSettings()->Debug) {               \
     ctx->Logger().DebugFormat(__VA_ARGS__); \
   }
-
-/// RAII construct for suspending all threads (besides the calling thread) of this process
-class ThreadSuspender {
- public:
-  ThreadSuspender(Process* process) {
-    m_process = process;
-    m_process->GetOtherThreads(m_suspendedThreads);
-    m_process->Suspend(m_suspendedThreads, false);
-  }
-  ~ThreadSuspender() { m_process->Resume(m_suspendedThreads, false); }
-
- private:
-  std::vector<u32> m_suspendedThreads;
-  Process* m_process;
-};
-#define BIFROST_SUSPEND_OTHER_THREADS() ThreadSuspender BIFROST_CONCAT(__suspender_, __LINE__)(GetProcess())
-
-}  // namespace
 
 class HookManager::Impl {
  public:
@@ -66,17 +46,19 @@ class HookManager::Impl {
     m_hookMechanisms[static_cast<u32>(EHookType::E_CFunction)] = new CFunctionHook(GetSettings(), GetDebugger());
     m_hookMechanisms[static_cast<u32>(EHookType::E_VTable)] = new VTableHook(GetSettings(), GetDebugger());
 
-    ForEachHookType([this, &ctx](EHookType type) { Get(type)->SetUp(ctx); });
+    RunExclusive(ctx, [this](HookContext* hookCtx) { ForEachHookType([this, &hookCtx](EHookType type) { Get(type)->SetUp(hookCtx); }); });
   }
 
   void TearDown(Context* ctx) {
     BIFROST_LOCK_GUARD(m_mutex);
 
-    m_hookTargetToChain.clear();
-
     // Free the hooking mechanisms
-    ForEachHookType([this, &ctx](EHookType type) { Get(type)->TearDown(ctx); });
-    ForEachHookType([this](EHookType type) { delete Get(type); });
+    RunExclusive(ctx, [&](HookContext* hookCtx) {
+      for(auto& [addr, chain] : m_hookTargetToChain) chain.RemoveAll(hookCtx);
+
+      ForEachHookType([&](EHookType type) { Get(type)->TearDown(hookCtx); });
+      ForEachHookType([&](EHookType type) { delete Get(type); });
+    });
 
     m_debugger.release();
     m_settings.release();
@@ -95,10 +77,7 @@ class HookManager::Impl {
     }
 
     // Register the hook
-    {
-      BIFROST_SUSPEND_OTHER_THREADS();
-      *original = chain->Insert(ctx, id, priority, detour);
-    }
+    RunExclusive(ctx, [&](HookContext* hookCtx) { *original = chain->Insert(hookCtx, id, priority, detour); });
 
     BIFROST_HOOK_DEBUG("Done setting hook (took %u ms)", timer.Stop());
   }
@@ -121,10 +100,7 @@ class HookManager::Impl {
     }
 
     // Remove the hook
-    {
-      BIFROST_SUSPEND_OTHER_THREADS();
-      chain->Remove(ctx, node);
-    }
+    RunExclusive(ctx, [&](HookContext* hookCtx) { chain->Remove(hookCtx, node); });
 
     BIFROST_HOOK_DEBUG("Done removing hook (took %u ms)", timer.Stop());
   }
@@ -158,6 +134,15 @@ class HookManager::Impl {
   template <class Func>
   void ForEachHookType(Func&& func) {
     for (std::size_t i = (u32)EHookType::E_CFunction; i < (u32)EHookType::E_NumTypes; ++i) func((EHookType)i);
+  }
+
+  /// Run the given function in exclusive mode. Meaning, all other threads will be frozen.
+  template <class FuncT>
+  void RunExclusive(Context* ctx, FuncT&& func) {
+    auto threads = m_process->GetOtherThreads();
+    ThreadSuspender suspender(&threads);
+    HookContext hookCtx{ctx, &threads};
+    func(&hookCtx);
   }
 
   /// Node of a hook chain
@@ -216,7 +201,7 @@ class HookManager::Impl {
     ///
     /// This function returns the address of the function which should be treated as the original one (the perceived original). For dynamic hooks this will be
     /// entry point of the the jump-table otherwise it's the actual address of the original function.
-    void* Insert(Context* ctx, u32 id, u32 priority, void* detour) {
+    void* Insert(HookContext* ctx, u32 id, u32 priority, void* detour) {
       IHookMechanism* mechanism = m_manager->Get(m_target.Type);
 
       // Remove any existing hook from this plugin
@@ -257,7 +242,7 @@ class HookManager::Impl {
             // 2) We have the lowest priority of all nodes -> We will be instered in the back, the previous tail will jump to us and our JMP table will call
             //    ORIGINAL
           case E_Last:
-            m_hookChain[m_hookChain.size() - 1].JumpTable->SetTarget(detour);
+            m_hookChain[m_hookChain.size() - 1].JumpTable->SetTarget(ctx, detour);
 
             newNode.JumpTable = MakeTable(ctx, detour, m_original);
 
@@ -270,7 +255,7 @@ class HookManager::Impl {
             u32 prevIndex = insertIndex - 1;
             u32 nextIndex = insertIndex;
 
-            m_hookChain[prevIndex].JumpTable->SetTarget(detour);
+            m_hookChain[prevIndex].JumpTable->SetTarget(ctx, detour);
 
             newNode.JumpTable = MakeTable(ctx, detour, m_hookChain[nextIndex].Detour);
 
@@ -284,11 +269,11 @@ class HookManager::Impl {
     }
 
     /// Make a HookJumpTable
-    std::unique_ptr<HookJumpTable> MakeTable(Context* ctx, void* detour, void* target) const {
+    std::unique_ptr<HookJumpTable> MakeTable(HookContext* ctx, void* detour, void* target) const {
       std::unique_ptr<HookJumpTable> table = nullptr;
       if (m_manager->GetSettings()->HookStrategy != EHookStrategy::E_Single) {
         table = std::make_unique<HookJumpTable>(ctx, m_manager->GetSettings(), m_manager->GetDebugger(), m_manager->Get(EHookType::E_CFunction), detour);
-        table->SetTarget(target);
+        table->SetTarget(ctx, target);
       }
       return table;
     }
@@ -311,10 +296,11 @@ class HookManager::Impl {
     }
 
     /// Remove the node and potentially re-hook adjacent node(s)
-    void Remove(Context* ctx, const HookChainNode* node) {
+    void Remove(HookContext* ctx, const HookChainNode* node) {
       IHookMechanism* mechanism = m_manager->Get(m_target.Type);
 
       if (Size() == 1) {
+        if(m_hookChain[0].JumpTable) m_hookChain[0].JumpTable->RemoveTarget(ctx);
         m_hookChain.pop_back();
         mechanism->RemoveHook(ctx, m_target);
 
@@ -328,14 +314,20 @@ class HookManager::Impl {
 
         } else if (idx == m_hookChain.size() - 1) {
           // This is the tail node, make the one node before the current tail the new tail by setting it's jump table to ORIGINAL
-          m_hookChain[idx - 1].JumpTable->SetTarget(m_original);
+          m_hookChain[idx - 1].JumpTable->SetTarget(ctx, m_original);
         } else {
           // This is a node in the middle, make the previous jump table call the next function
-          m_hookChain[idx - 1].JumpTable->SetTarget(m_hookChain[idx + 1].Detour);
+          m_hookChain[idx - 1].JumpTable->SetTarget(ctx, m_hookChain[idx + 1].Detour);
         }
 
+        if(m_hookChain[idx].JumpTable) m_hookChain[idx].JumpTable->RemoveTarget(ctx);
         m_hookChain.erase(m_hookChain.begin() + idx);
       }
+    }
+
+    /// Remove all nodes
+    void RemoveAll(HookContext* ctx) {
+      while (!m_hookChain.empty()) Remove(ctx, &m_hookChain[0]);
     }
 
     /// Get the number of registered hooks

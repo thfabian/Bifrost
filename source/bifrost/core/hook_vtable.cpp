@@ -39,28 +39,27 @@ static void SetVTableHook(Context* ctx, void* target, void* detour) {
 
 VTableHook::VTableHook(HookSettings* settings, HookDebugger* debugger) : HookObject(settings, debugger) {}
 
-void VTableHook::SetUp(Context* ctx) { m_targetToOiginal.reserve(1024); }
+void VTableHook::SetUp(HookContext* ctx) { m_targetToOiginal.reserve(1024); }
 
-void VTableHook::TearDown(Context* ctx) {}
+void VTableHook::TearDown(HookContext* ctx) {}
 
-void VTableHook::SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) {
+void VTableHook::SetHook(HookContext* ctx, const HookTarget& target, void* detour, void** original) {
   BIFROST_ASSERT(target.Type == EHookType::E_VTable);
 
   *original = (void*)(*(std::intptr_t*)target.Target);
   m_targetToOiginal[target.Target] = (std::intptr_t)*original;
 
-  BIFROST_HOOK_TRACE(ctx, "VTable: Creating hook from %s to %s", Sym(ctx, *original), Sym(ctx, detour));
-
-  SetVTableHook(ctx, target.Target, detour);
+  BIFROST_HOOK_TRACE(ctx->Context, "VTable: Creating hook from %s to %s", Sym(ctx, *original), Sym(ctx, detour));
+  SetVTableHook(ctx->Context, target.Target, detour);
 }
 
-void VTableHook::RemoveHook(Context* ctx, const HookTarget& target) {
+void VTableHook::RemoveHook(HookContext* ctx, const HookTarget& target) {
   BIFROST_ASSERT(target.Type == EHookType::E_VTable);
   void* original = (void*)m_targetToOiginal[target.Target];
 
-  BIFROST_HOOK_TRACE(ctx, "VTable: Removing hook from %s", Sym(ctx, original));
+  BIFROST_HOOK_TRACE(ctx->Context, "VTable: Removing hook from %s", Sym(ctx, original));
 
-  SetVTableHook(ctx, target.Target, original);
+  SetVTableHook(ctx->Context, target.Target, original);
   m_targetToOiginal.erase(target.Target);
 }
 

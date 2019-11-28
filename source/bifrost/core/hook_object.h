@@ -15,6 +15,7 @@
 #include "bifrost/core/object.h"
 #include "bifrost/core/hook_settings.h"
 #include "bifrost/core/hook_debugger.h"
+#include "bifrost/core/hook_context.h"
 
 namespace bifrost {
 
@@ -36,6 +37,8 @@ class HookObject {
   inline const char* Sym(Context& ctx, void* addr) { return m_debugger->SymbolFromAdress(&ctx, addr); }
   inline const char* Sym(Context* ctx, const HookTarget& target) { return m_debugger->SymbolFromAdress(ctx, target); }
   inline const char* Sym(Context& ctx, const HookTarget& target) { return m_debugger->SymbolFromAdress(&ctx, target); }
+  inline const char* Sym(HookContext* ctx, const HookTarget& target) { return m_debugger->SymbolFromAdress(ctx->Context, target); }
+  inline const char* Sym(HookContext* ctx, void* addr) { return m_debugger->SymbolFromAdress(ctx->Context, addr); }
 
  private:
   HookSettings* m_settings;

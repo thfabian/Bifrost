@@ -23,10 +23,10 @@ class VTableHook : public IHookMechanism, public HookObject {
  public:
   VTableHook(HookSettings* settings, HookDebugger* debugger);
 
-  virtual void SetUp(Context* ctx) override;
-  virtual void TearDown(Context* ctx) override;
-  virtual void SetHook(Context* ctx, const HookTarget& target, void* detour, void** original) override;
-  virtual void RemoveHook(Context* ctx, const HookTarget& target) override;
+  virtual void SetUp(HookContext* ctx) override;
+  virtual void TearDown(HookContext* ctx) override;
+  virtual void SetHook(HookContext* ctx, const HookTarget& target, void* detour, void** original) override;
+  virtual void RemoveHook(HookContext* ctx, const HookTarget& target) override;
   virtual EHookType GetType() const noexcept;
 
  private:
