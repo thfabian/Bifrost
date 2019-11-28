@@ -35,7 +35,7 @@ __declspec(dllexport) DWORD WINAPI bfl_UnloadPlugins(LPVOID lpThreadParameter);
 
 namespace {
 
-/// This is a singleton instance - there will only be 1 bifrost_loader.dll per process. This class holds information about all the loaded plugins and knows how
+/// This is a singleton instance - there will only be one bifrost_loader.dll per process. This class holds information about all the loaded plugins and knows how
 /// to interact with them.
 class LoaderContext {
  public:

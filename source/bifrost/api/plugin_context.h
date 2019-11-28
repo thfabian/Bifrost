@@ -23,7 +23,7 @@
 
 namespace bifrost::api {
 
-/// Context of each plugin (this is the implementation of bfp_Plugin)
+/// Context of each plugin (this is the implementation of bfp_Plugin) it is used in bifrost_loader and bifrost_plugin
 class PluginContext {
  public:
   PluginContext();
