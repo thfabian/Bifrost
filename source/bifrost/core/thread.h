@@ -15,6 +15,7 @@
 #include "bifrost/core/object.h"
 #include "bifrost/core/type.h"
 #include "bifrost/core/thread.h"
+#include "bifrost/core/non_copyable.h"
 
 namespace bifrost {
 
@@ -22,7 +23,7 @@ class Process;
 class Context;
 
 /// Thread abstraction
-class Thread : public Object {
+class Thread : public Object, public NonCopyable {
  public:
   /// Open the thread given by the thread id `id`
   Thread(Context* ctx, u32 id);

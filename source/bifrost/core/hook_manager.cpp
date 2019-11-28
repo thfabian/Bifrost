@@ -54,7 +54,7 @@ class HookManager::Impl {
 
     // Free the hooking mechanisms
     RunExclusive(ctx, [&](HookContext* hookCtx) {
-      for(auto& [addr, chain] : m_hookTargetToChain) chain.RemoveAll(hookCtx);
+      for (auto& [addr, chain] : m_hookTargetToChain) chain.RemoveAll(hookCtx);
 
       ForEachHookType([&](EHookType type) { Get(type)->TearDown(hookCtx); });
       ForEachHookType([&](EHookType type) { delete Get(type); });
@@ -64,45 +64,66 @@ class HookManager::Impl {
     m_settings.release();
   }
 
-  void SetHook(Context* ctx, u32 id, u32 priority, const HookTarget& target, void* detour, void** original) {
+  std::vector<HookManager::SetResult> SetHooks(Context* ctx, u32 id, const SetDesc* descs, u32 num) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_HOOK_DEBUG("Setting %s hook from %s to %s ...", ToString(target.Type), m_debugger->SymbolFromAdress(ctx, target),
-                       m_debugger->SymbolFromAdress(ctx, detour));
-    Timer timer;
+    Timer totalTimer;
 
-    HookChain* chain = GetHookChain(target);
-    if (!chain) {
-      // First time we see this target, create the chain
-      chain = CreateHookChain(target, this, target);
-    }
+    std::vector<HookManager::SetResult> results(num);
 
-    // Register the hook
-    RunExclusive(ctx, [&](HookContext* hookCtx) { *original = chain->Insert(hookCtx, id, priority, detour); });
+    BIFROST_HOOK_DEBUG("Setting %u hooks ...", num, totalTimer.Stop());
+    RunExclusive(ctx, [&](HookContext* hookCtx) {
+      for (u32 i = 0; i < num; ++i) {
+        Timer timer;
+        const SetDesc& desc = descs[i];
 
-    BIFROST_HOOK_DEBUG("Done setting hook (took %u ms)", timer.Stop());
+        BIFROST_HOOK_DEBUG("Setting %s hook from %s to %s", ToString(desc.Target.Type), m_debugger->SymbolFromAdress(ctx, desc.Target),
+                           m_debugger->SymbolFromAdress(ctx, desc.Detour));
+
+        HookChain* chain = GetHookChain(desc.Target);
+        if (!chain) {
+          // First time we see this target, create the chain
+          chain = CreateHookChain(desc.Target, this, desc.Target);
+        }
+
+        // Insert the hook into the chain
+        results[i] = SetResult{chain->Insert(hookCtx, id, desc.Priority, desc.Detour)};
+      }
+    });
+
+    BIFROST_HOOK_DEBUG("Done setting %u hooks (took %u ms)", num, totalTimer.Stop());
+    return results;
   }
 
-  void RemoveHook(Context* ctx, u32 id, const HookTarget& target) {
+  void RemoveHooks(Context* ctx, u32 id, const RemoveDesc* descs, u32 num) {
     BIFROST_LOCK_GUARD(m_mutex);
-    BIFROST_HOOK_DEBUG("Removing %s hook %s ...", ToString(target.Type), m_debugger->SymbolFromAdress(ctx, target));
-    Timer timer;
+    Timer totalTimer;
 
-    HookChain* chain = GetHookChain(target);
-    if (!chain) {
-      BIFROST_HOOK_DEBUG("Skipped removing hook from: target has no hook");
-      return;
-    }
+    BIFROST_HOOK_DEBUG("Removing %u hooks ...", num, totalTimer.Stop());
+    RunExclusive(ctx, [&](HookContext* hookCtx) {
+      for (u32 i = 0; i < num; ++i) {
+        Timer timer;
+        const RemoveDesc& desc = descs[i];
 
-    HookChainNode* node = chain->GetById(id);
-    if (!node) {
-      BIFROST_HOOK_DEBUG("Skipped removing hook from: target has no hook for the specified id");
-      return;
-    }
+        BIFROST_HOOK_DEBUG("Removing %s hook %s", ToString(desc.Target.Type), m_debugger->SymbolFromAdress(ctx, desc.Target));
 
-    // Remove the hook
-    RunExclusive(ctx, [&](HookContext* hookCtx) { chain->Remove(hookCtx, node); });
+        HookChain* chain = GetHookChain(desc.Target);
+        if (!chain) {
+          BIFROST_HOOK_DEBUG("Skipped removing hook from: target has no hook");
+          return;
+        }
 
-    BIFROST_HOOK_DEBUG("Done removing hook (took %u ms)", timer.Stop());
+        HookChainNode* node = chain->GetById(id);
+        if (!node) {
+          BIFROST_HOOK_DEBUG("Skipped removing hook from: target has no hook for the specified id");
+          return;
+        }
+
+        // Remove the hook
+        chain->Remove(hookCtx, node);
+      }
+    });
+
+    BIFROST_HOOK_DEBUG("Done removing %u hooks (took %u ms)", num, totalTimer.Stop());
   }
 
   void EnableDebug(Context* ctx) {
@@ -300,7 +321,7 @@ class HookManager::Impl {
       IHookMechanism* mechanism = m_manager->Get(m_target.Type);
 
       if (Size() == 1) {
-        if(m_hookChain[0].JumpTable) m_hookChain[0].JumpTable->RemoveTarget(ctx);
+        if (m_hookChain[0].JumpTable) m_hookChain[0].JumpTable->RemoveTarget(ctx);
         m_hookChain.pop_back();
         mechanism->RemoveHook(ctx, m_target);
 
@@ -320,7 +341,7 @@ class HookManager::Impl {
           m_hookChain[idx - 1].JumpTable->SetTarget(ctx, m_hookChain[idx + 1].Detour);
         }
 
-        if(m_hookChain[idx].JumpTable) m_hookChain[idx].JumpTable->RemoveTarget(ctx);
+        if (m_hookChain[idx].JumpTable) m_hookChain[idx].JumpTable->RemoveTarget(ctx);
         m_hookChain.erase(m_hookChain.begin() + idx);
       }
     }
@@ -401,11 +422,9 @@ void HookManager::TearDown(Context* ctx) { m_impl->TearDown(ctx); }
 
 u32 HookManager::MakeUniqueId() { return m_impl->MakeUniqueId(); }
 
-void HookManager::SetHook(Context* ctx, u32 id, u32 priority, const HookTarget& target, void* detour, void** original) {
-  m_impl->SetHook(ctx, id, priority, target, detour, original);
-}
+std::vector<HookManager::SetResult> HookManager::SetHooks(Context* ctx, u32 id, const SetDesc* descs, u32 num) { return m_impl->SetHooks(ctx, id, descs, num); }
 
-void HookManager::RemoveHook(Context* ctx, u32 id, const HookTarget& target) { m_impl->RemoveHook(ctx, id, target); }
+void HookManager::RemoveHooks(Context* ctx, u32 id, const RemoveDesc* descs, u32 num) { m_impl->RemoveHooks(ctx, id, descs, num); }
 
 void HookManager::EnableDebug(Context* ctx) { m_impl->EnableDebug(ctx); }
 

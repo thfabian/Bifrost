@@ -13,13 +13,14 @@
 
 #include "bifrost/core/common.h"
 #include "bifrost/core/object.h"
+#include "bifrost/core/non_copyable.h"
 
 namespace bifrost {
 
 /// Load DLLs (modules) and query the state of the current module
 ///
 /// All methods are thread-safe.
-class ModuleLoader : public Object {
+class ModuleLoader : public Object, public NonCopyable {
  public:
   ModuleLoader(Context* ctx);
   ~ModuleLoader();

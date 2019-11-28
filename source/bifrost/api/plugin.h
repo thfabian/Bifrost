@@ -73,12 +73,17 @@ typedef struct bfp_HookSetDesc_t {
   void* Detour;       ///< A pointer to the detour function, which will override the target function
 } bfp_HookSetDesc;
 
+/// @brief Result of setting a hook
+typedef struct bfp_HookSetResult_t {
+  void* Original;  ///< A pointer to the trampoline function which will can be used to call the original target function
+} bfp_HookSetResult;
+
 #define BIFROST_PLUGIN_DEFAULT_HookSetDesc_Priority (100)
 
 /// @brief Arguments required to remove a hook
 typedef struct bfp_HookRemoveDesc_t {
   bfp_HookType Type;  ///< The type of hook which was used
-  void* Target;       ///< A pointer to the target function, which will be overridden by the detour function
+  void* Target;       ///< A pointer to the target function for which the hook was applied
 } bfp_HookRemoveDesc;
 
 #pragma endregion
@@ -147,7 +152,7 @@ BIFROST_PLUGIN_API bfp_Status bfp_PluginTearDownEnd(bfp_PluginContext* ctx, cons
 
 /// @brief Log the message
 /// @param[in] ctx       Plugin context description
-/// @param[in] severity  Severity of the log message
+/// @param[in] level     Severity of the log message
 /// @param[in] module    Module to log from
 /// @param[in] msg       Log message
 BIFROST_PLUGIN_API bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* module, const char* msg);
@@ -158,15 +163,21 @@ BIFROST_PLUGIN_API const char* bfp_PluginGetLastError(bfp_PluginContext* plugin)
 
 /// @brief Creates and enables a hook for the specified target function
 /// @param[in] ctx				Plugin context description
-/// @param[in] desc       Description to set the hook
-/// @param[out] original  A pointer to the trampoline function, which will be used to call the original target function. This parameter can be NULL.
-BIFROST_PLUGIN_API bfp_Status bfp_HookSet(bfp_PluginContext* ctx, const bfp_HookSetDesc* desc, void** original);
+/// @param[in] num        Number of hooks to set (length of `desc` and `result`)
+/// @param[in] descs      Descriptions of the individual hooks to set (array of length `num`)
+/// @param[out] results   The results of the setting the hooks (array of length `num`) - Use `bfp_HookFreeSetResult` to deallocate the result
+BIFROST_PLUGIN_API bfp_Status bfp_HookSet(bfp_PluginContext* ctx, uint32_t num, const bfp_HookSetDesc* descs, bfp_HookSetResult** results);
+
+/// @brief Free the `result`
+/// @param[in] ctx				Plugin context description
+/// @param[in] results    Results to free
+BIFROST_PLUGIN_API bfp_Status bfp_HookFreeSetResult(bfp_PluginContext* ctx, bfp_HookSetResult* results);
 
 /// @brief Removes an existing hook and restores the behavior before `bfp_HookSet` was called
 /// @param[in] ctx				Plugin context description
-/// @param[in] desc       Description to remove the hook
-/// @param[in] target			A pointer to the target function
-BIFROST_PLUGIN_API bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, const bfp_HookRemoveDesc* desc);
+/// @param[in] num        Number of hooks to remove (length of `desc`)
+/// @param[in] descs      Descriptions of the individual hooks to remove (array of length `num`)
+BIFROST_PLUGIN_API bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, uint32_t num, const bfp_HookRemoveDesc* descs);
 
 /// @brief Enable debug mode
 /// @param[in] ctx				Plugin context description

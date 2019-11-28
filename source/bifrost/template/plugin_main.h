@@ -152,31 +152,73 @@ BIFROST_CACHE_ALIGN class Plugin {
 
   /// Hook the function given by `identifier` to call `override` instead
   ///
-  /// If the underlying function is part of a V-Table, `SetVTableHook` should be used for the first method. Calls `FatalError` if an error occurred.
+  /// If the underlying function is part of a V-Table, `SetVTableHook` should be used for the first method. It is strongly advised to use the batch version
+  /// `SetHooks` if you are setting multiple hooks at once for performance reasons. Calls `FatalError` if an error occurred.
   ///
   /// @param[in] identifier Identifier of the function to override
   /// @param[in] override   Function pointer to use for the override (type has to match!)
   /// @param[in] priority   The higher the priority the earlier the function will placed in the hook chain (the highest priority function will be called first).
   /// @returns a reference to the hook object
-  Hook* SetHook(Identifier identifier, void* override);
-  Hook* SetHook(const char* identifier, void* override);
-  Hook* SetHook(Identifier identifier, void* override, std::uint32_t priority);
-  Hook* SetHook(const char* identifier, void* override, std::uint32_t priority);
+  void SetHook(Identifier identifier, void* override);
+  void SetHook(const char* identifier, void* override);
+  void SetHook(Identifier identifier, void* override, std::uint32_t priority);
+  void SetHook(const char* identifier, void* override, std::uint32_t priority);
 
   /// Hook the method (`identifier`) in the V-Table given by `instance` to call `override` instead
   ///
   /// The per object VTable is cached after the first call or if the V-Table has been registered manually via `RegisterVTable`. After the VTable is cached, it's
-  /// possible to simply us `SetHook`. Calls `FatalError` if an error occurred.
+  /// possible to simply us `SetHook`. It is strongly advised to use the batch version `SetHooks` if you are setting multiple hooks at once for performance
+  /// reasons. Calls `FatalError` if an error occurred.
   ///
   /// @param[in] identifier Identifier of the method to override
   /// @param[in] instance   Instance of an object to extract the VTable from
   /// @param[in] override   Function pointer to use for the override (type has to match!)
   /// @param[in] priority   The higher the priority the earlier the function will placed in the hook chain (the highest priority function will be called first).
   /// @returns a reference to the hook object
-  Hook* SetVTableHook(Identifier identifier, void* instance, void* override);
-  Hook* SetVTableHook(const char* identifier, void* instance, void* override);
-  Hook* SetVTableHook(Identifier identifier, void* instance, void* override, std::uint32_t priority);
-  Hook* SetVTableHook(const char* identifier, void* instance, void* override, std::uint32_t priority);
+  void SetVTableHook(Identifier identifier, void* instance, void* override);
+  void SetVTableHook(const char* identifier, void* instance, void* override);
+  void SetVTableHook(Identifier identifier, void* instance, void* override, std::uint32_t priority);
+  void SetVTableHook(const char* identifier, void* instance, void* override, std::uint32_t priority);
+
+  /// Description of a hook, used by `SetHooks`
+  class HookDesc {
+   public:
+    ~HookDesc();
+    HookDesc(const HookDesc&) = delete;
+    HookDesc(HookDesc&&) = default;
+    HookDesc& operator=(const HookDesc&) = delete;
+    HookDesc& operator=(HookDesc&&) = default;
+
+    /// Construct a C-function based hook - see `SetHook` for explanation of the parameters
+    HookDesc(Identifier identifier, void* override);
+    HookDesc(const char* identifier, void* override);
+    HookDesc(Identifier identifier, void* override, std::uint32_t priority);
+    HookDesc(const char* identifier, void* override, std::uint32_t priority);
+
+    /// Construct a VTable based hook - see `SetHook` for explanation of the parameters
+    HookDesc(Identifier identifier, void* instance, void* override);
+    HookDesc(const char* identifier, void* instance, void* override);
+    HookDesc(Identifier identifier, void* instance, void* override, std::uint32_t priority);
+    HookDesc(const char* identifier, void* instance, void* override, std::uint32_t priority);
+
+    // -- internal usage only --
+    enum class IdentifierType { Enum, String };
+    IdentifierType _IdentifierType;
+    union {
+      Identifier Enum;
+      const char* String;
+    } _Identifier;
+    void* _Instance;
+    void* _Override;
+    std::uint32_t _Priority;
+  };
+
+  /// Set `num` hooks, given by `descs` at once
+  ///
+  /// @param[in] descs  Descriptions of the hooks
+  /// @param[in] num    Number of hooks to set
+  /// @returns A vector of references to the hook objects
+  void SetHooks(const HookDesc* descs, std::uint32_t num);
 
   /// Register the V-Table of `object` by inspecting `instance`
   ///
@@ -195,13 +237,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// @param[in] identifier Identifier of the function to override
   void RemoveHook(Identifier identifier);
   void RemoveHook(const char* identifier);
-  void RemoveHook(Hook* hook);
-
-  /// Remove the hook for each `identifier`
-  template <class... IdentifierT>
-  void RemoveHooks(IdentifierT&&... identifier) {
-    RemoveHook(identifier)...;
-  }
+  void RemoveHooks(const Identifier* identifiers, std::uint32_t num);
 
 	/// Remove all created hooks
   void RemoveAllHooks() noexcept;
@@ -248,7 +284,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   static BIFROST_CACHE_ALIGN Plugin* s_instance;
   static BIFROST_CACHE_ALIGN const char* s_name;
   static BIFROST_CACHE_ALIGN AlignedHook s_hooks[(std::uint64_t)Identifier::NumIdentifiers];
-
+  
   class PluginImpl;
   PluginImpl* m_impl;
 };
@@ -575,6 +611,7 @@ class BifrostPluginApi {
   BIFROST_PLUGIN_API_DECL(bfp_PluginTearDownStart)
   BIFROST_PLUGIN_API_DECL(bfp_PluginTearDownEnd)
   BIFROST_PLUGIN_API_DECL(bfp_HookSet)
+  BIFROST_PLUGIN_API_DECL(bfp_HookFreeSetResult)
   BIFROST_PLUGIN_API_DECL(bfp_HookRemove)
   BIFROST_PLUGIN_API_DECL(bfp_HookEnableDebug)
 
@@ -592,6 +629,7 @@ class BifrostPluginApi {
     BIFROST_PLUGIN_API_DEF(bfp_PluginTearDownStart)
     BIFROST_PLUGIN_API_DEF(bfp_PluginTearDownEnd)
     BIFROST_PLUGIN_API_DEF(bfp_HookSet)
+    BIFROST_PLUGIN_API_DEF(bfp_HookFreeSetResult)
     BIFROST_PLUGIN_API_DEF(bfp_HookRemove)
     BIFROST_PLUGIN_API_DEF(bfp_HookEnableDebug)
 
@@ -734,11 +772,13 @@ static const wchar_t* ModuleToString(Module module) {
 }
 
 template <class T>
-static void ForEachIdentifer(T&& func) {
+void ForEachIdentifer(T&& func) {
   for (std::uint64_t i = (std::uint64_t)Plugin::Identifier::__bifrost_first__ + 1; i < (std::uint64_t)Plugin::Identifier::NumIdentifiers; ++i) {
     func((Plugin::Identifier)i);
   }
 }
+
+static std::uint32_t GetDefaultHookPriorityImpl() { return BIFROST_PLUGIN_DEFAULT_HookSetDesc_Priority; }
 
 }  // namespace
 
@@ -766,7 +806,7 @@ BIFROST_CACHE_ALIGN class Plugin::PluginImpl {
 
   /// Arguments passed to the plugin
   std::string Arguments;
-  };
+};
 
 Plugin::Plugin() { m_impl = new PluginImpl; }
 
@@ -803,6 +843,43 @@ void Plugin::Hook::_SetOriginal(void* original) noexcept { m_original = original
 
 void Plugin::Hook::_SetIdentifier(Identifier identifer) noexcept { m_identifier = identifer; }
 
+Plugin::HookDesc::~HookDesc() {
+  if (_IdentifierType == IdentifierType::String) delete[] _Identifier.String;
+}
+
+Plugin::HookDesc::HookDesc(Identifier identifier, void* override) : HookDesc(identifier, override, GetDefaultHookPriorityImpl()) {}
+
+Plugin::HookDesc::HookDesc(const char* identifier, void* override) : HookDesc(identifier, override, GetDefaultHookPriorityImpl()) {}
+
+Plugin::HookDesc::HookDesc(Identifier identifier, void* override, std::uint32_t priority) : HookDesc(identifier, nullptr, override, priority) {}
+
+Plugin::HookDesc::HookDesc(const char* identifier, void* override, std::uint32_t priority) : HookDesc(identifier, nullptr, override, priority) {}
+
+Plugin::HookDesc::HookDesc(Identifier identifier, void* instance, void* override) : HookDesc(identifier, instance, override, GetDefaultHookPriorityImpl()) {}
+
+Plugin::HookDesc::HookDesc(const char* identifier, void* instance, void* override) : HookDesc(identifier, instance, override, GetDefaultHookPriorityImpl()) {}
+
+Plugin::HookDesc::HookDesc(Identifier identifier, void* instance, void* override, std::uint32_t priority) {
+  _IdentifierType = IdentifierType::Enum;
+  _Identifier.Enum = identifier;
+
+  _Instance = instance;
+  _Override = override;
+  _Priority = priority;
+}
+
+Plugin::HookDesc::HookDesc(const char* identifier, void* instance, void* override, std::uint32_t priority) {
+  _IdentifierType = IdentifierType::String;
+
+  std::string identifierStr(identifier);
+  _Identifier.String = new char[identifierStr.size() + 1];
+  std::memcpy((void*)_Identifier.String, identifierStr.c_str(), identifierStr.size() + 1);
+
+  _Instance = instance;
+  _Override = override;
+  _Priority = priority;
+}
+
 // Get the address of the function of the VTable pointer
 void* Plugin::_GetTarget(Hook* hook, void* instance) {
   switch (IdentifierToHookType(hook->GetIdentifier())) {
@@ -834,83 +911,135 @@ void Plugin::RegisterVTable(Plugin::ObjectType object, void* instance) {
   }
 }
 
-Plugin::Hook* Plugin::SetHook(Plugin::Identifier identifier, void* override) { return SetHook(identifier, override, GetDefaultHookPriority()); }
+void Plugin::SetHook(Plugin::Identifier identifier, void* override) { SetHook(identifier, override, GetDefaultHookPriority()); }
 
-Plugin::Hook* Plugin::SetHook(const char* identifier, void* override) { return SetHook(identifier, override, GetDefaultHookPriority()); }
+void Plugin::SetHook(const char* identifier, void* override) { SetHook(identifier, override, GetDefaultHookPriority()); }
 
-Plugin::Hook* Plugin::SetHook(const char* identifier, void* override, std::uint32_t priority) {
-  return SetHook(StringToIdentifier(identifier), override, priority);
+void Plugin::SetHook(const char* identifier, void* override, std::uint32_t priority) { SetVTableHook(identifier, nullptr, override, priority); }
+
+void Plugin::SetHook(Plugin::Identifier identifier, void* override, std::uint32_t priority) { SetVTableHook(identifier, nullptr, override, priority); }
+
+void Plugin::SetVTableHook(Plugin::Identifier identifier, void* instance, void* override) {
+  SetVTableHook(identifier, instance, override, GetDefaultHookPriority());
 }
 
-Plugin::Hook* Plugin::SetHook(Plugin::Identifier identifier, void* override, std::uint32_t priority) {
-  return SetVTableHook(identifier, nullptr, override, priority);
+void Plugin::SetVTableHook(const char* identifier, void* instance, void* override) {
+  SetVTableHook(identifier, instance, override, GetDefaultHookPriority());
 }
 
-Plugin::Hook* Plugin::SetVTableHook(Plugin::Identifier identifier, void* instance, void* override) {
-  return SetVTableHook(identifier, instance, override, GetDefaultHookPriority());
+void Plugin::SetVTableHook(const char* identifier, void* instance, void* override, std::uint32_t priority) {
+  HookDesc desc{identifier, instance, override, priority};
+  SetHooks(&desc, 1);
 }
 
-Plugin::Hook* Plugin::SetVTableHook(const char* identifier, void* instance, void* override) {
-  return SetVTableHook(identifier, instance, override, GetDefaultHookPriority());
+void Plugin::SetVTableHook(Plugin::Identifier identifier, void* instance, void* override, std::uint32_t priority) {
+  HookDesc desc{identifier, instance, override, priority};
+  SetHooks(&desc, 1);
 }
 
-Plugin::Hook* Plugin::SetVTableHook(const char* identifier, void* instance, void* override, std::uint32_t priority) {
-  return SetVTableHook(StringToIdentifier(identifier), instance, override, priority);
-}
-
-Plugin::Hook* Plugin::SetVTableHook(Plugin::Identifier identifier, void* instance, void* override, std::uint32_t priority) {
+void Plugin::SetHooks(const Plugin::HookDesc* descs, std::uint32_t num) {
   auto& api = GetApi();
-  Hook* hook = GetHook(identifier);
 
-  // Set the hook
-  void* newOriginal = hook->GetOriginal();
-  void* newOverride = override;
+  std::vector<bfp_HookSetDesc> setDescs;
+  std::vector<Hook*> hooks;
 
-  bfp_HookSetDesc desc = {};
-  desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(identifier));
-  desc.Priority = priority;
-  desc.Target = _GetTarget(hook, instance);
-  desc.Detour = newOverride;
+  setDescs.reserve(num);
+  hooks.reserve(num);
 
-  if (api.bfp_HookSet(m_impl->Context, &desc, &newOriginal) != BFP_OK) {
+  std::uint32_t lastHookSize = 0;
+
+  // Create the hook descriptions and obtain the hook objects
+  for (std::uint32_t i = 0; i < num; ++i) {
+    const Plugin::HookDesc& desc = descs[i];
+
+    if (desc._IdentifierType == HookDesc::IdentifierType::String) {
+      hooks.emplace_back(GetHook(StringToIdentifier(desc._Identifier.String)));
+    } else {
+      hooks.emplace_back(GetHook(desc._Identifier.Enum));
+    }
+
+    for (std::uint32_t j = lastHookSize; j < hooks.size(); ++j) {
+      Hook* hook = hooks[j];
+
+      bfp_HookSetDesc setDesc = {};
+      setDesc.Type = static_cast<bfp_HookType>(IdentifierToHookType(hook->GetIdentifier()));
+      setDesc.Priority = desc._Priority;
+      setDesc.Target = _GetTarget(hook, desc._Instance);
+      setDesc.Detour = desc._Override;
+
+      setDescs.emplace_back(setDesc);
+    }
+
+    lastHookSize = (std::uint32_t)hooks.size();
+  }
+
+  // Set the hooks
+  bfp_HookSetResult* setResults = nullptr;
+  if (api.bfp_HookSet(m_impl->Context, (std::uint32_t)setDescs.size(), setDescs.data(), &setResults) != BFP_OK) {
     FatalError(api.bfp_PluginGetLastError(m_impl->Context));
   }
 
-  hook->_SetOriginal(newOriginal);
-  hook->_SetOverride(newOverride);
-  return hook;
+  // Apply the results
+  for (std::uint32_t i = 0; i < setDescs.size(); ++i) {
+    hooks[i]->_SetOriginal(setResults[i].Original);
+    hooks[i]->_SetOverride(setDescs[i].Detour);
+  }
+
+  api.bfp_HookFreeSetResult(m_impl->Context, setResults);
 }
 
 void Plugin::RemoveAllHooks() noexcept {
   ForEachIdentifer([this](Identifier identifier) { RemoveHook(identifier); });
 }
 
-void Plugin::RemoveHook(Identifier identifier) { RemoveHook(GetHook(identifier)); }
+void Plugin::RemoveHook(Identifier identifier) { RemoveHooks(&identifier, 1); }
 
-void Plugin::RemoveHook(const char* identifier) { RemoveHook(StringToIdentifier(identifier)); }
+void Plugin::RemoveHook(const char* identifier) {
+  auto identifierEnum = StringToIdentifier(identifier);
+  RemoveHooks(&identifierEnum, 1);
+}
 
-void Plugin::RemoveHook(Hook* hook) {
+void Plugin::RemoveHooks(const Identifier* identifiers, std::uint32_t num) {
   auto& api = GetApi();
+  std::vector<bfp_HookRemoveDesc> removeDescs;
+  removeDescs.reserve(num);
 
-  // Function was not loaded successfully
-  if (IdentifierToHookType(hook->GetIdentifier()) == HookType::CFunction && hook->_GetTarget() == nullptr) return;
+  auto SkipHook = [&](Hook* hook) -> bool {
+    // Function was not loaded successfully
+    if (IdentifierToHookType(hook->GetIdentifier()) == HookType::CFunction && hook->_GetTarget() == nullptr) return true;
 
-  // No hook has been registered
-  if (hook->GetOverride() == nullptr) return;
+    // No hook has been registered
+    if (hook->GetOverride() == nullptr) return true;
 
-  bfp_HookRemoveDesc desc = {};
-  desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(hook->GetIdentifier()));
-  desc.Target = _GetTarget(hook, nullptr);
+    return false;
+  };
 
-  if (api.bfp_HookRemove(m_impl->Context, &desc) != BFP_OK) {
+  for (std::uint32_t i = 0; i < num; ++i) {
+    Hook* hook = GetHook(identifiers[i]);
+    if (SkipHook(hook)) continue;
+
+    bfp_HookRemoveDesc desc = {};
+    desc.Type = static_cast<bfp_HookType>(IdentifierToHookType(hook->GetIdentifier()));
+    desc.Target = _GetTarget(hook, nullptr);
+    removeDescs.emplace_back(desc);
+  }
+
+  if(removeDescs.empty()) return;
+
+  if (api.bfp_HookRemove(m_impl->Context, (std::uint32_t)removeDescs.size(), removeDescs.data()) != BFP_OK) {
     FatalError(api.bfp_PluginGetLastError(m_impl->Context));
   }
 
-  hook->_SetOriginal(hook->_GetTarget());
-  hook->_SetOverride(nullptr);
+  for (std::uint32_t i = 0; i < num; ++i) {
+    Hook* hook = GetHook(identifiers[i]);
+    if (SkipHook(hook)) continue;
+
+    hook->_SetOriginal(hook->_GetTarget());
+    hook->_SetOverride(nullptr);
+  }
 }
 
-std::uint32_t Plugin::GetDefaultHookPriority() const noexcept { return BIFROST_PLUGIN_DEFAULT_HookSetDesc_Priority; }
+std::uint32_t Plugin::GetDefaultHookPriority() const noexcept { return GetDefaultHookPriorityImpl(); }
 
 Plugin::Hook* Plugin::GetHook(Plugin::Identifier identifier) noexcept { return &s_hooks[(std::uint64_t)identifier].hook; }
 

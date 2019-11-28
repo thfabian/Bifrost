@@ -141,18 +141,45 @@ bfp_Status bfp_PluginLog(bfp_PluginContext* ctx, uint32_t level, const char* mod
 
 const char* bfp_PluginGetLastError(bfp_PluginContext* ctx) { return Get(ctx)->GetLastError(); }
 
-BIFROST_PLUGIN_API bfp_Status bfp_HookSet(bfp_PluginContext* ctx, const bfp_HookSetDesc* desc, void** original) {
+static bfp_Status HookSetImpl(bfp_PluginContext* ctx, uint32_t num, const bfp_HookSetDesc* descs, bfp_HookSetResult** results) {
+  (*results) = nullptr; 
+
+  // Convert the set description
+  std::vector<HookManager::SetDesc> setDescs(num);
+  for (u32 i = 0; i < num; ++i) setDescs[i] = HookManager::SetDesc{descs[i].Priority, HookTarget{GetType(descs[i].Type), descs[i].Target}, descs[i].Detour};
+
+  // Set the hooks
+  auto setResults = g_manager->SetHooks(Get(ctx)->GetContext(), Get(ctx)->GetId(), setDescs.data(), setDescs.size());
+  (*results) = new bfp_HookSetResult[setResults.size()];
+
+  // Convert the results
+  for (u32 i = 0; i < setResults.size(); ++i) (*results)[i] = bfp_HookSetResult{setResults[i].Original};
+  return BFP_OK;
+}
+
+bfp_Status bfp_HookSet(bfp_PluginContext* ctx, uint32_t num, const bfp_HookSetDesc* descs, bfp_HookSetResult** results) {
+  BIFROST_PLUGIN_CATCH_ALL({ return HookSetImpl(ctx, num, descs, results); });
+}
+
+bfp_Status bfp_HookFreeSetResult(bfp_PluginContext* ctx, bfp_HookSetResult* results) {
   BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->SetHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), desc->Priority, {GetType(desc->Type), desc->Target}, desc->Detour, original);
+    if (results) delete[] results;
     return BFP_OK;
   });
 }
 
-bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, const bfp_HookRemoveDesc* desc) {
-  BIFROST_PLUGIN_CATCH_ALL({
-    g_manager->RemoveHook(Get(ctx)->GetContext(), Get(ctx)->GetId(), {GetType(desc->Type), desc->Target});
-    return BFP_OK;
-  });
+static bfp_Status HookRemoveImpl(bfp_PluginContext* ctx, uint32_t num, const bfp_HookRemoveDesc* descs) {
+  // Convert the remove descriptions
+  std::vector<HookManager::RemoveDesc> rmDescs(num);
+  for (u32 i = 0; i < num; ++i) rmDescs[i] = HookManager::RemoveDesc{HookTarget{GetType(descs[i].Type), descs[i].Target}};
+
+  // Remove the hooks
+  g_manager->RemoveHooks(Get(ctx)->GetContext(), Get(ctx)->GetId(), rmDescs.data(), rmDescs.size());
+  return BFP_OK;
+}
+
+bfp_Status bfp_HookRemove(bfp_PluginContext* ctx, uint32_t num, const bfp_HookRemoveDesc* descs) {
+  BIFROST_PLUGIN_CATCH_ALL({ return HookRemoveImpl(ctx, num, descs); });
 }
 
 bfp_Status bfp_HookEnableDebug(bfp_PluginContext* ctx) {

@@ -15,11 +15,12 @@
 #include "bifrost/core/object.h"
 #include "bifrost/core/type.h"
 #include "bifrost/core/thread.h"
+#include "bifrost/core/non_copyable.h"
 
 namespace bifrost {
 
 /// Process creation abstraction
-class Process : public Object {
+class Process : public Object, public NonCopyable {
  public:
   struct LaunchArguments {
     std::wstring Executable;  ///< Path to the executable
@@ -35,9 +36,6 @@ class Process : public Object {
 
   /// Connect to the process `name`
   Process(Context* ctx, std::wstring_view name);
-
-  Process(const Process&) = delete;
-  Process& operator=(const Process&) = delete;
 
   Process(Process&&) = default;
   Process& operator=(Process&&) = default;
@@ -78,7 +76,7 @@ class Process : public Object {
   std::shared_ptr<void> AllocateRemoteMemory(const void* data, u32 sizeInBytes, DWORD protectionFlag, const char* reason);
 
  private:
-  HANDLE m_hProcess = NULL;
+  HANDLE m_hProcess = INVALID_HANDLE_VALUE;
   std::optional<u32> m_pid;
   std::optional<u32> m_tid;
   std::optional<u32> m_exitCode;

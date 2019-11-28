@@ -37,11 +37,28 @@ class HookManager {
   /// Get a new unique identifier
   u32 MakeUniqueId();
 
-  /// Set `detour` as the new function for `target` and return the originally registered function in `original`
-  void SetHook(Context* ctx, u32 id, u32 priority, const HookTarget& target, void* detour, void** original);
+  /// Description of setting a hook
+  struct SetDesc {
+    u32 Priority;       ///< The higher the priority the earlier the function will placed in the hook chain (the highest priority function will be called first)
+    HookTarget Target;  ///< A pointer to the target function which will be overridden by the detour function - also includes the type of hook
+    void* Detour;       ///< A pointer to the detour function, which will override the target function
+  };
 
-  /// Remove the hook registered at `target`
-  void RemoveHook(Context* ctx, u32 id, const HookTarget& target);
+  /// Result of setting a hook
+  struct SetResult {
+    void* Original;  ///< A pointer to the trampoline function which will can be used to call the original target function
+  };
+
+  /// Set `SetDesc::Detour` as the new function for `SetDesc::Target` and return the originally registered function in `SetResult::Original`
+  std::vector<SetResult> SetHooks(Context* ctx, u32 id, const SetDesc* descs, u32 num);
+
+  /// Description of setting a hook
+  struct RemoveDesc {
+    HookTarget Target;  ///< A pointer to the target function for which the hook was applied - also includes the type of hook
+  };
+
+  /// Remove the hook registered at `RemoveDesc::target`
+  void RemoveHooks(Context* ctx, u32 id, const RemoveDesc* descs, u32 num);
 
   /// Enable debug mode
   void EnableDebug(Context* ctx);
