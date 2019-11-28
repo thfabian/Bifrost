@@ -15,7 +15,6 @@
 #include "bifrost/core/context.h"
 #include "bifrost/core/mutex.h"
 #include "bifrost/core/sm_log_stash.h"
-#include "bifrost/core/sm_storage.h"
 
 namespace bifrost {
 
@@ -41,11 +40,7 @@ class SMContext {
   /// Get the log stash
   SMLogStash* GetSMLogStash(SharedMemory* mem);
 
-  /// Get the storage
-  SMStorage* GetSMStorage(SharedMemory* mem);
-
  private:
-  Ptr<SMStorage> m_storage;
   Ptr<SMLogStash> m_logstash;
   SpinMutex m_mutex;
   u32 m_refCount;

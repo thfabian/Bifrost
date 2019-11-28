@@ -439,7 +439,6 @@ static MH_STATUS EnableHook(LPVOID pTarget, BOOL enable, HANDLE* phThreads, UINT
     if (pTarget == MH_ALL_HOOKS) {
       status = EnableAllHooksLL(enable, phThreads, size);
     } else {
-      FROZEN_THREADS threads;
       UINT pos = FindHookEntry(pTarget);
       if (pos != INVALID_HOOK_POS) {
         if (g_hooks.pItems[pos].isEnabled != enable) {

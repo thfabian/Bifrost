@@ -61,9 +61,6 @@ class SharedMemory {
   /// Get the log stash of SMContext
   SMLogStash* GetSMLogStash() noexcept;
 
-  /// Get the storage of SMContext
-  SMStorage* GetSMStorage() noexcept;
-
  private:
   MallocFreeList* m_malloc;
   SMContext* m_sharedCtx;

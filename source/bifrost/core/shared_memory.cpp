@@ -102,6 +102,4 @@ SharedMemory::~SharedMemory() {
 
 SMLogStash* SharedMemory::GetSMLogStash() noexcept { return m_sharedCtx->GetSMLogStash(this); }
 
-SMStorage* SharedMemory::GetSMStorage() noexcept { return m_sharedCtx->GetSMStorage(this); }
-
 }  // namespace bifrost

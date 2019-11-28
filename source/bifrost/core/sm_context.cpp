@@ -28,7 +28,6 @@ SMContext* SMContext::Create(SharedMemory* mem, u64 memorySize) {
   BIFROST_LOCK_GUARD(smCtx->m_mutex);
   smCtx->m_refCount = 1;
   smCtx->m_memorySize = memorySize;
-  smCtx->m_storage = New<SMStorage>(mem);
   smCtx->m_logstash = New<SMLogStash>(mem);
   return smCtx;
 }
@@ -44,13 +43,10 @@ SMContext* SMContext::Map(void* firstAdress) {
 void SMContext::Destruct(SharedMemory* mem, SMContext* smCtx) {
   BIFROST_LOCK_GUARD(smCtx->m_mutex);
   if (--smCtx->m_refCount == 0) {
-    Delete(mem, smCtx->m_storage);
     Delete(mem, smCtx->m_logstash);
   }
 }
 
 SMLogStash* SMContext::GetSMLogStash(SharedMemory* mem) { return m_logstash.Resolve(mem->GetBaseAddress()); }
-
-SMStorage* SMContext::GetSMStorage(SharedMemory* mem) { return m_storage.Resolve(mem->GetBaseAddress()); }
 
 }  // namespace bifrost
