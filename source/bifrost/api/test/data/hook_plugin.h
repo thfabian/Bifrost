@@ -49,6 +49,8 @@ enum class Mode : int {
   VTable_Single_Modify3,
   VTable_Single_Replace1,
   VTable_Single_Restore1,
+
+  Batch_Modify1,
 };
 
 }

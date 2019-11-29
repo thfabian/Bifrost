@@ -20,8 +20,14 @@ using namespace bifrost;
 
 class TestHook : public TestInjectorBase {
  public:
-  std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForLaunch(std::string file, EHookType type = EHookType::E_CFunction) {
-    return MakeExecutableArgumentsForLaunchImpl(TestEnviroment::Get().GetHookExecutable(), file + " " + std::to_string((u32)type) + " 1 2 200");
+  enum class ExeMode {
+    CFunction = 0,
+    VTable = 1,
+    Both = 2,
+  };
+
+  std::shared_ptr<bfi_ExecutableArguments> MakeExecutableArgumentsForLaunch(std::string file, ExeMode mode = ExeMode::CFunction) {
+    return MakeExecutableArgumentsForLaunchImpl(TestEnviroment::Get().GetHookExecutable(), file + " " + std::to_string((u32)mode) + " 1 2 200");
   }
 
   std::vector<bfi_PluginLoadDesc> MakePluginLoadDesc(std::string file, Mode mode = Mode::none, i32 plugin = 1) {
@@ -51,7 +57,7 @@ TEST_F(TestHook, NoHooks) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 #pragma region CFunction Single
@@ -77,7 +83,7 @@ TEST_F(TestHook, CFunction_Single_Original1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -94,7 +100,7 @@ TEST_F(TestHook, CFunction_Single_Original2) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -111,7 +117,7 @@ TEST_F(TestHook, CFunction_Single_Original3) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -128,7 +134,7 @@ TEST_F(TestHook, CFunction_Single_Modify1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=7:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=7:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -145,7 +151,7 @@ TEST_F(TestHook, CFunction_Single_Modify2) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=6:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=6:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -162,7 +168,7 @@ TEST_F(TestHook, CFunction_Single_Modify3) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=10:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=10:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -179,7 +185,7 @@ TEST_F(TestHook, CFunction_Single_Replace1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -196,7 +202,7 @@ TEST_F(TestHook, CFunction_Single_Restore1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 #pragma endregion
@@ -217,7 +223,7 @@ TEST_F(TestHook, CFunction_Multi_Original1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:Result=3:TearDown2:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:CFunctionResult=3:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -234,7 +240,7 @@ TEST_F(TestHook, CFunction_Multi_Original2) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:SetUp3:Result=3:TearDown3:TearDown2:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:SetUp3:CFunctionResult=3:TearDown3:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -255,7 +261,7 @@ TEST_F(TestHook, CFunction_Multi_Modify1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:Result=9:TearDown2:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:CFunctionResult=9:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -276,7 +282,7 @@ TEST_F(TestHook, CFunction_Multi_Modify2) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:Result=9:TearDown2:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:CFunctionResult=9:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -297,7 +303,7 @@ TEST_F(TestHook, CFunction_Multi_Modify3) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:Result=12:TearDown2:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:CFunctionResult=12:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -318,7 +324,7 @@ TEST_F(TestHook, CFunction_Multi_Modify4) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:SetUp3:Result=18:TearDown3:TearDown2:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:SetUp3:CFunctionResult=18:TearDown3:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -339,7 +345,7 @@ TEST_F(TestHook, CFunction_Multi_Modify5) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:SetUp3:Result=15:TearDown3:TearDown2:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:SetUp2:SetUp3:CFunctionResult=15:TearDown3:TearDown2:TearDown1:") << "File: " << tmpFile;
 }
 
 #pragma endregion
@@ -352,7 +358,7 @@ TEST_F(TestHook, CFunction_Multi_Modify5) {
 TEST_F(TestHook, VTable_Single_Original1) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Original1);
 
@@ -360,7 +366,7 @@ TEST_F(TestHook, VTable_Single_Original1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -369,7 +375,7 @@ TEST_F(TestHook, VTable_Single_Original1) {
 TEST_F(TestHook, VTable_Single_Original2) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Original2);
 
@@ -377,7 +383,7 @@ TEST_F(TestHook, VTable_Single_Original2) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -386,7 +392,7 @@ TEST_F(TestHook, VTable_Single_Original2) {
 TEST_F(TestHook, VTable_Single_Original3) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Original3);
 
@@ -394,7 +400,7 @@ TEST_F(TestHook, VTable_Single_Original3) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -403,7 +409,7 @@ TEST_F(TestHook, VTable_Single_Original3) {
 TEST_F(TestHook, VTable_Single_Original4) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
 
   // Same as VTable_Single_Original3 but uses different method to register the VTable
@@ -413,7 +419,7 @@ TEST_F(TestHook, VTable_Single_Original4) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -422,7 +428,7 @@ TEST_F(TestHook, VTable_Single_Original4) {
 TEST_F(TestHook, VTable_Single_Modify1) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Modify1);
 
@@ -430,7 +436,7 @@ TEST_F(TestHook, VTable_Single_Modify1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=7:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=7:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -439,7 +445,7 @@ TEST_F(TestHook, VTable_Single_Modify1) {
 TEST_F(TestHook, VTable_Single_Modify2) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Modify2);
 
@@ -447,7 +453,7 @@ TEST_F(TestHook, VTable_Single_Modify2) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=6:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=6:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -456,7 +462,7 @@ TEST_F(TestHook, VTable_Single_Modify2) {
 TEST_F(TestHook, VTable_Single_Modify3) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Modify3);
 
@@ -464,7 +470,7 @@ TEST_F(TestHook, VTable_Single_Modify3) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=10:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=10:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -473,7 +479,7 @@ TEST_F(TestHook, VTable_Single_Modify3) {
 TEST_F(TestHook, VTable_Single_Replace1) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Replace1);
 
@@ -481,7 +487,7 @@ TEST_F(TestHook, VTable_Single_Replace1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=3:TearDown1:") << "File: " << tmpFile;
 }
 
 //
@@ -490,7 +496,7 @@ TEST_F(TestHook, VTable_Single_Replace1) {
 TEST_F(TestHook, VTable_Single_Restore1) {
   auto tmpFile = GetTmpFile();
 
-  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, EHookType::E_VTable);
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::VTable);
   auto injectorArgs = MakeInjectorArguments();
   auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::VTable_Single_Restore1);
 
@@ -498,7 +504,27 @@ TEST_F(TestHook, VTable_Single_Restore1) {
   auto loadResult = Load(loadArgs);
   ASSERT_EQ(Wait(loadResult.Process), 0);
 
-  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:Result=3:TearDown1:") << "File: " << tmpFile;
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:VTableResult=3:TearDown1:") << "File: " << tmpFile;
+}
+
+#pragma endregion
+
+#pragma region Batch
+//
+//  APP -> ORIGINAL
+//
+TEST_F(TestHook, Batch_Modify1) {
+  auto tmpFile = GetTmpFile();
+
+  auto launchArgs = MakeExecutableArgumentsForLaunch(tmpFile, ExeMode::Both);
+  auto injectorArgs = MakeInjectorArguments();
+  auto pluginLoadDesc = MakePluginLoadDesc(tmpFile, Mode::Batch_Modify1);
+
+  auto loadArgs = MakePluginLoadArguments(launchArgs, injectorArgs, pluginLoadDesc);
+  auto loadResult = Load(loadArgs);
+  ASSERT_EQ(Wait(loadResult.Process), 0);
+
+  ASSERT_STREQ(GetContent(tmpFile).c_str(), "SetUp1:CFunctionResult=7:VTableResult=7:TearDown1:") << "File: " << tmpFile;
 }
 
 #pragma endregion

@@ -301,6 +301,19 @@ class PLUGIN_NAME final : public hook_plugin::Plugin {
         break;
       }
 
+      //
+      // Batch
+      //
+      case Mode::Batch_Modify1: {
+        IAdder* adder = new Adder();
+        std::vector<HookDesc> descs;
+        descs.emplace_back(HookDesc{Identifier::bifrost_add, PLUGIN_PREFIX(bifrost_add__modify_1)});
+        descs.emplace_back(HookDesc{Identifier::bifrost_IAdder_add, adder, PLUGIN_PREFIX(bifrost_IAdder_add__modify_1)});
+        SetHooks(descs.data(), (std::uint32_t)descs.size());
+        delete adder;
+        break;
+      }
+
       default:
         break;
     }

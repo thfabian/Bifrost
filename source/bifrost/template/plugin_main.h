@@ -29,6 +29,7 @@
 #pragma endregion
 
 #include <cstdint>
+#include <cstddef>
 
 #if BIFROST_ENABLE_INCLUDE
 BIFROST_PLUGIN_INCLUDES
@@ -218,7 +219,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// @param[in] descs  Descriptions of the hooks
   /// @param[in] num    Number of hooks to set
   /// @returns A vector of references to the hook objects
-  void SetHooks(const HookDesc* descs, std::uint32_t num);
+  void SetHooks(const HookDesc* descs, std::size_t num);
 
   /// Register the V-Table of `object` by inspecting `instance`
   ///
@@ -237,7 +238,7 @@ BIFROST_CACHE_ALIGN class Plugin {
   /// @param[in] identifier Identifier of the function to override
   void RemoveHook(Identifier identifier);
   void RemoveHook(const char* identifier);
-  void RemoveHooks(const Identifier* identifiers, std::uint32_t num);
+  void RemoveHooks(const Identifier* identifiers, std::size_t num);
 
 	/// Remove all created hooks
   void RemoveAllHooks() noexcept;
@@ -771,13 +772,6 @@ static const wchar_t* ModuleToString(Module module) {
   return map[(std::uint32_t)module];
 }
 
-template <class T>
-void ForEachIdentifer(T&& func) {
-  for (std::uint64_t i = (std::uint64_t)Plugin::Identifier::__bifrost_first__ + 1; i < (std::uint64_t)Plugin::Identifier::NumIdentifiers; ++i) {
-    func((Plugin::Identifier)i);
-  }
-}
-
 static std::uint32_t GetDefaultHookPriorityImpl() { return BIFROST_PLUGIN_DEFAULT_HookSetDesc_Priority; }
 
 }  // namespace
@@ -937,7 +931,7 @@ void Plugin::SetVTableHook(Plugin::Identifier identifier, void* instance, void* 
   SetHooks(&desc, 1);
 }
 
-void Plugin::SetHooks(const Plugin::HookDesc* descs, std::uint32_t num) {
+void Plugin::SetHooks(const Plugin::HookDesc* descs, std::size_t num) {
   auto& api = GetApi();
 
   std::vector<bfp_HookSetDesc> setDescs;
@@ -946,10 +940,10 @@ void Plugin::SetHooks(const Plugin::HookDesc* descs, std::uint32_t num) {
   setDescs.reserve(num);
   hooks.reserve(num);
 
-  std::uint32_t lastHookSize = 0;
+  std::size_t lastHookSize = 0;
 
   // Create the hook descriptions and obtain the hook objects
-  for (std::uint32_t i = 0; i < num; ++i) {
+  for (std::size_t i = 0; i < num; ++i) {
     const Plugin::HookDesc& desc = descs[i];
 
     if (desc._IdentifierType == HookDesc::IdentifierType::String) {
@@ -958,7 +952,7 @@ void Plugin::SetHooks(const Plugin::HookDesc* descs, std::uint32_t num) {
       hooks.emplace_back(GetHook(desc._Identifier.Enum));
     }
 
-    for (std::uint32_t j = lastHookSize; j < hooks.size(); ++j) {
+    for (std::size_t j = lastHookSize; j < hooks.size(); ++j) {
       Hook* hook = hooks[j];
 
       bfp_HookSetDesc setDesc = {};
@@ -970,7 +964,7 @@ void Plugin::SetHooks(const Plugin::HookDesc* descs, std::uint32_t num) {
       setDescs.emplace_back(setDesc);
     }
 
-    lastHookSize = (std::uint32_t)hooks.size();
+    lastHookSize = hooks.size();
   }
 
   // Set the hooks
@@ -989,7 +983,9 @@ void Plugin::SetHooks(const Plugin::HookDesc* descs, std::uint32_t num) {
 }
 
 void Plugin::RemoveAllHooks() noexcept {
-  ForEachIdentifer([this](Identifier identifier) { RemoveHook(identifier); });
+  std::vector<std::uint64_t> identifiers((std::uint64_t)Identifier::NumIdentifiers - 1);
+  std::iota(identifiers.begin(), identifiers.end(), (std::uint64_t)Identifier::__bifrost_first__ + 1);
+  RemoveHooks((const Identifier*)identifiers.data(), identifiers.size());
 }
 
 void Plugin::RemoveHook(Identifier identifier) { RemoveHooks(&identifier, 1); }
@@ -999,7 +995,7 @@ void Plugin::RemoveHook(const char* identifier) {
   RemoveHooks(&identifierEnum, 1);
 }
 
-void Plugin::RemoveHooks(const Identifier* identifiers, std::uint32_t num) {
+void Plugin::RemoveHooks(const Identifier* identifiers, std::size_t num) {
   auto& api = GetApi();
   std::vector<bfp_HookRemoveDesc> removeDescs;
   removeDescs.reserve(num);
